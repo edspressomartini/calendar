@@ -8,6 +8,7 @@ import {
 import { CHANNELS } from '../../shared/ipc/channels.ts'
 import type { AgendaSnapshot } from '../../shared/types/agenda.ts'
 import type { DisplayKey, WidgetCorner } from '../../shared/types/settings.ts'
+import type { TodoSnapshot } from '../../shared/types/todo.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import { resolveRendererUrl } from './appProtocol.ts'
@@ -99,6 +100,12 @@ export class WidgetWindow {
       window.showInactive()
     })
 
+    // A load resets the zoom factor, so it is reapplied here rather than only
+    // when the setting changes.
+    window.webContents.on('did-finish-load', () => {
+      this.applyTextScale(this.settings.getSettings().widgetTextScale)
+    })
+
     await window.loadURL(resolveRendererUrl('widget', this.options.devServerUrl))
   }
 
@@ -132,6 +139,15 @@ export class WidgetWindow {
   /** Persisting is PreferencesService's job; this only moves the window. */
   applyAlwaysOnTop(pinned: boolean): void {
     this.window?.setAlwaysOnTop(pinned, 'floating')
+  }
+
+  /**
+   * Zoom rather than a font size: the widget is drawn in pixels — gridlines,
+   * block heights, the time gutter — so scaling only the type would leave the
+   * text larger inside a layout that had not moved (§6).
+   */
+  applyTextScale(percent: number): void {
+    this.window?.webContents.setZoomFactor(percent / 100)
   }
 
   moveToDisplay(display: DisplayKey, corner: WidgetCorner): void {
@@ -183,6 +199,13 @@ export class WidgetWindow {
       return
     }
     this.window!.webContents.send(CHANNELS.agendaSnapshot, snapshot)
+  }
+
+  sendTodos(snapshot: TodoSnapshot): void {
+    if (!this.isOpen()) {
+      return
+    }
+    this.window!.webContents.send(CHANNELS.todosSnapshot, snapshot)
   }
 
   webContentsId(): number | null {

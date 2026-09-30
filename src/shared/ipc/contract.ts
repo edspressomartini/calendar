@@ -4,9 +4,14 @@ import {
   MAX_EVENT_TITLE_LENGTH,
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SYNC_INTERVAL_MINUTES,
+  MAX_TODOS,
+  MAX_TODO_TITLE_LENGTH,
+  MAX_WIDGET_TEXT_SCALE,
   MIN_SYNC_INTERVAL_MINUTES,
+  MIN_WIDGET_TEXT_SCALE,
 } from '../constants.ts'
 import { CHANNELS } from './channels.ts'
+import { isLocalDayKey } from '../time.ts'
 import { isValidTimeZone } from '../timezone.ts'
 
 /**
@@ -36,6 +41,9 @@ export const updateAccountSchema = z.strictObject({
   label: label.optional(),
   colour: colour.optional(),
 })
+
+const widgetTextScale = z.number().int().min(MIN_WIDGET_TEXT_SCALE).max(MAX_WIDGET_TEXT_SCALE)
+const todoPlacement = z.enum(['above', 'below'])
 
 export const setSelectedCalendarsSchema = z.strictObject({
   accountId: identifier,
@@ -67,6 +75,8 @@ export const updateSettingsSchema = z
     dayStartHour: z.number().int().min(0).max(23),
     dayEndHour: z.number().int().min(1).max(24),
     secondaryTimeZone: timeZoneName.nullable(),
+    widgetTextScale: widgetTextScale,
+    todoPlacement: todoPlacement,
     hideTitlesInMenuBar: z.boolean(),
     privacyMode: z.boolean(),
     launchAtLogin: z.boolean(),
@@ -77,6 +87,12 @@ export const updateSettingsSchema = z
 
 export const setPinnedSchema = z.strictObject({ pinned: z.boolean() })
 export const joinEventSchema = z.strictObject({ eventId: identifier })
+
+/** Dictated text arrives with trailing whitespace, so it is trimmed first. */
+export const addTodoSchema = z.strictObject({
+  title: z.string().trim().min(1).max(MAX_TODO_TITLE_LENGTH),
+})
+export const todoIdSchema = z.strictObject({ todoId: identifier })
 
 export const REQUEST_SCHEMAS = {
   [CHANNELS.agendaJoin]: joinEventSchema,
@@ -98,6 +114,12 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.alertJoin]: joinEventSchema,
   [CHANNELS.alertDismiss]: noPayload,
   [CHANNELS.alertTest]: noPayload,
+  [CHANNELS.todosAdd]: addTodoSchema,
+  [CHANNELS.todosToggle]: todoIdSchema,
+  [CHANNELS.todosRoll]: todoIdSchema,
+  [CHANNELS.todosRollAllOverdue]: noPayload,
+  [CHANNELS.todosRemove]: todoIdSchema,
+  [CHANNELS.quickAddClose]: noPayload,
 } as const
 
 /** What the alert window is told to display. */
@@ -144,6 +166,7 @@ export const agendaSnapshotSchema = z.strictObject({
   accounts: z.array(agendaAccountSchema),
   nextUp: agendaItemSchema.nullable(),
   viewMode: z.enum(['merged', 'split']),
+  todoPlacement: todoPlacement,
   privacyMode: z.boolean(),
 })
 
@@ -203,12 +226,33 @@ export const appSettingsSchema = z.strictObject({
   dayStartHour: z.number().int().min(0).max(23),
   dayEndHour: z.number().int().min(1).max(24),
   secondaryTimeZone: timeZoneName.nullable(),
+  widgetTextScale: widgetTextScale,
+  todoPlacement: todoPlacement,
   hideTitlesInMenuBar: z.boolean(),
   privacyMode: z.boolean(),
   launchAtLogin: z.boolean(),
   alwaysOnTop: z.boolean(),
   placement: widgetPlacementSchema,
   accounts: z.array(accountConfigSchema),
+})
+
+/** Only zones the runtime knows have an equivalent here: a real calendar day. */
+const localDayKey = z.string().length(10).refine(isLocalDayKey, { message: 'not a calendar day' })
+
+export const todoSchema = z.strictObject({
+  id: identifier,
+  title: z.string().min(1).max(MAX_TODO_TITLE_LENGTH),
+  day: localDayKey,
+  createdAt: isoTimestamp,
+  completedAt: isoTimestamp.nullable(),
+  rollCount: z.number().int().min(0),
+})
+
+export const todoSnapshotSchema = z.strictObject({
+  today: localDayKey,
+  overdue: z.array(todoSchema).max(MAX_TODOS),
+  current: z.array(todoSchema).max(MAX_TODOS),
+  upcoming: z.array(todoSchema).max(MAX_TODOS),
 })
 
 export const accountListSchema = z.array(accountViewSchema)
@@ -223,4 +267,6 @@ export type MoveToDisplayRequest = z.infer<typeof moveToDisplaySchema>
 export type UpdateSettingsRequest = z.infer<typeof updateSettingsSchema>
 export type SetPinnedRequest = z.infer<typeof setPinnedSchema>
 export type JoinEventRequest = z.infer<typeof joinEventSchema>
+export type AddTodoRequest = z.infer<typeof addTodoSchema>
+export type TodoIdRequest = z.infer<typeof todoIdSchema>
 export type MeetingAlert = z.infer<typeof meetingAlertSchema>

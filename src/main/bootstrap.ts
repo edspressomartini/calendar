@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { app, Menu, session } from 'electron'
 import { AgendaClock } from './agenda/AgendaClock.ts'
 import { AgendaService } from './agenda/AgendaService.ts'
+import { TodoService } from './agenda/TodoService.ts'
 import { SystemBrowser } from './auth/SystemBrowser.ts'
 import { AccountService } from './calendar/AccountService.ts'
 import { MeetingJoiner } from './calendar/MeetingJoiner.ts'
@@ -14,14 +15,17 @@ import { createLogger, initialiseLogging, type AppLogger } from './infra/logger.
 import { registerHandlers } from './ipc/registerHandlers.ts'
 import { MeetingNotifier } from './notifications/MeetingNotifier.ts'
 import { SettingsStore } from './storage/SettingsStore.ts'
+import { TodoStore } from './storage/TodoStore.ts'
 import { TokenVault } from './storage/TokenVault.ts'
 import { SyncCoordinator } from './sync/SyncCoordinator.ts'
 import { SyncScheduler } from './sync/SyncScheduler.ts'
+import { GlobalShortcuts } from './system/GlobalShortcuts.ts'
 import { LoginItem } from './system/LoginItem.ts'
 import { PreferencesService } from './system/PreferencesService.ts'
 import { SystemEvents } from './system/SystemEvents.ts'
 import { TrayController } from './tray/TrayController.ts'
 import { MeetingAlertWindow } from './windows/MeetingAlertWindow.ts'
+import { QuickAddWindow } from './windows/QuickAddWindow.ts'
 import { SettingsWindow } from './windows/SettingsWindow.ts'
 import { WidgetWindow } from './windows/WidgetWindow.ts'
 import { registerAppProtocol, registerAppSchemePrivileges } from './windows/appProtocol.ts'
@@ -44,6 +48,8 @@ class Application {
   private scheduler: SyncScheduler | null = null
   private widget: WidgetWindow | null = null
   private alertWindow: MeetingAlertWindow | null = null
+  private quickAdd: QuickAddWindow | null = null
+  private shortcuts: GlobalShortcuts | null = null
 
   constructor() {
     initialiseLogging(this.config.isDev)
@@ -90,6 +96,10 @@ class Application {
     )
 
     const agenda = new AgendaService(settings)
+    const todos = new TodoService(
+      new TodoStore(this.logger.child('todo-store')),
+      this.logger.child('todos'),
+    )
     const joiner = new MeetingJoiner(agenda, this.logger.child('join'))
     const coordinator = new SyncCoordinator(registry, settings, agenda, this.logger.child('sync'))
     const scheduler = new SyncScheduler(coordinator, settings, this.logger.child('scheduler'))
@@ -145,6 +155,21 @@ class Application {
     )
     this.alertWindow = alertWindow
 
+    const quickAdd = new QuickAddWindow(
+      {
+        preloadPath,
+        devServerUrl: this.devServerUrl,
+        isDev: this.config.isDev,
+      },
+      this.logger.child('quick-add'),
+    )
+    this.quickAdd = quickAdd
+
+    const shortcuts = new GlobalShortcuts(() => {
+      void quickAdd.open()
+    }, this.logger.child('shortcuts'))
+    this.shortcuts = shortcuts
+
     const notifier = new MeetingNotifier(
       settings,
       joiner,
@@ -161,6 +186,9 @@ class Application {
       {
         toggleWidget: () => {
           widget.toggle()
+        },
+        openQuickAdd: () => {
+          void quickAdd.open()
         },
         openSettings: () => {
           void settingsWindow.open()
@@ -189,7 +217,17 @@ class Application {
     this.clock = clock
     const systemEvents = new SystemEvents(this.logger.child('system'))
 
-    this.wireSignals({ agenda, clock, systemEvents, widget, tray, notifier, scheduler })
+    this.wireSignals({
+      agenda,
+      todos,
+      clock,
+      systemEvents,
+      widget,
+      quickAdd,
+      tray,
+      notifier,
+      scheduler,
+    })
 
     registerHandlers({
       joiner,
@@ -197,6 +235,8 @@ class Application {
       accounts,
       widget,
       settingsWindow,
+      quickAdd,
+      todos,
       settings,
       preferences,
       scheduler,
@@ -219,9 +259,11 @@ class Application {
     systemEvents.start()
     clock.start()
     scheduler.start()
+    shortcuts.start()
 
     // Paint immediately rather than waiting for the first minute boundary.
     agenda.refresh()
+    todos.refresh()
     this.logger.info('application started', { accounts: accounts.list().length })
   }
 
@@ -233,15 +275,19 @@ class Application {
   stop(): void {
     this.clock?.stop()
     this.scheduler?.stop()
+    this.shortcuts?.stop()
     this.tray?.destroy()
     this.alertWindow?.close()
+    this.quickAdd?.close()
   }
 
   private wireSignals(parts: {
     agenda: AgendaService
+    todos: TodoService
     clock: AgendaClock
     systemEvents: SystemEvents
     widget: WidgetWindow
+    quickAdd: QuickAddWindow
     tray: TrayController
     notifier: MeetingNotifier
     scheduler: SyncScheduler
@@ -250,6 +296,9 @@ class Application {
     parts.clock.ticked.subscribe(({ now, dayChanged }) => {
       parts.agenda.refresh(now)
       if (dayChanged) {
+        // Yesterday's unfinished TODOs become overdue. Nothing is rewritten:
+        // only the grouping changes (§6).
+        parts.todos.refresh()
         parts.scheduler.syncAllNow('midnight')
       }
     })
@@ -258,6 +307,11 @@ class Application {
       parts.widget.sendSnapshot(snapshot)
       parts.tray.handleSnapshot(snapshot)
       parts.notifier.handleSnapshot(snapshot)
+    })
+
+    parts.todos.changed.subscribe((snapshot) => {
+      parts.widget.sendTodos(snapshot)
+      parts.quickAdd.sendSnapshot(snapshot)
     })
 
     // Timers do not run while asleep, so waking forces both a tick and a sync.

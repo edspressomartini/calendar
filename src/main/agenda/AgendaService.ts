@@ -127,6 +127,7 @@ export class AgendaService {
       accounts: agendaAccounts,
       nextUp: findNextUp(timedItems),
       viewMode: settings.viewMode,
+      todoPlacement: settings.todoPlacement,
       privacyMode: settings.privacyMode,
     }
   }

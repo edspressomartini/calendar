@@ -47,3 +47,38 @@ export function minutesUntil(now: Date, iso: string): number {
 export function isValidTimestamp(iso: string): boolean {
   return !Number.isNaN(Date.parse(iso))
 }
+
+/** `YYYY-MM-DD` in local time. Lexicographic order is chronological order. */
+export function toLocalDayKey(date: Date): string {
+  const year = date.getFullYear().toString().padStart(4, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function isLocalDayKey(candidate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) {
+    return false
+  }
+  return toLocalDayKey(parseLocalDayKey(candidate)) === candidate
+}
+
+/** Midnight local time on that day. Invalid input is not this function's job. */
+export function parseLocalDayKey(dayKey: string): Date {
+  const [year, month, day] = dayKey.split('-').map(Number)
+  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1)
+}
+
+/** Whole days from one calendar day to another; negative when `to` is earlier. */
+export function daysBetweenDayKeys(from: string, to: string): number {
+  const elapsed = parseLocalDayKey(to).getTime() - parseLocalDayKey(from).getTime()
+  // Rounded because a day spanning a DST change is 23 or 25 hours long.
+  return Math.round(elapsed / DAY_MS)
+}
+
+/** Calendar arithmetic, so it steps correctly across months and DST. */
+export function addLocalDays(dayKey: string, days: number): string {
+  const date = parseLocalDayKey(dayKey)
+  date.setDate(date.getDate() + days)
+  return toLocalDayKey(date)
+}

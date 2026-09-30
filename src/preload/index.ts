@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CHANNELS, WINDOW_ROLES, type WindowRole } from '../shared/ipc/channels.ts'
-import type { AlertBridge, SettingsBridge, WidgetBridge } from '../shared/ipc/bridge.ts'
+import type {
+  AlertBridge,
+  QuickAddBridge,
+  SettingsBridge,
+  WidgetBridge,
+} from '../shared/ipc/bridge.ts'
 import type {
   MeetingAlert,
   MoveToDisplayRequest,
@@ -10,6 +15,7 @@ import type { AgendaSnapshot } from '../shared/types/agenda.ts'
 import type { AccountView } from '../shared/types/account.ts'
 import type { CalendarId, CalendarSummary } from '../shared/types/calendar.ts'
 import type { AppSettings, DisplayOption } from '../shared/types/settings.ts'
+import type { TodoSnapshot } from '../shared/types/todo.ts'
 
 /**
  * The single preload (docs/spec.md §8.5).
@@ -59,6 +65,31 @@ function createAlertBridge(): AlertBridge {
   }
 }
 
+/** Shared by the two windows that render the list. */
+function subscribeToTodos(listener: (snapshot: TodoSnapshot) => void): () => void {
+  const subscription = (_event: IpcRendererEvent, snapshot: TodoSnapshot): void => {
+    listener(snapshot)
+  }
+  ipcRenderer.on(CHANNELS.todosSnapshot, subscription)
+  return () => {
+    ipcRenderer.removeListener(CHANNELS.todosSnapshot, subscription)
+  }
+}
+
+function createQuickAddBridge(): QuickAddBridge {
+  return {
+    onTodos: subscribeToTodos,
+
+    async addTodo(title: string): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosAdd, { title })
+    },
+
+    async close(): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.quickAddClose)
+    },
+  }
+}
+
 function createWidgetBridge(): WidgetBridge {
   return {
     onSnapshot(listener: (snapshot: AgendaSnapshot) => void): () => void {
@@ -89,6 +120,24 @@ function createWidgetBridge(): WidgetBridge {
 
     async syncNow(): Promise<void> {
       await ipcRenderer.invoke(CHANNELS.syncNow)
+    },
+
+    onTodos: subscribeToTodos,
+
+    async toggleTodo(todoId: string): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosToggle, { todoId })
+    },
+
+    async rollTodo(todoId: string): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosRoll, { todoId })
+    },
+
+    async rollAllOverdueTodos(): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosRollAllOverdue)
+    },
+
+    async removeTodo(todoId: string): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosRemove, { todoId })
     },
   }
 }
@@ -145,4 +194,7 @@ if (role === 'settings') {
 }
 if (role === 'alert') {
   contextBridge.exposeInMainWorld('alertApi', createAlertBridge())
+}
+if (role === 'quickadd') {
+  contextBridge.exposeInMainWorld('quickAddApi', createQuickAddBridge())
 }

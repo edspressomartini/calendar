@@ -62,6 +62,7 @@ function snapshot(items: AgendaItem[], privacyMode = false): AgendaSnapshot {
     accounts: [],
     nextUp: items[0] ?? null,
     viewMode: 'merged',
+    todoPlacement: 'below',
     privacyMode,
   }
 }

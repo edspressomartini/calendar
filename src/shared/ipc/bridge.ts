@@ -2,6 +2,7 @@ import type { AgendaSnapshot } from '../types/agenda.ts'
 import type { AccountView } from '../types/account.ts'
 import type { CalendarId, CalendarSummary } from '../types/calendar.ts'
 import type { AppSettings, DisplayOption } from '../types/settings.ts'
+import type { TodoSnapshot } from '../types/todo.ts'
 import type { MeetingAlert, MoveToDisplayRequest, UpdateSettingsRequest } from './contract.ts'
 
 /**
@@ -17,6 +18,23 @@ export interface WidgetBridge {
   setPinned(pinned: boolean): Promise<void>
   openSettings(): Promise<void>
   syncNow(): Promise<void>
+  /** Returns an unsubscribe function. */
+  onTodos(listener: (snapshot: TodoSnapshot) => void): () => void
+  toggleTodo(todoId: string): Promise<void>
+  rollTodo(todoId: string): Promise<void>
+  rollAllOverdueTodos(): Promise<void>
+  removeTodo(todoId: string): Promise<void>
+}
+
+/**
+ * The quick-add window (§6). It is the only window that can take keyboard
+ * focus, so it is the only one that can capture text — typed or dictated.
+ */
+export interface QuickAddBridge {
+  /** Returns an unsubscribe function. */
+  onTodos(listener: (snapshot: TodoSnapshot) => void): () => void
+  addTodo(title: string): Promise<void>
+  close(): Promise<void>
 }
 
 export interface SettingsBridge {
@@ -52,5 +70,6 @@ declare global {
     readonly widgetApi?: WidgetBridge
     readonly settingsApi?: SettingsBridge
     readonly alertApi?: AlertBridge
+    readonly quickAddApi?: QuickAddBridge
   }
 }

@@ -2,6 +2,8 @@ import type { AccountConfig } from './account.ts'
 
 export type ViewMode = 'merged' | 'split'
 export type ThemeSource = 'system' | 'light' | 'dark'
+/** Where the TODO list sits relative to the timeline in the widget. */
+export type TodoPlacement = 'above' | 'below'
 export type WidgetCorner = 'topRight' | 'topLeft' | 'bottomRight' | 'bottomLeft' | 'remembered'
 
 /**
@@ -32,6 +34,9 @@ export interface AppSettings {
   readonly dayEndHour: number
   /** A second IANA zone shown alongside local time, or null for one column. */
   readonly secondaryTimeZone: string | null
+  /** Percent. Scales the whole widget, since everything in it is sized in px. */
+  readonly widgetTextScale: number
+  readonly todoPlacement: TodoPlacement
   readonly hideTitlesInMenuBar: boolean
   readonly privacyMode: boolean
   readonly launchAtLogin: boolean

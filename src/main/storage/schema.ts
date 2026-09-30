@@ -5,6 +5,7 @@ import {
   DEFAULT_DAY_START_HOUR,
   DEFAULT_NOTIFICATION_LEAD_MINUTES,
   DEFAULT_SYNC_INTERVAL_MINUTES,
+  DEFAULT_WIDGET_TEXT_SCALE,
 } from '../../shared/constants.ts'
 import type { AccountColour, AccountConfig } from '../../shared/types/account.ts'
 import type { AppSettings } from '../../shared/types/settings.ts'
@@ -30,6 +31,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dayStartHour: DEFAULT_DAY_START_HOUR,
   dayEndHour: DEFAULT_DAY_END_HOUR,
   secondaryTimeZone: null,
+  widgetTextScale: DEFAULT_WIDGET_TEXT_SCALE,
+  todoPlacement: 'below',
   hideTitlesInMenuBar: false,
   privacyMode: false,
   launchAtLogin: false,

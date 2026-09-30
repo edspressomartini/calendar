@@ -35,6 +35,7 @@ export default defineConfig({
           widget: resolve(projectRoot, 'src/renderer/widget/index.html'),
           settings: resolve(projectRoot, 'src/renderer/settings/index.html'),
           alert: resolve(projectRoot, 'src/renderer/alert/index.html'),
+          quickadd: resolve(projectRoot, 'src/renderer/quickadd/index.html'),
         },
       },
     },

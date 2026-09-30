@@ -1,12 +1,19 @@
-import type { AlertBridge, SettingsBridge, WidgetBridge } from '../../../shared/ipc/bridge.ts'
+import type {
+  AlertBridge,
+  QuickAddBridge,
+  SettingsBridge,
+  WidgetBridge,
+} from '../../../shared/ipc/bridge.ts'
 import {
   accountListSchema,
   agendaSnapshotSchema,
   appSettingsSchema,
   calendarListSchema,
   displayListSchema,
+  todoSnapshotSchema,
 } from '../../../shared/ipc/contract.ts'
 import type { AgendaSnapshot } from '../../../shared/types/agenda.ts'
+import type { TodoSnapshot } from '../../../shared/types/todo.ts'
 import type { AccountView } from '../../../shared/types/account.ts'
 import type { CalendarSummary } from '../../../shared/types/calendar.ts'
 import type { AppSettings, DisplayOption } from '../../../shared/types/settings.ts'
@@ -43,9 +50,31 @@ export function alertApi(): AlertBridge {
   return api
 }
 
+export function quickAddApi(): QuickAddBridge {
+  const api = window.quickAddApi
+  if (!api) {
+    throw new Error('quick add bridge unavailable')
+  }
+  return api
+}
+
 export function onSnapshot(listener: (snapshot: AgendaSnapshot) => void): () => void {
   return widgetApi().onSnapshot((raw) => {
     const parsed = agendaSnapshotSchema.safeParse(raw)
+    if (!parsed.success) {
+      return
+    }
+    listener(parsed.data)
+  })
+}
+
+/** Both the widget and the quick-add window listen on the same push channel. */
+export function onTodos(
+  source: Pick<WidgetBridge, 'onTodos'>,
+  listener: (snapshot: TodoSnapshot) => void,
+): () => void {
+  return source.onTodos((raw) => {
+    const parsed = todoSnapshotSchema.safeParse(raw)
     if (!parsed.success) {
       return
     }

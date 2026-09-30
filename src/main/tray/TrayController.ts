@@ -1,6 +1,6 @@
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron'
 import trayIconPath from '../../../resources/trayTemplate.png?asset'
-import { TRAY_TITLE_MAX_LENGTH } from '../../shared/constants.ts'
+import { QUICK_ADD_SHORTCUT, TRAY_TITLE_MAX_LENGTH } from '../../shared/constants.ts'
 import type { AgendaSnapshot } from '../../shared/types/agenda.ts'
 import type { AccountId } from '../../shared/types/calendar.ts'
 import type { DisplayKey } from '../../shared/types/settings.ts'
@@ -15,6 +15,7 @@ import { listDisplayOptions } from '../windows/displayPlacement.ts'
 
 export interface TrayActions {
   toggleWidget(): void
+  openQuickAdd(): void
   openSettings(): void
   syncNow(): void
   setPrivacyMode(enabled: boolean): void
@@ -139,6 +140,17 @@ export class TrayController {
         },
       },
       { label: 'Move to Display', submenu: this.buildDisplaySubmenu() },
+      { type: 'separator' },
+      {
+        label: 'Add TODO…',
+        // Shown, not bound: the real binding is a global shortcut, so it works
+        // without the menu being open.
+        accelerator: QUICK_ADD_SHORTCUT,
+        registerAccelerator: false,
+        click: () => {
+          this.actions.openQuickAdd()
+        },
+      },
       { type: 'separator' },
       {
         label: 'Sync Now',

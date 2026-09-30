@@ -1,6 +1,6 @@
 import type { AccountColour, AccountStatus } from './account.ts'
 import type { AccountId, EventId } from './calendar.ts'
-import type { ViewMode } from './settings.ts'
+import type { TodoPlacement, ViewMode } from './settings.ts'
 
 export type EventStatus = 'past' | 'live' | 'imminent' | 'upcoming'
 
@@ -47,5 +47,7 @@ export interface AgendaSnapshot {
   readonly accounts: readonly AgendaAccount[]
   readonly nextUp: AgendaItem | null
   readonly viewMode: ViewMode
+  /** Layout, not data: where the TODO list sits relative to the timeline (§6). */
+  readonly todoPlacement: TodoPlacement
   readonly privacyMode: boolean
 }

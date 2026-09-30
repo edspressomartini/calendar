@@ -1,11 +1,14 @@
-import type { JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import {
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SYNC_INTERVAL_MINUTES,
+  MAX_WIDGET_TEXT_SCALE,
   MIN_SYNC_INTERVAL_MINUTES,
+  MIN_WIDGET_TEXT_SCALE,
+  WIDGET_TEXT_SCALE_STEP,
 } from '../../../shared/constants.ts'
 import { supportedTimeZones } from '../../../shared/timezone.ts'
-import type { ThemeSource, ViewMode } from '../../../shared/types/settings.ts'
+import type { ThemeSource, TodoPlacement, ViewMode } from '../../../shared/types/settings.ts'
 import type { SettingsState } from '../../common/hooks/useSettings.ts'
 import { settingsApi } from '../../common/lib/ipcClient.ts'
 
@@ -37,6 +40,29 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
         >
           <option value="merged">Merged</option>
           <option value="split">Split by account</option>
+        </select>
+      </Row>
+
+      <Row
+        label="Widget text size"
+        hint="Scales the whole widget. Drag the widget's edge afterwards if you want the extra room back."
+      >
+        <TextScaleSlider
+          value={settings.widgetTextScale}
+          onChange={(percent) => void state.update({ widgetTextScale: percent })}
+        />
+      </Row>
+
+      <Row label="TODO list" hint="Where the list sits relative to the timeline.">
+        <select
+          value={settings.todoPlacement}
+          onChange={(event) => {
+            void state.update({ todoPlacement: event.target.value as TodoPlacement })
+          }}
+          className="rounded border border-border bg-bg px-2 py-1 text-sm"
+        >
+          <option value="below">Below the calendar</option>
+          <option value="above">Above the calendar</option>
         </select>
       </Row>
 
@@ -171,6 +197,57 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
         </button>
       </div>
     </section>
+  )
+}
+
+interface TextScaleSliderProps {
+  readonly value: number
+  readonly onChange: (percent: number) => void
+}
+
+/** Every step of a drag would otherwise be a settings write and a disk flush. */
+const SCALE_COMMIT_DELAY_MS = 150
+
+function TextScaleSlider({ value, onChange }: TextScaleSliderProps): JSX.Element {
+  // The slider follows the pointer immediately; the saved value catches up.
+  const [dragged, setDragged] = useState<number | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current)
+      }
+    }
+  }, [])
+
+  const shown = dragged ?? value
+
+  const drag = (percent: number): void => {
+    setDragged(percent)
+    if (timer.current) {
+      clearTimeout(timer.current)
+    }
+    timer.current = setTimeout(() => {
+      onChange(percent)
+    }, SCALE_COMMIT_DELAY_MS)
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <input
+        type="range"
+        min={MIN_WIDGET_TEXT_SCALE}
+        max={MAX_WIDGET_TEXT_SCALE}
+        step={WIDGET_TEXT_SCALE_STEP}
+        value={shown}
+        onChange={(event) => {
+          drag(Number(event.target.value))
+        }}
+        className="w-56"
+      />
+      <span className="tabular w-12 font-mono text-sm">{shown}%</span>
+    </span>
   )
 }
 

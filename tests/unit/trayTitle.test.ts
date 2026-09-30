@@ -29,6 +29,7 @@ function snapshot(nextUp: AgendaItem | null): AgendaSnapshot {
     accounts: [],
     nextUp,
     viewMode: 'merged',
+    todoPlacement: 'below',
     privacyMode: false,
   }
 }

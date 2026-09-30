@@ -29,6 +29,7 @@ export class PreferencesService {
     nativeTheme.themeSource = settings.theme
     this.loginItem.apply(settings.launchAtLogin)
     this.widget.applyAlwaysOnTop(settings.alwaysOnTop)
+    this.widget.applyTextScale(settings.widgetTextScale)
   }
 
   update(patch: UpdateSettingsRequest): AppSettings {
@@ -45,6 +46,9 @@ export class PreferencesService {
     }
     if (patch.syncIntervalMinutes !== undefined) {
       this.scheduler.reconcile()
+    }
+    if (patch.widgetTextScale !== undefined) {
+      this.widget.applyTextScale(updated.widgetTextScale)
     }
 
     // Privacy mode, view mode and menu-bar titles all change how the snapshot

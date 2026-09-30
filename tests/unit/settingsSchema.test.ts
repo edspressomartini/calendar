@@ -42,6 +42,18 @@ describe('parseSettings', () => {
     expect(parsed).not.toHaveProperty('somethingRemovedInAnOlderVersion')
   })
 
+  it('gives a file written before the widget was scalable a sane size', () => {
+    const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
+    delete older['widgetTextScale']
+    delete older['todoPlacement']
+
+    const parsed = parseSettings(older)
+
+    expect(parsed.widgetTextScale).toBe(DEFAULT_SETTINGS.widgetTextScale)
+    expect(parsed.todoPlacement).toBe('below')
+    expect(parsed.accounts).toHaveLength(1)
+  })
+
   it('preserves values that are still valid', () => {
     const parsed = parseSettings({
       ...DEFAULT_SETTINGS,
