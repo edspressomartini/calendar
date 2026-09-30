@@ -4,3 +4,7 @@ coverage/
 node_modules/
 resources/
 package-lock.json
+
+# Google's site-verification file. Its contents are the proof; reformatting it,
+# even adding a newline, invalidates it.
+site/google*.html
