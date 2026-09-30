@@ -32,9 +32,17 @@ been signed, packaged for distribution, or shown to anyone else.
 - [ ] **Google verification**, only needed to remove the "unverified app" warning and
       lift the cap. Needs a demo video, scope justification and brand verification.
       Expect roughly 2–3 business days for branding and around 10 for sensitive scopes.
-- [ ] **Check `github.io` is acceptable for brand verification.** It is a shared domain
-      that cannot be proved in Search Console. If rejected, the two pages move to a
-      domain you own and nothing else changes.
+- [x] **Prove ownership of the home page URL.** Google's first branding attempt failed
+      with "not registered to you". `github.io` is on the Public Suffix List, so a
+      _Domain_ property is impossible but a _URL prefix_ property for
+      `https://edspressomartini.github.io/calendar/` is not — the path matters, since
+      verifying the bare host would need a file at the root of a user site that does not
+      exist. Verified on 30 September 2026 with `site/googleae8d5da130c7a7f8.html`, which
+      `.prettierignore` protects because its exact bytes are the proof.
+- [ ] **Retry branding verification**, no earlier than 1 October 2026. Google asks for 24
+      hours to pick up the ownership record, and an early retry fails the same way.
+      The Search Console property and the Cloud project are on the same Google account,
+      which is what the check actually compares.
 
 ## 2. Blocking: signing and packaging
 
