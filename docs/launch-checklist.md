@@ -3,9 +3,10 @@
 What is left before this app is something other people can install and rely on.
 Ordered by what blocks what, not by effort.
 
-Status as of 25 September 2026: the app runs in development, reads a real personal
-Google Calendar, and has 181 passing tests. Nothing has been signed, packaged for
-distribution, or shown to anyone else.
+Status as of 30 September 2026: the app runs in development, reads a real personal
+Google Calendar, and has 220 passing tests. The public site now carries a homepage, a
+privacy policy and a security overview, and the repository has a README. Nothing has
+been signed, packaged for distribution, or shown to anyone else.
 
 ---
 
@@ -84,7 +85,7 @@ exist, in a packaged build:
       `~/Library/Application Support/Pinned Calendar`, which now holds the TODO list as
       well as the settings, and the Keychain item.
 - [ ] **A real app icon.** There is a generated tray glyph but no `build/icon.icns`.
-- [ ] **A README.** The repository is public and currently explains nothing.
+- [x] **A README.** Written, Homebrew-first, with the tap marked as not yet live.
 
 ## 6. Known gaps, deliberately deferred
 
