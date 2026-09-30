@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { TodoService } from '../../src/main/agenda/TodoService.ts'
+import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
+import type { SettingsReader } from '../../src/main/storage/SettingsStore.ts'
 import type { TodoWriter } from '../../src/main/storage/TodoStore.ts'
 import type { AppLogger } from '../../src/main/infra/logger.ts'
+import type { AppSettings } from '../../src/shared/types/settings.ts'
 import type { Todo, TodoSnapshot } from '../../src/shared/types/todo.ts'
 
 /**
@@ -32,12 +35,22 @@ const silentLogger: AppLogger = {
 
 let now = new Date(2026, 8, 30, 9, 0)
 
-function serviceWith(todos: readonly Todo[] = []): {
+function readerFor(settings: AppSettings): SettingsReader {
+  return { getSettings: () => settings }
+}
+
+function serviceWith(
+  todos: readonly Todo[] = [],
+  settings: AppSettings = DEFAULT_SETTINGS,
+): {
   service: TodoService
   store: InMemoryTodoStore
 } {
   const store = new InMemoryTodoStore(todos)
-  return { service: new TodoService(store, silentLogger, () => now), store }
+  return {
+    service: new TodoService(store, readerFor(settings), silentLogger, () => now),
+    store,
+  }
 }
 
 function todoOn(day: string, id: string, overrides: Partial<Todo> = {}): Todo {
@@ -171,6 +184,37 @@ describe('rolling forward', () => {
     expect(snapshot.current.map((todo) => todo.id)).toEqual(['a', 'b', 'c'])
     // Today's own item is untouched, so "roll all" cannot push work away.
     expect(snapshot.upcoming).toHaveLength(0)
+  })
+})
+
+describe('privacy mode', () => {
+  const privately: AppSettings = { ...DEFAULT_SETTINGS, privacyMode: true }
+
+  it('replaces titles before they reach the renderer, in every group', () => {
+    const { service } = serviceWith(
+      [todoOn('2026-09-28', 'old'), todoOn('2026-09-30', 'today'), todoOn('2026-10-02', 'later')],
+      privately,
+    )
+
+    const snapshot = service.getSnapshot()
+
+    expect(snapshot.overdue[0]?.title).toBe('Task')
+    expect(snapshot.current[0]?.title).toBe('Task')
+    expect(snapshot.upcoming[0]?.title).toBe('Task')
+  })
+
+  it('leaves the stored text alone, so turning it off restores the list', () => {
+    const { service, store } = serviceWith([todoOn('2026-09-30', 'today')], privately)
+
+    service.toggle('today')
+
+    expect(store.getTodos()[0]?.title).toBe('today')
+  })
+
+  it('keeps the id, which is what the widget acts on', () => {
+    const { service } = serviceWith([todoOn('2026-09-30', 'today')], privately)
+
+    expect(service.getSnapshot().current[0]?.id).toBe('today')
   })
 })
 

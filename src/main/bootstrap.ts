@@ -98,6 +98,7 @@ class Application {
     const agenda = new AgendaService(settings)
     const todos = new TodoService(
       new TodoStore(this.logger.child('todo-store')),
+      settings,
       this.logger.child('todos'),
     )
     const joiner = new MeetingJoiner(agenda, this.logger.child('join'))
@@ -131,6 +132,7 @@ class Application {
       settings,
       new LoginItem(this.logger.child('login-item')),
       agenda,
+      todos,
       scheduler,
       widget,
       this.logger.child('preferences'),

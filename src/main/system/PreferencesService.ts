@@ -2,6 +2,7 @@ import { nativeTheme } from 'electron'
 import type { UpdateSettingsRequest } from '../../shared/ipc/contract.ts'
 import type { AppSettings } from '../../shared/types/settings.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
+import type { TodoService } from '../agenda/TodoService.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { SyncScheduler } from '../sync/SyncScheduler.ts'
@@ -19,6 +20,7 @@ export class PreferencesService {
     private readonly settings: SettingsStore,
     private readonly loginItem: LoginItem,
     private readonly agenda: AgendaService,
+    private readonly todos: TodoService,
     private readonly scheduler: SyncScheduler,
     private readonly widget: WidgetWindow,
     private readonly logger: AppLogger,
@@ -54,6 +56,9 @@ export class PreferencesService {
     // Privacy mode, view mode and menu-bar titles all change how the snapshot
     // renders, so rebuilding it updates the widget and the tray at once.
     this.agenda.refresh()
+    if (patch.privacyMode !== undefined) {
+      this.todos.refresh()
+    }
     this.logger.debug('settings updated', { fields: Object.keys(patch).join(',') })
     return updated
   }

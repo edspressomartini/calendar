@@ -1,10 +1,15 @@
 import { randomUUID } from 'node:crypto'
-import { MAX_TODOS, MAX_TODO_TITLE_LENGTH } from '../../shared/constants.ts'
+import {
+  MAX_TODOS,
+  MAX_TODO_TITLE_LENGTH,
+  PRIVACY_PLACEHOLDER_TODO_TITLE,
+} from '../../shared/constants.ts'
 import { addLocalDays, toLocalDayKey } from '../../shared/time.ts'
 import type { Todo, TodoSnapshot } from '../../shared/types/todo.ts'
 import { Signal } from '../infra/Signal.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import { pruneCompleted } from '../storage/todoSchema.ts'
+import type { SettingsReader } from '../storage/SettingsStore.ts'
 import type { TodoWriter } from '../storage/TodoStore.ts'
 
 /**
@@ -17,6 +22,9 @@ import type { TodoWriter } from '../storage/TodoStore.ts'
  * Rolling forward is always something the user asks for. Midnight only changes
  * which group an item falls into, never the day it is filed under, so an
  * untouched TODO still shows the day it was actually added.
+ *
+ * Privacy mode is applied here, for the same reason meeting titles are: what
+ * a screen recorder can capture is whatever reached the renderer (§8.4).
  */
 export class TodoService {
   readonly changed = new Signal<TodoSnapshot>()
@@ -25,6 +33,7 @@ export class TodoService {
 
   constructor(
     private readonly store: TodoWriter,
+    private readonly settings: SettingsReader,
     private readonly logger: AppLogger,
     private readonly now: () => Date = () => new Date(),
   ) {
@@ -105,14 +114,22 @@ export class TodoService {
 
   private build(todos: readonly Todo[]): TodoSnapshot {
     const today = toLocalDayKey(this.now())
+    const hideTitles = this.settings.getSettings().privacyMode
+    const group = (matches: (todo: Todo) => boolean): Todo[] =>
+      byUrgency(todos.filter(matches)).map((todo) => (hideTitles ? redact(todo) : todo))
 
     return {
       today,
-      overdue: byUrgency(todos.filter((todo) => isOverdue(todo, today))),
-      current: byUrgency(todos.filter((todo) => todo.day === today)),
-      upcoming: byUrgency(todos.filter((todo) => todo.day > today)),
+      overdue: group((todo) => isOverdue(todo, today)),
+      current: group((todo) => todo.day === today),
+      upcoming: group((todo) => todo.day > today),
     }
   }
+}
+
+/** The id is what the renderer acts on, so hiding the text costs nothing. */
+function redact(todo: Todo): Todo {
+  return { ...todo, title: PRIVACY_PLACEHOLDER_TODO_TITLE }
 }
 
 function isOverdue(todo: Todo, today: string): boolean {

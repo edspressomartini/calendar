@@ -35,6 +35,9 @@ export const MAX_EVENT_TITLE_LENGTH = 200
 /** Shown instead of a real title while privacy mode is on (§6). */
 export const PRIVACY_PLACEHOLDER_TITLE = 'Busy'
 
+/** The same idea for a TODO, which is not a meeting and is never "Busy". */
+export const PRIVACY_PLACEHOLDER_TODO_TITLE = 'Task'
+
 /** The notch hides long menu-bar titles (§6). */
 export const TRAY_TITLE_MAX_LENGTH = 16
 

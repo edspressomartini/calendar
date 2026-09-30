@@ -508,7 +508,7 @@ We can't defend against an attacker who already has root, or who can run code in
 - **Disconnect revokes first.** Logout calls Google's revoke endpoint, then deletes the ciphertext and drops the in-memory client. If revoking fails (offline), delete locally anyway and tell the user to remove access at myaccount.google.com/permissions.
 - **Dead tokens are deleted, not retried.** `invalid_grant` means the refresh token is dead: delete it, mark the account "needs re-auth", and wait for the user. No silent re-consent loops.
 - **Identity without extra scopes:** accounts are keyed by the primary calendar's ID (your email address), so the same Google account can't be connected twice, and no `email` or `openid` scope is requested.
-- **Uninstall:** the cask's `zap` stanza removes `userData`, including the token files. The Keychain item stays behind but can't decrypt anything once the files are gone.
+- **Uninstall:** the cask's `zap` stanza removes `userData`, including the token files and the TODO list. The Keychain item stays behind but can't decrypt anything once the files are gone.
 
 ### 8.3 OAuth flow
 
@@ -553,20 +553,25 @@ All of this lives in `windows/windowSecurity.ts` and is applied to every window 
 
 The whole IPC surface. Adding a channel means a row here, a Zod schema and a sender check.
 
-| Window   | Channel                                     | Direction       | Payload                                        |
-| -------- | ------------------------------------------- | --------------- | ---------------------------------------------- |
-| Widget   | `agenda:snapshot`                           | main → renderer | `AgendaSnapshot`                               |
-| Widget   | `agenda:join`                               | renderer → main | `{ eventId }`                                  |
-| Widget   | `widget:hide`, `widget:setPinned`           | renderer → main | none / `{ pinned }`                            |
-| Widget   | `settings:open`                             | renderer → main | none                                           |
-| Settings | `accounts:list`                             | renderer → main | none                                           |
-| Settings | `accounts:connect`                          | renderer → main | `{ provider: "google" }`                       |
-| Settings | `accounts:reconnect`, `accounts:disconnect` | renderer → main | `{ accountId }`                                |
-| Settings | `accounts:update`                           | renderer → main | `{ accountId, label?, colour? }`               |
-| Settings | `calendars:list`, `calendars:setSelected`   | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |
-| Settings | `displays:list`, `widget:moveToDisplay`     | renderer → main | none / `{ displayKey, corner }`                |
-| Settings | `settings:get`, `settings:update`           | renderer → main | none / partial `AppSettings`                   |
-| Both     | `sync:now`                                  | renderer → main | none                                           |
+| Window            | Channel                                      | Direction       | Payload                                        |
+| ----------------- | -------------------------------------------- | --------------- | ---------------------------------------------- |
+| Widget            | `agenda:snapshot`                            | main → renderer | `AgendaSnapshot`                               |
+| Widget            | `agenda:join`                                | renderer → main | `{ eventId }`                                  |
+| Widget            | `widget:hide`, `widget:setPinned`            | renderer → main | none / `{ pinned }`                            |
+| Widget            | `settings:open`                              | renderer → main | none                                           |
+| Settings          | `accounts:list`                              | renderer → main | none                                           |
+| Settings          | `accounts:connect`                           | renderer → main | `{ provider: "google" }`                       |
+| Settings          | `accounts:reconnect`, `accounts:disconnect`  | renderer → main | `{ accountId }`                                |
+| Settings          | `accounts:update`                            | renderer → main | `{ accountId, label?, colour? }`               |
+| Settings          | `calendars:list`, `calendars:setSelected`    | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |
+| Settings          | `displays:list`, `widget:moveToDisplay`      | renderer → main | none / `{ displayKey, corner }`                |
+| Settings          | `settings:get`, `settings:update`            | renderer → main | none / partial `AppSettings`                   |
+| Both              | `sync:now`                                   | renderer → main | none                                           |
+| Widget, Quick add | `todos:snapshot`                             | main → renderer | `TodoSnapshot`                                 |
+| Quick add         | `todos:add`                                  | renderer → main | `{ title }`                                    |
+| Quick add         | `quickAdd:close`                             | renderer → main | none                                           |
+| Widget            | `todos:toggle`, `todos:roll`, `todos:remove` | renderer → main | `{ todoId }`                                   |
+| Widget            | `todos:rollAllOverdue`                       | renderer → main | none                                           |
 
 ### 8.6 External links
 
@@ -772,18 +777,21 @@ Recorded as the code was written, so this document stays true to the repository.
 
 **Files added beyond §4**
 
-| File                                                                | Why                                                                                                      |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `main/windows/appProtocol.ts`                                       | §8.4 requires serving the renderer from `app://`; that needs a scheme registration and a request handler |
-| `main/calendar/AccountService.ts`                                   | Keeps connect/reconnect/disconnect out of the IPC handlers, which stay thin                              |
-| `main/calendar/MeetingJoiner.ts`                                    | One join path shared by the IPC handler and notification clicks, so the allowlist is applied once        |
-| `main/ipc/IpcRouter.ts`                                             | The three gates from §8.5 in one place; `registerHandlers.ts` stays a wiring file                        |
-| `main/ipc/senderRole.ts`                                            | The sender check as a pure function, so it is testable without Electron                                  |
-| `main/system/PreferencesService.ts`                                 | Turns a settings change into its side effects; without it that logic would spread across handlers        |
-| `main/infra/Signal.ts`                                              | The typed subscribe/emit primitive §5 depends on                                                         |
-| `main/calendar/providers/google/googleScopes.ts`, `googleErrors.ts` | Scope constants and vendor-error mapping, both needed by the provider and the auth client                |
-| `shared/ipc/bridge.ts`, `shared/time.ts`                            | The preload API types, and pure date maths used by both processes                                        |
-| `scripts/generate-tray-icon.ts`                                     | Generates the template icon from code rather than adding an image dependency (§8.9)                      |
+| File                                                                       | Why                                                                                                      |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `main/windows/appProtocol.ts`                                              | §8.4 requires serving the renderer from `app://`; that needs a scheme registration and a request handler |
+| `main/calendar/AccountService.ts`                                          | Keeps connect/reconnect/disconnect out of the IPC handlers, which stay thin                              |
+| `main/calendar/MeetingJoiner.ts`                                           | One join path shared by the IPC handler and notification clicks, so the allowlist is applied once        |
+| `main/ipc/IpcRouter.ts`                                                    | The three gates from §8.5 in one place; `registerHandlers.ts` stays a wiring file                        |
+| `main/ipc/senderRole.ts`                                                   | The sender check as a pure function, so it is testable without Electron                                  |
+| `main/system/PreferencesService.ts`                                        | Turns a settings change into its side effects; without it that logic would spread across handlers        |
+| `main/infra/Signal.ts`                                                     | The typed subscribe/emit primitive §5 depends on                                                         |
+| `main/calendar/providers/google/googleScopes.ts`, `googleErrors.ts`        | Scope constants and vendor-error mapping, both needed by the provider and the auth client                |
+| `shared/ipc/bridge.ts`, `shared/time.ts`                                   | The preload API types, and pure date maths used by both processes                                        |
+| `scripts/generate-tray-icon.ts`                                            | Generates the template icon from code rather than adding an image dependency (§8.9)                      |
+| `main/agenda/TodoService.ts`, `main/storage/TodoStore.ts`, `todoSchema.ts` | The TODO list: grouping against today, and its own file on disk. See the decision below                  |
+| `main/windows/QuickAddWindow.ts`, `main/system/GlobalShortcuts.ts`         | The one focusable window and the shortcut that opens it                                                  |
+| `renderer/quickadd/`, `renderer/common/components/todos/`                  | The capture box and the panel that draws the list                                                        |
 
 **Changed decisions**
 
@@ -798,6 +806,8 @@ Recorded as the code was written, so this document stays true to the repository.
 - **Closing the loopback listener is bounded.** `server.close()` waits for every connection to end, and the browser holds the callback socket open with keep-alive, so shutting down could stall the sign-in after Google had already returned the code. Connections are now dropped explicitly and the wait is capped at two seconds.
 - **The menu-bar icon has no click handler.** With a context menu attached, macOS opens the menu on click, and a competing handler toggled the widget at the same time — hiding the window the user was trying to find.
 - **IPC failures carry no `cause`.** Electron serialises a rejected handler error back to the renderer, so the detail is logged in main and the renderer gets a fixed "request rejected" (§8.4).
+- **The widget carries a TODO list, and a fourth window exists to type into.** §2 says the widget must never take focus, which is exactly what makes an NSPanel unable to accept a keystroke — so the panel can only tick, roll and delete, all by mouse. Capture lives in `quickadd`, an ordinary focusable window opened by a global shortcut (`Cmd+Shift+T`) and hidden on blur or Escape. Being properly focused is also what lets macOS dictation type into it, which needs no code at all. A TODO is filed under the day it was added and only ever moves when the user rolls it forward; midnight regroups the list but never rewrites it, so an untouched item still shows the day it really came from.
+- **TODO text is the first user content written to disk.** Calendar events stay in memory (§8.2), but a TODO list that vanished on restart would be useless. It lives in its own `todos.json` beside the settings — never in `settings.json`, so a bug here cannot cost the user their accounts — bounded in count and title length, with completed items pruned after 30 days. It is not encrypted: it is a note the user typed, protected by the same 0700 directory as everything else, and treating it as a secret would imply a guarantee the machine does not give. **Privacy mode redacts it** in main alongside meeting titles, because the thing most likely to say something candid on a shared screen is the list you wrote yourself.
 - **Identity without the calendar-list scope.** §8.2 keys accounts by the primary calendar id. If a user declines the calendar-list scope that address is unavailable, so the account falls back to a random id. It works, but connecting the same account twice would create a second entry.
 - **A dev build with no OAuth client seeds a mock account**, so Phase 1 has a populated widget instead of an empty one.
 
