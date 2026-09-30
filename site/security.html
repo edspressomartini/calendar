@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pinned Calendar &mdash; Security</title>
+    <meta
+      name="description"
+      content="How Pinned Calendar is built, what it can reach, how credentials are protected, and who has access."
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <p><a href="./index.html">&larr; Pinned Calendar</a></p>
+
+      <h1>Security overview</h1>
+      <p class="lede">
+        Written for someone reviewing whether this is safe to run on a managed Mac. It describes
+        what the app is, what it can reach, how the Google credential is protected, and who can get
+        at any of it. The threat model and the full design are in the repository, in
+        <code>docs/spec.md</code> &sect;8.
+      </p>
+      <p><strong>Last updated:</strong> 30 September 2026</p>
+
+      <h2>Summary</h2>
+      <ul>
+        <li>A single-user macOS desktop app. No server, no backend, no database, no accounts.</li>
+        <li>
+          Two <strong>read-only</strong> Google Calendar scopes. It cannot create, change or delete
+          anything, and has no access to Gmail, Drive, Contacts or any admin API.
+        </li>
+        <li>
+          The refresh token is encrypted by the macOS Keychain, tied to the app&rsquo;s code
+          signature, and readable only by the signed app running as that one user.
+        </li>
+        <li>Calendar content is held in memory only and never written to disk.</li>
+        <li>Outbound traffic goes to Google&rsquo;s endpoints and nowhere else.</li>
+        <li>No telemetry, no analytics, no crash reporting, no auto-updater.</li>
+      </ul>
+
+      <h2>What it is technically</h2>
+      <p>
+        An Electron app (Chromium plus Node) for macOS on Apple silicon, written in TypeScript. It
+        has four windows: a floating widget, a settings window, a small quick-add box for typing a
+        TODO, and notifications. There is no Dock icon; it lives in the menu bar.
+      </p>
+      <p>
+        The app is split into a <strong>privileged process</strong>, which holds the credential and
+        talks to Google, and <strong>sandboxed UI processes</strong>, which draw pixels and can do
+        nothing else. Everything sensitive stays on the privileged side of that line. The four
+        runtime dependencies are Google&rsquo;s official calendar and auth clients, a logger, a
+        settings store, and a schema validator.
+      </p>
+
+      <h2>Access to Google data</h2>
+      <ul>
+        <li>
+          <strong>Scopes:</strong> <code>calendar.events.readonly</code> and
+          <code>calendar.calendarlist.readonly</code>. Read-only, events and the calendar list only.
+          A stolen token could read a calendar; it could not modify one, change sharing, or reach
+          another Google service.
+        </li>
+        <li>
+          <strong>Sign-in happens in your own browser</strong>, not in an embedded window, so your
+          existing session, SSO, passkeys and security keys all apply. The app never sees your
+          password.
+        </li>
+        <li>
+          <strong>The OAuth flow</strong> is the desktop-app pattern: a loopback redirect on
+          <code>127.0.0.1</code> with a random port, PKCE, and a random <code>state</code> compared
+          in constant time. The listener binds to the loopback interface only, accepts exactly one
+          request on one exact path, rejects any request whose <code>Host</code> header does not
+          match (which blocks DNS rebinding), and closes after the first callback or five minutes.
+          There is no listening port at any other time.
+        </li>
+        <li>
+          <strong>Granted scopes are checked</strong>, not assumed. Google lets a user untick
+          scopes; if the essential one is missing the app revokes what it was given rather than
+          carrying on in a degraded state.
+        </li>
+        <li>
+          <strong>Admin control is retained.</strong> The client ID can be trusted or blocked
+          centrally under Admin console &rarr; Security &rarr; API controls &rarr; App access
+          control, and access can be revoked there at any time, independently of anything the app or
+          its user does.
+        </li>
+      </ul>
+
+      <h2>Token management</h2>
+      <ul>
+        <li>
+          <strong>At rest:</strong> the refresh token is encrypted with Electron&rsquo;s
+          <code>safeStorage</code>. The encryption key lives in a macOS Keychain item that only the
+          app&rsquo;s own code signature can read without a prompt. The ciphertext is written to the
+          app&rsquo;s support folder with file mode <code>0600</code> and the folder itself is
+          <code>0700</code>, so no other user account on the Mac can read either.
+        </li>
+        <li>
+          <strong>No plaintext fallback.</strong> If encryption is unavailable the app refuses to
+          store the token and shows an error, rather than writing it in the clear.
+        </li>
+        <li>
+          <strong>Access tokens never touch disk.</strong> They live in memory, expire within the
+          hour, and are never persisted, logged or sent to the UI.
+        </li>
+        <li>
+          <strong>Tokens are structurally unreachable from the UI.</strong> One module owns them,
+          nothing else imports it, and no message channel returns one. This is enforced by the
+          design rather than by care.
+        </li>
+        <li>
+          <strong>Never written to</strong> logs, messages, the UI, the settings file, environment
+          variables, URLs, notifications, crash dumps or the clipboard.
+        </li>
+        <li>
+          <strong>Rotation and revocation:</strong> a rotated refresh token atomically replaces the
+          old one. Disconnecting calls Google&rsquo;s revoke endpoint first, then deletes the local
+          ciphertext. A token Google reports as dead is deleted rather than retried, so there is no
+          silent re-consent loop.
+        </li>
+        <li>
+          <strong>Per-account isolation:</strong> each connected account has its own encrypted file
+          and its own client. Revoking one has no effect on the other.
+        </li>
+      </ul>
+
+      <h2>Who has access</h2>
+      <p>
+        One person: the user sitting at the Mac. There is nobody else in the system to grant access
+        to, because there is no system.
+      </p>
+      <ul>
+        <li>
+          <strong>The developer has no access.</strong> There is no server to collect anything, no
+          account to sign into, no remote configuration, and no channel through which data could be
+          sent even accidentally. The app opens no network connection to anyone but Google.
+        </li>
+        <li>
+          <strong>No other user on the Mac has access.</strong> Credentials and settings sit in the
+          user&rsquo;s own library folder at <code>0700</code>, with the token file at
+          <code>0600</code>, and the Keychain item belongs to that login keychain.
+        </li>
+        <li>
+          <strong>No other application on the Mac has access.</strong> The Keychain item is bound to
+          this app&rsquo;s code signature, so a different binary asking for the key does not get it
+          silently.
+        </li>
+        <li>
+          <strong>Data is never shared or transferred.</strong> Nothing is sold, shared, used for
+          advertising, or used to train a model. See the
+          <a href="./privacy.html">privacy policy</a>.
+        </li>
+        <li>
+          <strong>Access can be withdrawn without the app&rsquo;s cooperation</strong>, from the
+          Workspace admin console or from the user&rsquo;s own Google account permissions page. The
+          app is not a dependency of its own revocation.
+        </li>
+      </ul>
+
+      <h2>What is on disk, and what is not</h2>
+      <ul>
+        <li><strong>Calendar events:</strong> memory only. Quitting the app discards them.</li>
+        <li>
+          <strong>Event descriptions and attendee lists:</strong> read transiently to find a meeting
+          link and to check whether the invitation was declined, then discarded. They never reach
+          the UI and are never stored or logged.
+        </li>
+        <li><strong>The refresh token:</strong> encrypted, as above.</li>
+        <li>
+          <strong>Settings:</strong> which calendars to show, which monitor, and similar. No
+          calendar content.
+        </li>
+        <li>
+          <strong>The TODO list:</strong> text the user types themselves, stored unencrypted in the
+          app&rsquo;s own folder so it survives a restart. It is not calendar data and is never sent
+          anywhere. Stating it plainly: anything typed there is a note on that laptop, with the same
+          exposure as any other file in the user&rsquo;s home directory.
+        </li>
+        <li>
+          <strong>Logs:</strong> counts, durations, status codes and identifiers. Never event
+          titles, descriptions, attendees, meeting links or credentials. Secrets are stripped by
+          exact key before anything is written, log files are size-capped so retention is bounded,
+          and the crash reporter is never started.
+        </li>
+      </ul>
+
+      <h2>Hardening</h2>
+      <ul>
+        <li>
+          <strong>The UI is fully sandboxed:</strong> Chromium&rsquo;s sandbox on, context isolation
+          on, no Node access, no network access, no navigation away from the app&rsquo;s own pages,
+          no new windows, no permissions (camera, microphone, location, clipboard all denied), and a
+          strict Content Security Policy. UI code is served over an internal protocol from a
+          validated archive, never from <code>file://</code> and never from a remote origin.
+        </li>
+        <li>
+          <strong>Calendar text is treated as hostile.</strong> Anyone who can send you an invite
+          controls a title and a location. All of it is rendered as inert text, descriptions never
+          reach the UI at all, and titles are length-capped.
+        </li>
+        <li>
+          <strong>Every message between the UI and the privileged process</strong> is validated
+          against a schema and checked against the origin allowed to send it. There is no generic
+          &ldquo;call anything&rdquo; bridge; each window is handed only the specific operations it
+          needs. Actions with side effects are rate-limited.
+        </li>
+        <li>
+          <strong>Meeting links are opened by the privileged process only</strong>, and only if they
+          are <code>https:</code> on a short allowlist of known conferencing hosts. The UI asks to
+          join an event by its identifier and never handles a URL, so a link embedded in an invite
+          cannot become an arbitrary thing to open.
+        </li>
+        <li>
+          <strong>Electron fuses</strong> disable the routes that normally turn an Electron app into
+          a scripting host: running as plain Node, injecting options at startup, and attaching a
+          debugger that could read memory. Archive integrity checking is on, and the app refuses to
+          load code from outside the validated archive.
+        </li>
+        <li>
+          <strong>Hardened runtime, Developer ID signing and Apple notarisation</strong> for any
+          build that leaves the developer&rsquo;s machine, with the minimum entitlements needed to
+          run. The signature is also what the Keychain uses to decide the app is entitled to its own
+          key.
+        </li>
+        <li>
+          <strong>Privacy mode</strong> replaces meeting and TODO titles before they are drawn, in
+          the privileged process, so a screen share or recording captures nothing. It is a real
+          redaction rather than a visual overlay.
+        </li>
+      </ul>
+
+      <h2>Supply chain and updates</h2>
+      <ul>
+        <li>Dependencies are pinned to exact versions with a committed lockfile.</li>
+        <li>
+          New releases of a dependency are uninstallable for three days, which is the window in
+          which most hijacked packages are found and pulled.
+        </li>
+        <li>
+          Package install scripts are disabled, so installing a dependency cannot execute code.
+        </li>
+        <li>
+          Continuous integration runs registry signature and provenance checks plus a vulnerability
+          audit on every change, alongside linting, type checking and the test suite.
+        </li>
+        <li>
+          <strong>No auto-updater and no update server.</strong> Updates arrive through Homebrew,
+          which checks a pinned hash for each release, and Gatekeeper checks the signature and
+          notarisation on first launch. There is no self-update code to get wrong and no update
+          endpoint to compromise.
+        </li>
+      </ul>
+
+      <h2>Limits, stated plainly</h2>
+      <p>
+        Every control above protects against something specific. These are the things it does not
+        protect against, and pretending otherwise would make the rest less useful.
+      </p>
+      <ul>
+        <li>
+          <strong>An attacker already running as that user</strong> can use the app&rsquo;s access,
+          as they could use the Google Calendar session in the browser. The controls raise the cost
+          of lifting the token; they do not survive a compromised account.
+        </li>
+        <li>
+          <strong>An unlocked laptop shows the calendar</strong>, continuously and by design. That
+          is the point of the app. Privacy mode exists for shared screens, but it is opt-in.
+        </li>
+        <li>
+          <strong>Nothing defends against root</strong>, or against code injected into the signed
+          process. No in-process control can.
+        </li>
+        <li>
+          <strong>Until Google verifies the app</strong>, sign-in shows an &ldquo;unverified
+          app&rdquo; warning. That is a statement about review status, not about what the app does.
+        </li>
+      </ul>
+
+      <h2>For a reviewer</h2>
+      <p>
+        The source is public and the design document states the threat model, the attack surface
+        with a named control for each entry, and the reasons behind each decision, including the
+        ones that were reversed. The test suite covers the security paths specifically: that
+        credentials never appear in logs, that meeting URLs never reach the UI, that unexpected
+        message senders are rejected, and that privacy mode redacts before anything is displayed.
+      </p>
+      <p>
+        Questions are welcome, as are findings. Raise them on the
+        <a href="https://github.com/edspressomartini/calendar" rel="noopener noreferrer"
+          >source repository</a
+        >, or at the support address on the Google consent screen. If you believe you have found a
+        vulnerability, please report it privately first.
+      </p>
+
+      <footer>
+        <p><a href="./index.html">Home</a> &middot; <a href="./privacy.html">Privacy policy</a></p>
+      </footer>
+    </main>
+  </body>
+</html>
