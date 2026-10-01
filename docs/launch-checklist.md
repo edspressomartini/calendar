@@ -32,17 +32,29 @@ been signed, packaged for distribution, or shown to anyone else.
 - [ ] **Google verification**, only needed to remove the "unverified app" warning and
       lift the cap. Needs a demo video, scope justification and brand verification.
       Expect roughly 2–3 business days for branding and around 10 for sensitive scopes.
-- [x] **Prove ownership of the home page URL.** Google's first branding attempt failed
-      with "not registered to you". `github.io` is on the Public Suffix List, so a
-      _Domain_ property is impossible but a _URL prefix_ property for
-      `https://edspressomartini.github.io/calendar/` is not — the path matters, since
-      verifying the bare host would need a file at the root of a user site that does not
-      exist. Verified on 30 September 2026 with `site/googleae8d5da130c7a7f8.html`, which
-      `.prettierignore` protects because its exact bytes are the proof.
-- [ ] **Retry branding verification**, no earlier than 1 October 2026. Google asks for 24
-      hours to pick up the ownership record, and an early retry fails the same way.
-      The Search Console property and the Cloud project are on the same Google account,
-      which is what the check actually compares.
+- [x] **Prove ownership of the home page URL.** Google's branding attempt failed with
+      "not registered to you". `github.io` is on the Public Suffix List, so a _Domain_
+      property is impossible, but _URL prefix_ properties are not. Two now exist, both
+      verified by HTML file with the same token, `googleae8d5da130c7a7f8.html`:
+
+  | Property                                       | File lives in                         | Verified   |
+  | ---------------------------------------------- | ------------------------------------- | ---------- |
+  | `https://edspressomartini.github.io/calendar/` | this repo, `site/`                    | 30 Sep '26 |
+  | `https://edspressomartini.github.io/`          | the `edspressomartini.github.io` repo | 1 Oct '26  |
+
+  The second one needed a **user-site repo**, named exactly `edspressomartini.github.io`,
+  because the host root is served from there and nothing else can put a file at it. The
+  path-only property was not enough on its own: authorised domains are checked at the
+  domain level. Never delete either file — Search Console re-checks and un-verifies.
+  `.prettierignore` covers the one in this repo, since its exact bytes are the proof.
+
+- [ ] **Add `edspressomartini.github.io` to Authorized domains** on the Branding page.
+      It was empty, and Google requires it.
+- [ ] **Retry branding verification**, no earlier than 2 October 2026. Google asks for 24
+      hours to pick up an ownership record, counted from the most recent verification,
+      and an early retry fails with the identical message. The Search Console properties
+      and the Cloud project are all on the same Google account, which is what the check
+      compares.
 
 ## 2. Blocking: signing and packaging
 
