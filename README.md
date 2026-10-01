@@ -11,9 +11,9 @@ gets away from you.
 
 Everything runs on your own Mac. No server, no account to create, no analytics.
 
-**[Homepage](https://edspressomartini.github.io/)** ·
-**[Privacy policy](https://edspressomartini.github.io/privacy.html)** ·
-**[Security overview](https://edspressomartini.github.io/security.html)**
+**[Homepage](https://edspressomartini.github.io/calendar/)** ·
+**[Privacy policy](https://edspressomartini.github.io/calendar/privacy.html)** ·
+**[Security overview](https://edspressomartini.github.io/calendar/security.html)**
 
 ---
 
@@ -89,7 +89,7 @@ no crash reporting, no auto-updater. The UI is fully sandboxed with no Node and 
 access, and every message it sends to the privileged process is schema-validated and
 origin-checked.
 
-The [security overview](https://edspressomartini.github.io/security.html) is
+The [security overview](https://edspressomartini.github.io/calendar/security.html) is
 written for someone deciding whether to allow this on a managed Mac. The threat model,
 the attack surface table and the reasoning behind each control are in
 [`docs/spec.md`](docs/spec.md) §8.

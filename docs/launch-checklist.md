@@ -25,10 +25,10 @@ been signed, packaged for distribution, or shown to anyone else.
 - [ ] **Decide Testing vs In production.** Testing expires refresh tokens after 7 days,
       so the app stops working weekly. Fine for now; not fine for daily use.
 - [ ] **Move to In production.** Requires the homepage and privacy policy already
-      published at `https://edspressomartini.github.io/`.
-- [ ] **Point the Branding form at the root**, not at `/calendar/`. The home page and
-      privacy URLs must sit on the verified domain, and the root is what Search Console
-      verified. The same pages are served from both places; the root is canonical.
+      published at `https://edspressomartini.github.io/calendar/`. The Branding form
+      stays pointed there: the domain root is a personal landing page, not this
+      project's home page. Both the root and the `/calendar/` path are verified in
+      Search Console, so the check has ownership either way.
 - [ ] **Understand the 100-user cap.** An unverified production app is limited to 100
       users _for the lifetime of the project_, and the cap cannot be reset. Irrelevant at
       two users; fatal if this ever goes public from the same project.
