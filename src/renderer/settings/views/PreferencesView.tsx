@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react'
 import {
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SYNC_INTERVAL_MINUTES,
@@ -7,6 +7,7 @@ import {
   MIN_WIDGET_TEXT_SCALE,
   WIDGET_TEXT_SCALE_STEP,
 } from '../../../shared/constants.ts'
+import { acceleratorFromChord, formatAccelerator } from '../../../shared/shortcuts.ts'
 import { supportedTimeZones } from '../../../shared/timezone.ts'
 import type { ThemeSource, TodoPlacement, ViewMode } from '../../../shared/types/settings.ts'
 import type { SettingsState } from '../../common/hooks/useSettings.ts'
@@ -64,6 +65,19 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
           <option value="below">Below the calendar</option>
           <option value="above">Above the calendar</option>
         </select>
+      </Row>
+
+      <Row
+        label="Add TODO shortcut"
+        hint="Works anywhere, in any app. Needs Command, Control or Option."
+      >
+        <ShortcutRecorder
+          value={settings.quickAddShortcut}
+          onRecord={async (accelerator) => {
+            const applied = await state.update({ quickAddShortcut: accelerator })
+            return applied === null || applied.quickAddShortcut === accelerator
+          }}
+        />
       </Row>
 
       <Row label="Theme">
@@ -197,6 +211,65 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
         </button>
       </div>
     </section>
+  )
+}
+
+interface ShortcutRecorderProps {
+  readonly value: string
+  /** Resolves false when macOS refused the combination to another app. */
+  readonly onRecord: (accelerator: string) => Promise<boolean>
+}
+
+/**
+ * Captures a real keypress rather than offering a list, because the whole
+ * point is to dodge whatever else the user has bound, and only they know.
+ */
+function ShortcutRecorder({ value, onRecord }: ShortcutRecorderProps): JSX.Element {
+  const [listening, setListening] = useState(false)
+  const [refused, setRefused] = useState<string | null>(null)
+
+  const capture = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    event.preventDefault()
+    if (event.code === 'Escape') {
+      setListening(false)
+      return
+    }
+
+    const accelerator = acceleratorFromChord(event)
+    if (accelerator === null) {
+      // Modifiers on their own, or a combination we will not claim globally.
+      return
+    }
+
+    setListening(false)
+    void onRecord(accelerator).then((accepted) => {
+      setRefused(accepted ? null : accelerator)
+    })
+  }
+
+  return (
+    <span className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => {
+          setListening(true)
+          setRefused(null)
+        }}
+        onBlur={() => {
+          setListening(false)
+        }}
+        onKeyDown={capture}
+        className="w-40 rounded border border-border bg-bg px-2 py-1 font-mono text-sm"
+      >
+        {listening ? 'Press keys…' : formatAccelerator(value)}
+      </button>
+      {refused && (
+        <span className="text-xs text-urgent">
+          {formatAccelerator(refused)} is already taken by another app. Kept{' '}
+          {formatAccelerator(value)}.
+        </span>
+      )}
+    </span>
   )
 }
 

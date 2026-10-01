@@ -50,8 +50,16 @@ export const MAX_TODOS = 500
 /** Completed TODOs older than this are dropped when the list is written. */
 export const TODO_COMPLETED_RETENTION_DAYS = 30
 
-/** Opens the quick-add window from anywhere, since there is no Dock icon (§6). */
-export const QUICK_ADD_SHORTCUT = 'Command+Shift+T'
+/**
+ * Opens the quick-add window from anywhere, since there is no Dock icon (§6).
+ * Configurable, because a global shortcut is taken from every other app and
+ * whatever we pick will collide with something on someone's machine. Control
+ * and Option together is the corner of the keyboard macOS and browsers leave
+ * alone; Command+Shift+T is already "reopen closed tab" nearly everywhere.
+ */
+export const DEFAULT_QUICK_ADD_SHORTCUT = 'Control+Alt+T'
+/** An accelerator is modifiers plus one key; nothing legal comes near this. */
+export const MAX_SHORTCUT_LENGTH = 64
 export const QUICK_ADD_WINDOW_WIDTH = 460
 export const QUICK_ADD_WINDOW_HEIGHT = 96
 

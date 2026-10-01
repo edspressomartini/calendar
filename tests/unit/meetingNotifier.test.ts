@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MeetingNotifier } from '../../src/main/notifications/MeetingNotifier.ts'
+import { DEFAULT_QUICK_ADD_SHORTCUT } from '../../src/shared/constants.ts'
 import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
 import type { SettingsReader } from '../../src/main/storage/SettingsStore.ts'
 import type { MeetingJoiner } from '../../src/main/calendar/MeetingJoiner.ts'
@@ -63,6 +64,7 @@ function snapshot(items: AgendaItem[], privacyMode = false): AgendaSnapshot {
     nextUp: items[0] ?? null,
     viewMode: 'merged',
     todoPlacement: 'below',
+    quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
     privacyMode,
   }
 }

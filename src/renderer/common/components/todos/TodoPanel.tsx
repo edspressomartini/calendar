@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import { QUICK_ADD_SHORTCUT } from '../../../../shared/constants.ts'
+import { formatAccelerator } from '../../../../shared/shortcuts.ts'
 import { daysBetweenDayKeys } from '../../../../shared/time.ts'
 import type { TodoPlacement } from '../../../../shared/types/settings.ts'
 import type { Todo, TodoSnapshot } from '../../../../shared/types/todo.ts'
@@ -8,6 +8,7 @@ import { TodoRow } from './TodoRow.tsx'
 interface TodoPanelProps {
   readonly snapshot: TodoSnapshot | null
   readonly placement: TodoPlacement
+  readonly shortcut: string
   readonly onToggle: (todoId: string) => void
   readonly onRoll: (todoId: string) => void
   readonly onRollAllOverdue: () => void
@@ -24,6 +25,7 @@ interface TodoPanelProps {
 export function TodoPanel({
   snapshot,
   placement,
+  shortcut,
   onToggle,
   onRoll,
   onRollAllOverdue,
@@ -59,7 +61,7 @@ export function TodoPanel({
           {outstanding > 0 && <span className="tabular font-mono">{outstanding}</span>}
         </button>
         <span className="shrink-0 text-[10px] text-text-muted" title="Opens the quick add box">
-          {QUICK_ADD_SHORTCUT.replace('Command', '⌘').replace('Shift', '⇧').replaceAll('+', '')}
+          {formatAccelerator(shortcut)}
         </span>
       </header>
 

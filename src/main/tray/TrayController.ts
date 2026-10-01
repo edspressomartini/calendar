@@ -1,6 +1,6 @@
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron'
 import trayIconPath from '../../../resources/trayTemplate.png?asset'
-import { QUICK_ADD_SHORTCUT, TRAY_TITLE_MAX_LENGTH } from '../../shared/constants.ts'
+import { TRAY_TITLE_MAX_LENGTH } from '../../shared/constants.ts'
 import type { AgendaSnapshot } from '../../shared/types/agenda.ts'
 import type { AccountId } from '../../shared/types/calendar.ts'
 import type { DisplayKey } from '../../shared/types/settings.ts'
@@ -145,7 +145,7 @@ export class TrayController {
         label: 'Add TODO…',
         // Shown, not bound: the real binding is a global shortcut, so it works
         // without the menu being open.
-        accelerator: QUICK_ADD_SHORTCUT,
+        accelerator: settings.quickAddShortcut,
         registerAccelerator: false,
         click: () => {
           this.actions.openQuickAdd()

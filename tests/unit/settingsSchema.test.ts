@@ -46,12 +46,30 @@ describe('parseSettings', () => {
     const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
     delete older['widgetTextScale']
     delete older['todoPlacement']
+    delete older['quickAddShortcut']
 
     const parsed = parseSettings(older)
 
     expect(parsed.widgetTextScale).toBe(DEFAULT_SETTINGS.widgetTextScale)
     expect(parsed.todoPlacement).toBe('below')
+    expect(parsed.quickAddShortcut).toBe(DEFAULT_SETTINGS.quickAddShortcut)
     expect(parsed.accounts).toHaveLength(1)
+  })
+
+  it('replaces one bad value without resetting everything around it', () => {
+    const tampered = {
+      ...DEFAULT_SETTINGS,
+      quickAddShortcut: 'T',
+      viewMode: 'split',
+      accounts: [account],
+    }
+
+    const parsed = parseSettings(tampered)
+
+    expect(parsed.quickAddShortcut).toBe(DEFAULT_SETTINGS.quickAddShortcut)
+    // The point: a rejected shortcut must not cost the user their accounts.
+    expect(parsed.accounts).toHaveLength(1)
+    expect(parsed.viewMode).toBe('split')
   })
 
   it('preserves values that are still valid', () => {

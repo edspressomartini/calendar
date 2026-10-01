@@ -1,5 +1,4 @@
 import { globalShortcut } from 'electron'
-import { QUICK_ADD_SHORTCUT } from '../../shared/constants.ts'
 import type { AppLogger } from '../infra/logger.ts'
 
 /**
@@ -8,35 +7,53 @@ import type { AppLogger } from '../infra/logger.ts'
  * A menu-bar app with no Dock icon and no focusable window is otherwise
  * unreachable from the keyboard, and a TODO you have to go and find with the
  * mouse does not get written down.
+ *
+ * The combination is a setting, because macOS gives one to whichever app
+ * asked first and the user is the only one who knows what else is running.
  */
 export class GlobalShortcuts {
-  private registered = false
+  private registered: string | null = null
 
   constructor(
     private readonly openQuickAdd: () => void,
     private readonly logger: AppLogger,
   ) {}
 
-  start(): void {
-    if (this.registered) {
-      return
+  /** The accelerator currently claimed, or null if nothing is. */
+  current(): string | null {
+    return this.registered
+  }
+
+  /**
+   * Returns false when macOS refuses, which it does silently when another app
+   * already owns the combination — the caller decides what to do about it.
+   */
+  apply(accelerator: string): boolean {
+    if (this.registered === accelerator) {
+      return true
     }
 
-    // Another app may already own the combination, in which case macOS simply
-    // never delivers it — worth saying so rather than looking broken.
-    this.registered = globalShortcut.register(QUICK_ADD_SHORTCUT, this.openQuickAdd)
-    if (!this.registered) {
-      this.logger.warn('quick add shortcut is already taken', { accelerator: QUICK_ADD_SHORTCUT })
-      return
+    this.release()
+    const claimed = globalShortcut.register(accelerator, this.openQuickAdd)
+    if (!claimed) {
+      this.logger.warn('quick add shortcut is already taken', { accelerator })
+      return false
     }
-    this.logger.info('registered quick add shortcut', { accelerator: QUICK_ADD_SHORTCUT })
+
+    this.registered = accelerator
+    this.logger.info('registered quick add shortcut', { accelerator })
+    return true
   }
 
   stop(): void {
-    if (!this.registered) {
+    this.release()
+  }
+
+  private release(): void {
+    if (this.registered === null) {
       return
     }
-    globalShortcut.unregister(QUICK_ADD_SHORTCUT)
-    this.registered = false
+    globalShortcut.unregister(this.registered)
+    this.registered = null
   }
 }

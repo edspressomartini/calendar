@@ -6,7 +6,8 @@ import { fetchSettings, settingsApi } from '../lib/ipcClient.ts'
 export interface SettingsState {
   readonly settings: AppSettings | null
   readonly error: string | null
-  update(patch: UpdateSettingsRequest): Promise<void>
+  /** The settings main actually applied, or null if the change failed. */
+  update(patch: UpdateSettingsRequest): Promise<AppSettings | null>
 }
 
 export function useSettings(): SettingsState {
@@ -34,10 +35,13 @@ export function useSettings(): SettingsState {
   const update = useCallback(async (patch: UpdateSettingsRequest) => {
     try {
       const raw = await settingsApi().updateSettings(patch)
-      setSettings(appSettingsSchema.parse(raw))
+      const applied = appSettingsSchema.parse(raw)
+      setSettings(applied)
       setError(null)
+      return applied
     } catch {
       setError('Could not save that change.')
+      return null
     }
   }, [])
 

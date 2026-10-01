@@ -37,6 +37,11 @@ export interface AppSettings {
   /** Percent. Scales the whole widget, since everything in it is sized in px. */
   readonly widgetTextScale: number
   readonly todoPlacement: TodoPlacement
+  /**
+   * The global shortcut that opens quick add. Always one main has actually
+   * registered: a value we could not claim would be a lie on screen.
+   */
+  readonly quickAddShortcut: string
   readonly hideTitlesInMenuBar: boolean
   readonly privacyMode: boolean
   readonly launchAtLogin: boolean

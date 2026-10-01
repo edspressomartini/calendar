@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatTrayTitle } from '../../src/main/tray/TrayController.ts'
+import { DEFAULT_QUICK_ADD_SHORTCUT } from '../../src/shared/constants.ts'
 import type { AgendaItem, AgendaSnapshot } from '../../src/shared/types/agenda.ts'
 
 function item(overrides: Partial<AgendaItem> = {}): AgendaItem {
@@ -30,6 +31,7 @@ function snapshot(nextUp: AgendaItem | null): AgendaSnapshot {
     nextUp,
     viewMode: 'merged',
     todoPlacement: 'below',
+    quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
     privacyMode: false,
   }
 }

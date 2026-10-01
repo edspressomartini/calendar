@@ -3,6 +3,7 @@ import {
   ACCOUNT_COLOURS,
   MAX_EVENT_TITLE_LENGTH,
   MAX_NOTIFICATION_LEAD_MINUTES,
+  MAX_SHORTCUT_LENGTH,
   MAX_SYNC_INTERVAL_MINUTES,
   MAX_TODOS,
   MAX_TODO_TITLE_LENGTH,
@@ -11,6 +12,7 @@ import {
   MIN_WIDGET_TEXT_SCALE,
 } from '../constants.ts'
 import { CHANNELS } from './channels.ts'
+import { isValidAccelerator } from '../shortcuts.ts'
 import { isLocalDayKey } from '../time.ts'
 import { isValidTimeZone } from '../timezone.ts'
 
@@ -45,6 +47,12 @@ export const updateAccountSchema = z.strictObject({
 const widgetTextScale = z.number().int().min(MIN_WIDGET_TEXT_SCALE).max(MAX_WIDGET_TEXT_SCALE)
 const todoPlacement = z.enum(['above', 'below'])
 
+/** Rejected here rather than at globalShortcut.register, which throws. */
+const quickAddShortcut = z
+  .string()
+  .max(MAX_SHORTCUT_LENGTH)
+  .refine(isValidAccelerator, { message: 'not a usable shortcut' })
+
 export const setSelectedCalendarsSchema = z.strictObject({
   accountId: identifier,
   calendarIds: z.array(identifier).max(100),
@@ -77,6 +85,7 @@ export const updateSettingsSchema = z
     secondaryTimeZone: timeZoneName.nullable(),
     widgetTextScale: widgetTextScale,
     todoPlacement: todoPlacement,
+    quickAddShortcut: quickAddShortcut,
     hideTitlesInMenuBar: z.boolean(),
     privacyMode: z.boolean(),
     launchAtLogin: z.boolean(),
@@ -167,6 +176,7 @@ export const agendaSnapshotSchema = z.strictObject({
   nextUp: agendaItemSchema.nullable(),
   viewMode: z.enum(['merged', 'split']),
   todoPlacement: todoPlacement,
+  quickAddShortcut: quickAddShortcut,
   privacyMode: z.boolean(),
 })
 
@@ -228,6 +238,7 @@ export const appSettingsSchema = z.strictObject({
   secondaryTimeZone: timeZoneName.nullable(),
   widgetTextScale: widgetTextScale,
   todoPlacement: todoPlacement,
+  quickAddShortcut: quickAddShortcut,
   hideTitlesInMenuBar: z.boolean(),
   privacyMode: z.boolean(),
   launchAtLogin: z.boolean(),

@@ -63,6 +63,7 @@ export function WidgetApp(): JSX.Element {
     <TodoPanel
       snapshot={todos}
       placement={snapshot.todoPlacement}
+      shortcut={snapshot.quickAddShortcut}
       onToggle={toggleTodo}
       onRoll={rollTodo}
       onRollAllOverdue={rollAllOverdueTodos}

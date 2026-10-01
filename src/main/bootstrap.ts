@@ -128,6 +128,23 @@ class Application {
       this.logger.child('settings-window'),
     )
 
+    const quickAdd = new QuickAddWindow(
+      {
+        preloadPath,
+        devServerUrl: this.devServerUrl,
+        isDev: this.config.isDev,
+      },
+      this.logger.child('quick-add'),
+    )
+    this.quickAdd = quickAdd
+
+    // Built before preferences, which owns re-registering it when the user
+    // picks a different combination.
+    const shortcuts = new GlobalShortcuts(() => {
+      void quickAdd.open()
+    }, this.logger.child('shortcuts'))
+    this.shortcuts = shortcuts
+
     const preferences = new PreferencesService(
       settings,
       new LoginItem(this.logger.child('login-item')),
@@ -135,6 +152,7 @@ class Application {
       todos,
       scheduler,
       widget,
+      shortcuts,
       this.logger.child('preferences'),
     )
     const accounts = new AccountService(
@@ -156,21 +174,6 @@ class Application {
       this.logger.child('alert'),
     )
     this.alertWindow = alertWindow
-
-    const quickAdd = new QuickAddWindow(
-      {
-        preloadPath,
-        devServerUrl: this.devServerUrl,
-        isDev: this.config.isDev,
-      },
-      this.logger.child('quick-add'),
-    )
-    this.quickAdd = quickAdd
-
-    const shortcuts = new GlobalShortcuts(() => {
-      void quickAdd.open()
-    }, this.logger.child('shortcuts'))
-    this.shortcuts = shortcuts
 
     const notifier = new MeetingNotifier(
       settings,
@@ -261,7 +264,6 @@ class Application {
     systemEvents.start()
     clock.start()
     scheduler.start()
-    shortcuts.start()
 
     // Paint immediately rather than waiting for the first minute boundary.
     agenda.refresh()

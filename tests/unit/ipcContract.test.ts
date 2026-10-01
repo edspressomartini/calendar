@@ -108,6 +108,19 @@ describe('IPC contract', () => {
     expect(updateSettingsSchema.safeParse({ todoPlacement: 'floating' }).success).toBe(false)
   })
 
+  it('takes only a shortcut main could actually register', () => {
+    expect(updateSettingsSchema.safeParse({ quickAddShortcut: 'Command+Shift+K' }).success).toBe(
+      true,
+    )
+    // globalShortcut.register throws on these; the boundary rejects them first.
+    expect(updateSettingsSchema.safeParse({ quickAddShortcut: 'K' }).success).toBe(false)
+    expect(updateSettingsSchema.safeParse({ quickAddShortcut: 'Shift+K' }).success).toBe(false)
+    expect(updateSettingsSchema.safeParse({ quickAddShortcut: '' }).success).toBe(false)
+    expect(
+      updateSettingsSchema.safeParse({ quickAddShortcut: 'Command+'.repeat(40) }).success,
+    ).toBe(false)
+  })
+
   it('rejects an empty settings patch', () => {
     expect(updateSettingsSchema.safeParse({}).success).toBe(false)
   })

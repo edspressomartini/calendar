@@ -128,6 +128,7 @@ export class AgendaService {
       nextUp: findNextUp(timedItems),
       viewMode: settings.viewMode,
       todoPlacement: settings.todoPlacement,
+      quickAddShortcut: settings.quickAddShortcut,
       privacyMode: settings.privacyMode,
     }
   }

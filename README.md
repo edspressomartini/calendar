@@ -5,8 +5,9 @@ ambushing you mid-task. It sits in the corner of a monitor you choose, floats ab
 full-screen apps, appears on every Space, and never steals focus from whatever you are
 typing in. There is no Dock icon — just a countdown to your next meeting in the menu bar.
 
-It also keeps a TODO list beside the day: add one from anywhere with `Cmd+Shift+T`, tick
-it off, or roll it forward when today gets away from you.
+It also keeps a TODO list beside the day: add one from anywhere with a global shortcut
+(`⌃⌥T` by default, changeable in settings), tick it off, or roll it forward when today
+gets away from you.
 
 Everything runs on your own Mac. No server, no account to create, no analytics.
 

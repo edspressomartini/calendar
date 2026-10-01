@@ -49,5 +49,7 @@ export interface AgendaSnapshot {
   readonly viewMode: ViewMode
   /** Layout, not data: where the TODO list sits relative to the timeline (§6). */
   readonly todoPlacement: TodoPlacement
+  /** Shown in the TODO panel's header, so the hint matches the real binding. */
+  readonly quickAddShortcut: string
   readonly privacyMode: boolean
 }

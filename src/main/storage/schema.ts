@@ -4,6 +4,7 @@ import {
   DEFAULT_DAY_END_HOUR,
   DEFAULT_DAY_START_HOUR,
   DEFAULT_NOTIFICATION_LEAD_MINUTES,
+  DEFAULT_QUICK_ADD_SHORTCUT,
   DEFAULT_SYNC_INTERVAL_MINUTES,
   DEFAULT_WIDGET_TEXT_SCALE,
 } from '../../shared/constants.ts'
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   secondaryTimeZone: null,
   widgetTextScale: DEFAULT_WIDGET_TEXT_SCALE,
   todoPlacement: 'below',
+  quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
   hideTitlesInMenuBar: false,
   privacyMode: false,
   launchAtLogin: false,
@@ -54,6 +56,10 @@ export const DEFAULT_STATE: PersistedState = {
  * its default, and anything unrecognised is dropped. That matters on upgrade:
  * a strict parse of an older file would fail, and the fallback would quietly
  * reset the settings — disconnecting the user's accounts.
+ *
+ * One bad value is treated the same way, field by field, for the same reason:
+ * a shortcut this version no longer accepts should cost the user that
+ * shortcut, not their accounts.
  */
 export function parseSettings(candidate: unknown): AppSettings {
   if (typeof candidate !== 'object' || candidate === null) {
@@ -69,6 +75,24 @@ export function parseSettings(candidate: unknown): AppSettings {
   }
 
   const result = appSettingsSchema.safeParse(known)
+  return result.success ? result.data : repairFields(known)
+}
+
+function isSettingName(key: string): key is keyof AppSettings {
+  return key in DEFAULT_SETTINGS
+}
+
+/** Replaces only the fields that failed, then insists on the whole shape. */
+function repairFields(known: Readonly<Record<string, unknown>>): AppSettings {
+  const repaired: Record<string, unknown> = { ...known }
+  for (const [key, field] of Object.entries(appSettingsSchema.shape)) {
+    if (!isSettingName(key) || field.safeParse(repaired[key]).success) {
+      continue
+    }
+    repaired[key] = DEFAULT_SETTINGS[key]
+  }
+
+  const result = appSettingsSchema.safeParse(repaired)
   return result.success ? result.data : DEFAULT_SETTINGS
 }
 

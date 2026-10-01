@@ -7,6 +7,7 @@ import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { SyncScheduler } from '../sync/SyncScheduler.ts'
 import type { WidgetWindow } from '../windows/WidgetWindow.ts'
+import type { GlobalShortcuts } from './GlobalShortcuts.ts'
 import type { LoginItem } from './LoginItem.ts'
 
 /**
@@ -23,6 +24,7 @@ export class PreferencesService {
     private readonly todos: TodoService,
     private readonly scheduler: SyncScheduler,
     private readonly widget: WidgetWindow,
+    private readonly shortcuts: GlobalShortcuts,
     private readonly logger: AppLogger,
   ) {}
 
@@ -32,10 +34,12 @@ export class PreferencesService {
     this.loginItem.apply(settings.launchAtLogin)
     this.widget.applyAlwaysOnTop(settings.alwaysOnTop)
     this.widget.applyTextScale(settings.widgetTextScale)
+    this.shortcuts.apply(settings.quickAddShortcut)
   }
 
   update(patch: UpdateSettingsRequest): AppSettings {
-    const updated = this.settings.updateSettings(patch)
+    const before = this.settings.getSettings()
+    let updated = this.settings.updateSettings(patch)
 
     if (patch.theme !== undefined) {
       nativeTheme.themeSource = updated.theme
@@ -52,6 +56,9 @@ export class PreferencesService {
     if (patch.widgetTextScale !== undefined) {
       this.widget.applyTextScale(updated.widgetTextScale)
     }
+    if (patch.quickAddShortcut !== undefined) {
+      updated = this.applyShortcut(updated, before.quickAddShortcut)
+    }
 
     // Privacy mode, view mode and menu-bar titles all change how the snapshot
     // renders, so rebuilding it updates the widget and the tray at once.
@@ -65,5 +72,26 @@ export class PreferencesService {
 
   setPrivacyMode(enabled: boolean): void {
     this.update({ privacyMode: enabled })
+  }
+
+  /**
+   * macOS hands a combination to whichever app claimed it first and tells us
+   * nothing afterwards, so a shortcut we failed to register would sit in the
+   * settings window looking live while doing nothing. Put the old one back
+   * instead: what is stored is always what is actually bound, and the
+   * renderer can see it was refused by comparing what it asked for.
+   */
+  private applyShortcut(updated: AppSettings, previous: string): AppSettings {
+    if (this.shortcuts.apply(updated.quickAddShortcut)) {
+      return updated
+    }
+
+    this.logger.warn('shortcut refused, keeping the previous one', {
+      refused: updated.quickAddShortcut,
+      kept: previous,
+    })
+    const restored = this.settings.updateSettings({ quickAddShortcut: previous })
+    this.shortcuts.apply(previous)
+    return restored
   }
 }
