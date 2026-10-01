@@ -817,11 +817,13 @@ Recorded as the code was written, so this document stays true to the repository.
 **Still to confirm**
 
 - **Bundle id** is `com.pinnedcalendar.app`. §10 says fix this before Phase 2, because the Keychain item, notification permission and login item are keyed to it.
-- **The repository is `edspressomartini/calendar`**, so the public site lives at
-  `https://edspressomartini.github.io/calendar/` with the privacy policy at
-  `.../privacy.html`. Those are the two URLs the Google Branding page needs before
-  the app can leave Testing (§9, Phase 0). The Homebrew tap will be a separate
-  repository, `edspressomartini/homebrew-tap`.
+- **The repository is `edspressomartini/calendar`**, but the canonical public site is
+  `https://edspressomartini.github.io/`, served from the user-site repo. Those pages
+  are also published at `/calendar/` from `site/` in this repo, with a `rel="canonical"`
+  pointing at the root so the two copies are one site. The root is the version the
+  Google Branding page names, because it is the URL Search Console verified
+  (§9, Phase 0). The Homebrew tap will be a separate repository,
+  `edspressomartini/homebrew-tap`.
 - **`github.io` may not survive verification.** It is fine for switching to
   production now, but it is a shared domain that cannot be proved in Search
   Console, which Phase 5 brand verification asks for. If that becomes a blocker,
