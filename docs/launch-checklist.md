@@ -48,8 +48,8 @@ been signed, packaged for distribution, or shown to anyone else.
   domain level. Never delete either file — Search Console re-checks and un-verifies.
   `.prettierignore` covers the one in this repo, since its exact bytes are the proof.
 
-- [ ] **Add `edspressomartini.github.io` to Authorized domains** on the Branding page.
-      It was empty, and Google requires it.
+- [x] **`edspressomartini.github.io` is in Authorized domains** on the Branding page,
+      and always was. The missing piece was ownership of the domain, not the entry.
 - [ ] **Retry branding verification**, no earlier than 2 October 2026. Google asks for 24
       hours to pick up an ownership record, counted from the most recent verification,
       and an early retry fails with the identical message. The Search Console properties
