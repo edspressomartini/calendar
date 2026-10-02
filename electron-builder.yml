@@ -41,7 +41,9 @@ mac:
   notarize: false
 
 dmg:
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  # Slug, not ${productName}: that holds a space, which survives into the
+  # release URL as %20 and into every cask that has to quote it.
+  artifactName: up-next-${version}-${arch}.${ext}
 
 # Where the release workflow uploads the DMG. The app itself never checks for
 # updates: there is no electron-updater and no update server. Homebrew is the
