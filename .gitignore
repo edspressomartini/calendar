@@ -10,3 +10,7 @@ coverage/
 docs/company-questions.md
 *.log
 .DS_Store
+
+# Scratch input to iconutil; build/icon.icns is the committed artefact.
+# Rebuild both with `npm run icons`.
+build/icon.iconset/
