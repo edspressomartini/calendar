@@ -12,11 +12,11 @@ been signed, packaged for distribution, or shown to anyone else.
 
 ## 0. The three decisions everything else waits on
 
-| Decision                                              | Who | Why it blocks things                                                                                                                      |
-| ----------------------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Bundle identifier, currently `com.pinnedcalendar.app` | You | The Keychain entry, notification permission and login item are all keyed to it. Changing it later makes every existing user sign in again |
-| Apple Developer Program membership                    | You | Nothing can be given to anyone else without it. Since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper                             |
-| Whether the company is asked at all                   | You | Determines whether this stays a personal tool or needs a company-owned OAuth client. See `docs/company-questions.md`                      |
+| Decision                                            | Who  | Why it blocks things                                                                                                                                                                |
+| --------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Bundle identifier~~ — settled as `com.upnext.app` | Done | Was `com.pinnedcalendar.app`. Changed during the rename, while the author was the only user, because the Keychain entry, notification permission and login item are all keyed to it |
+| Apple Developer Program membership                  | You  | Nothing can be given to anyone else without it. Since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper                                                                       |
+| Whether the company is asked at all                 | You  | Determines whether this stays a personal tool or needs a company-owned OAuth client. See `docs/company-questions.md`                                                                |
 
 ---
 
@@ -25,10 +25,9 @@ been signed, packaged for distribution, or shown to anyone else.
 - [ ] **Decide Testing vs In production.** Testing expires refresh tokens after 7 days,
       so the app stops working weekly. Fine for now; not fine for daily use.
 - [ ] **Move to In production.** Requires the homepage and privacy policy already
-      published at `https://edspressomartini.github.io/calendar/`. The Branding form
-      stays pointed there: the domain root is a personal landing page, not this
-      project's home page. Both the root and the `/calendar/` path are verified in
-      Search Console, so the check has ownership either way.
+      published. They move to `https://upnextapp.co.uk/` once DNS resolves; the
+      Branding form is repointed there at the same time. See `docs/publishing-plan.md`
+      Part 1.
 - [ ] **Understand the 100-user cap.** An unverified production app is limited to 100
       users _for the lifetime of the project_, and the cap cannot be reset. Irrelevant at
       two users; fatal if this ever goes public from the same project.
@@ -51,13 +50,21 @@ been signed, packaged for distribution, or shown to anyone else.
   domain level. Never delete either file — Search Console re-checks and un-verifies.
   `.prettierignore` covers the one in this repo, since its exact bytes are the proof.
 
+  Both properties stayed verified and branding still failed. The reason was never
+  Search Console: `github.io` is on the Public Suffix List, so the registrable domain
+  is GitHub's, and no one can prove ownership of it. `upnextapp.co.uk` was bought at
+  123reg on 2 October to end this.
+
 - [x] **`edspressomartini.github.io` is in Authorized domains** on the Branding page,
-      and always was. The missing piece was ownership of the domain, not the entry.
-- [ ] **Retry branding verification**, no earlier than 2 October 2026. Google asks for 24
-      hours to pick up an ownership record, counted from the most recent verification,
-      and an early retry fails with the identical message. The Search Console properties
-      and the Cloud project are all on the same Google account, which is what the check
-      compares.
+      and always was. The entry was never the missing piece.
+- [ ] **Verify `upnextapp.co.uk` as a Domain property**, once the 123reg DNS records
+      resolve and GitHub Pages serves the site there. A Domain property is DNS-based,
+      which is the proof branding actually wants.
+- [ ] **Repoint the Branding page** at the new domain, and change the app name to
+      `Up Next` while there. Then retry, no earlier than 24 hours after the Search
+      Console verification; an early retry fails with the identical message. The
+      Search Console property and the Cloud project must stay on the same Google
+      account, which is what the check compares.
 
 ## 2. Blocking: signing and packaging
 
@@ -91,9 +98,9 @@ exist, in a packaged build:
 ## 4. Distribution
 
 - [ ] Create the public tap repository `edspressomartini/homebrew-tap`.
-- [ ] Write `Casks/pinned-calendar.rb`, including a `zap` stanza so uninstalling removes
+- [ ] Write `Casks/up-next.rb`, including a `zap` stanza so uninstalling removes
       the stored settings, the TODO list (`todos.json`) and the token.
-- [ ] Verify `brew install --cask edspressomartini/tap/pinned-calendar` on a clean machine.
+- [ ] Verify `brew install --cask edspressomartini/tap/up-next` on a clean machine.
 - [ ] If colleagues are involved, get the tap allowed by whatever manages their Macs.
       Since Homebrew 6, packages from an untrusted third-party tap are ignored, and a
       standard user cannot grant that trust.
@@ -105,7 +112,7 @@ exist, in a packaged build:
 - [ ] **A visible failure state for a dead token.** The status strip says "needs
       reconnecting", but nothing prompts; a user could stare at a stale agenda for days.
 - [ ] **Uninstall story.** Confirm the `zap` stanza actually clears
-      `~/Library/Application Support/Pinned Calendar`, which now holds the TODO list as
+      `~/Library/Application Support/Up Next`, which now holds the TODO list as
       well as the settings, and the Keychain item.
 - [ ] **A real app icon.** There is a generated tray glyph but no `build/icon.icns`.
 - [x] **A README.** Written, Homebrew-first, with the tap marked as not yet live.

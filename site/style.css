@@ -40,6 +40,14 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
+/* The wordmark in the artwork is near-black, so it is never used on a page
+   that follows the system colour scheme. The mark carries its own background. */
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 h2 {
   margin-top: 2.5rem;
   font-size: 1.125rem;

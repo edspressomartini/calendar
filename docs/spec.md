@@ -1,4 +1,4 @@
-# Pinned Calendar Widget — Build Plan (v3)
+# Up Next Widget — Build Plan (v3)
 
 **What it is:** an always-on-top macOS widget showing today's calendar. Small and glanceable, on the monitor you choose, visible on every Space (chose where to pin, which monitor, where and how big) and over full-screen apps, living in the menu bar with no Dock icon.
 
@@ -663,8 +663,8 @@ engine-strict=true
 
 - Sign with a Developer ID certificate, enable the hardened runtime, notarise and staple — all through `electron-builder`.
 - `release.yml`: git tag → build → sign → notarise → `.dmg` on GitHub Releases.
-- Create the public tap `edspressomartini/homebrew-tap` with `Casks/pinned-calendar.rb`, including a `zap` stanza (§8.2).
-- Colleagues install with `brew install --cask edspressomartini/tap/pinned-calendar`, and `brew upgrade` delivers updates. On a centrally managed Mac the tap may also need to be allowed by policy (§11).
+- Create the public tap `edspressomartini/homebrew-tap` with `Casks/up-next.rb`, including a `zap` stanza (§8.2).
+- Colleagues install with `brew install --cask edspressomartini/tap/up-next`, and `brew upgrade` delivers updates. On a centrally managed Mac the tap may also need to be allowed by policy (§11).
 
 **Phase 5 — Public Homebrew.** Google OAuth verification (homepage, privacy policy, demo video, scope justification) to lift the 100-user cap and remove the "unverified app" warning. A README with install instructions. Submit to the official `homebrew/cask` only once the app is popular enough to meet its notability rules.
 
@@ -759,7 +759,7 @@ The real fix is `brew postinstall ca-certificates`, which regenerates the bundle
 
 ### Installing from the tap
 
-Anyone can install with `brew install --cask edspressomartini/tap/pinned-calendar`. Naming the tap in full is enough for Homebrew to trust that one cask.
+Anyone can install with `brew install --cask edspressomartini/tap/up-next`. Naming the tap in full is enough for Homebrew to trust that one cask.
 
 Since Homebrew 6, packages from an untrusted third-party tap are ignored, and on a Mac where the user is not an administrator they cannot grant that trust themselves. Fleets managed centrally therefore need the tap allowed by whatever manages them, which is a Phase 4 conversation rather than a code change.
 
@@ -814,19 +814,19 @@ Recorded as the code was written, so this document stays true to the repository.
 - **Identity without the calendar-list scope.** §8.2 keys accounts by the primary calendar id. If a user declines the calendar-list scope that address is unavailable, so the account falls back to a random id. It works, but connecting the same account twice would create a second entry.
 - **A dev build with no OAuth client seeds a mock account**, so Phase 1 has a populated widget instead of an empty one.
 
+- **Bundle id is `com.upnext.app`**, settled during the rename from Pinned Calendar. It had to be decided before anyone else installed the app: the Keychain item, notification permission and login item are all keyed to it, and the app name decides the support directory, so the rename cost one re-authentication rather than every future user one.
+
 **Still to confirm**
 
-- **Bundle id** is `com.pinnedcalendar.app`. §10 says fix this before Phase 2, because the Keychain item, notification permission and login item are keyed to it.
-- **The repository is `edspressomartini/calendar`**, so the public site lives at
-  `https://edspressomartini.github.io/calendar/` with the privacy policy at
-  `.../privacy.html`. Those are the two URLs the Google Branding page needs before
-  the app can leave Testing (§9, Phase 0). The domain root is a separate personal
-  landing page, kept deliberately apart from this project; it exists here only
-  because the Search Console verification file for the domain has to sit at the
-  root, and nothing but a user-site repo can put it there. The Homebrew tap will be
-  a separate repository, `edspressomartini/homebrew-tap`.
-- **`github.io` may not survive verification.** It is fine for switching to
-  production now, but it is a shared domain that cannot be proved in Search
-  Console, which Phase 5 brand verification asks for. If that becomes a blocker,
-  move the two pages to a domain you own; nothing else changes.
+- **The public site is `https://upnextapp.co.uk/`**, with the privacy policy at
+  `.../privacy.html` and the security overview at `.../security.html`. Those are the
+  URLs the Google Branding page needs before the app can leave Testing (§9, Phase 0).
+  GitHub Pages still serves them from `site/` in this repository; the domain, bought
+  at 123reg on 2 October 2026, only changes the address. The Homebrew tap will be a
+  separate repository, `edspressomartini/homebrew-tap`.
+- **`github.io` could never have survived verification.** It is on the Public Suffix
+  List, so the registrable domain is `github.io` and it belongs to GitHub. Search
+  Console verified a URL-prefix property on it twice, but brand verification asks for
+  ownership of the domain, which DNS cannot demonstrate on a shared host. This cost a
+  week and is the reason the project owns a domain at all.
 - **Entitlements** are `allow-jit` only. If a signed build fails, add the minimum needed and record the reason here (§8.8).

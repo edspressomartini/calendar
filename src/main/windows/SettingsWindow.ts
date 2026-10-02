@@ -33,7 +33,7 @@ export class SettingsWindow {
       width: SETTINGS_WINDOW_WIDTH,
       height: SETTINGS_WINDOW_HEIGHT,
       show: false,
-      title: 'Pinned Calendar Settings',
+      title: 'Up Next Settings',
       titleBarStyle: 'hiddenInset',
       minimizable: true,
       maximizable: false,

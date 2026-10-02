@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-APP="${1:-dist/mac-arm64/Pinned Calendar.app}"
+APP="${1:-dist/mac-arm64/Up Next.app}"
 ENTITLEMENTS="build/entitlements.mac.plist"
 FRAMEWORKS="${APP}/Contents/Frameworks"
 ELECTRON="${FRAMEWORKS}/Electron Framework.framework/Versions/A"

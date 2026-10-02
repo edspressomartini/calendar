@@ -22,7 +22,7 @@ const CLOSE_TIMEOUT_MS = 2_000
 const SUCCESS_PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Signed in</title></head>
 <body style="font-family: system-ui; padding: 3rem; text-align: center">
-<h1>Signed in</h1><p>You can close this tab and return to Pinned Calendar.</p>
+<h1>Signed in</h1><p>You can close this tab and return to Up Next.</p>
 </body></html>`
 
 export class LoopbackServer {

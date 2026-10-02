@@ -1,4 +1,6 @@
-# Pinned Calendar
+<img src="icons/icon-1024.png" alt="" width="72" align="left" hspace="12">
+
+# Up Next
 
 A small always-on-top macOS widget that shows today's calendar, so meetings stop
 ambushing you mid-task. It sits in the corner of a monitor you choose, floats above
@@ -11,9 +13,9 @@ gets away from you.
 
 Everything runs on your own Mac. No server, no account to create, no analytics.
 
-**[Homepage](https://edspressomartini.github.io/calendar/)** ·
-**[Privacy policy](https://edspressomartini.github.io/calendar/privacy.html)** ·
-**[Security overview](https://edspressomartini.github.io/calendar/security.html)**
+**[Homepage](https://upnextapp.co.uk/)** ·
+**[Privacy policy](https://upnextapp.co.uk/privacy.html)** ·
+**[Security overview](https://upnextapp.co.uk/security.html)**
 
 ---
 
@@ -28,7 +30,7 @@ Everything runs on your own Mac. No server, no account to create, no analytics.
 When it is published, installing will be:
 
 ```sh
-brew install --cask edspressomartini/tap/pinned-calendar
+brew install --cask edspressomartini/tap/up-next
 ```
 
 and updating will be `brew upgrade`. There is deliberately no auto-updater: Homebrew
@@ -89,7 +91,7 @@ no crash reporting, no auto-updater. The UI is fully sandboxed with no Node and 
 access, and every message it sends to the privileged process is schema-validated and
 origin-checked.
 
-The [security overview](https://edspressomartini.github.io/calendar/security.html) is
+The [security overview](https://upnextapp.co.uk/security.html) is
 written for someone deciding whether to allow this on a managed Mac. The threat model,
 the attack surface table and the reasoning behind each control are in
 [`docs/spec.md`](docs/spec.md) §8.
