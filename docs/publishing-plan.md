@@ -33,7 +33,11 @@ then waiting on a human to agree with an argument about the Public Suffix List.
 
 ---
 
-## Part 1: point the domain at the existing site (half an hour, plus DNS)
+## Part 1: point the domain at the existing site — DONE 2 Oct 2026
+
+Branding verification passed the same afternoon the domain went live. The 24
+hour wait below turned out not to be needed once ownership was real: the
+check passed on the first attempt from the new domain.
 
 The pages do not move host. GitHub Pages keeps serving `site/` from this
 repository exactly as it does now; only the address changes, from a path on a

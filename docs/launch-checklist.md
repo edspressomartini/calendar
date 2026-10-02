@@ -22,12 +22,11 @@ been signed, packaged for distribution, or shown to anyone else.
 
 ## 1. Blocking: Google
 
-- [ ] **Decide Testing vs In production.** Testing expires refresh tokens after 7 days,
-      so the app stops working weekly. Fine for now; not fine for daily use.
-- [ ] **Move to In production.** Requires the homepage and privacy policy already
-      published. They move to `https://upnextapp.co.uk/` once DNS resolves; the
-      Branding form is repointed there at the same time. See `docs/publishing-plan.md`
-      Part 1.
+- [x] **Brand verification passed**, 2 October 2026, on `https://upnextapp.co.uk/`.
+      The consent screen now shows the Up Next name and logo.
+- [ ] **Move to In production.** Testing expires refresh tokens after 7 days, so the
+      app stops working weekly. This does not need verification and should not wait
+      for it.
 - [ ] **Understand the 100-user cap.** An unverified production app is limited to 100
       users _for the lifetime of the project_, and the cap cannot be reset. Irrelevant at
       two users; fatal if this ever goes public from the same project.
