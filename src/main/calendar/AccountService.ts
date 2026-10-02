@@ -1,4 +1,4 @@
-import type { AccountColour, AccountView } from '../../shared/types/account.ts'
+import type { AccountColour, AccountConfig, AccountView } from '../../shared/types/account.ts'
 import type { AccountId, CalendarId, CalendarSummary } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
 import { describeError } from '../infra/errors.ts'
@@ -6,6 +6,7 @@ import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
 import type { SyncScheduler } from '../sync/SyncScheduler.ts'
+import type { CalendarProvider } from './CalendarProvider.ts'
 import type { ProviderFactory } from './ProviderFactory.ts'
 import type { ProviderRegistry } from './ProviderRegistry.ts'
 
@@ -29,14 +30,39 @@ export class AccountService {
     const accounts = this.settings.getAccounts()
 
     for (const account of accounts) {
-      const provider = await this.factory.create(account)
+      const provider = await this.createOrFlag(account)
       if (!provider) {
-        // The credential is gone or this build has no OAuth client: show the
-        // account, but make it clear it needs reconnecting (§7).
-        this.agenda.setStatus(account.id, 'needsReauth')
         continue
       }
       this.registry.set(provider)
+    }
+  }
+
+  /**
+   * Reading a credential can throw, not just come back empty: the Keychain
+   * refuses when the user dismisses its prompt, which happens on the first
+   * launch of a newly signed build. Unhandled, that rejection took the rest
+   * of the accounts down with it. Every failure means the same thing to the
+   * user — this account needs reconnecting (§7) — so it is reported once and
+   * the loop carries on.
+   */
+  private async createOrFlag(account: AccountConfig): Promise<CalendarProvider | null> {
+    try {
+      const provider = await this.factory.create(account)
+      if (provider) {
+        return provider
+      }
+      // The credential is gone or this build has no OAuth client.
+      this.agenda.setStatus(account.id, 'needsReauth')
+      return null
+    } catch (error) {
+      // No account id: they are email addresses (§8.7).
+      this.logger.warn('could not restore account', {
+        provider: account.provider,
+        error: describeError(error),
+      })
+      this.agenda.setStatus(account.id, 'needsReauth')
+      return null
     }
   }
 
