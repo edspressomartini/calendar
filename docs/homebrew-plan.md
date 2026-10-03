@@ -124,11 +124,19 @@ revocable identity. Not in-process hardening.
 
 ### The tap
 
-- [ ] **Create a public repository named `homebrew-tap`** under
-      `edspressomartini`. The `homebrew-` prefix is mandatory; it is what lets
-      people write `edspressomartini/tap` instead of the full name.
+- [x] **Create a public repository named `homebrew-tap`** under
+      `edspressomartini`. Done 3 October 2026. The `homebrew-` prefix is
+      mandatory; it is what lets people write `edspressomartini/tap` instead of
+      the full name.
 
-- [ ] **Add `Casks/up-next.rb`:**
+- [x] **Add `Casks/up-next.rb`**, live at 0.1.0. Two things `brew audit` caught
+      that are worth not repeating: `depends_on macos:` must be `:ventura`, not
+      `">= :ventura"`, which is deprecated and warns three times per install;
+      and the minimum has to match `LSMinimumSystemVersion` in the shipped
+      `Info.plist`, which Electron 44 sets to 13.0. The two `brew audit --new`
+      complaints that remain — repository not notable enough, and the signature
+      failing Gatekeeper — only apply to submissions to the official cask
+      repository, which this is not.
 
       ```ruby
       cask "up-next" do
@@ -180,8 +188,19 @@ revocable identity. Not in-process hardening.
 
       ```sh
       brew tap edspressomartini/tap
+      brew trust edspressomartini/tap
       brew install --cask up-next
       ```
+
+      `brew trust` is required and was not in the original plan. Homebrew 6
+      refuses a third-party cask outright — _"Refusing to load cask … from
+      untrusted tap"_ — until the tap is trusted. It is one more step between
+      a user and the app, and on a managed Mac it may be refused entirely.
+
+      Installing on the machine that built the app proves nothing about
+      Gatekeeper: this Mac has already approved the ad-hoc signature, so the
+      installed copy launched straight away despite carrying the quarantine
+      attribute.
 
       Read the caveats Homebrew prints, then follow them as a user would.
       Confirm the Privacy & Security override actually makes the app open —

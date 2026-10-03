@@ -21,20 +21,19 @@ Everything runs on your own Mac. No server, no account to create, no analytics.
 
 ## Install
 
-> [!IMPORTANT]
-> **Not yet.** The Homebrew tap below does not exist and there is no release to download.
-> Until then the only way to run this is to [build it yourself](#run-it-yourself).
-
-When it is published, installing will be:
-
 ```sh
-brew install --cask edspressomartini/tap/up-next
+brew tap edspressomartini/tap
+brew trust edspressomartini/tap
+brew install --cask up-next
 ```
 
-and updating will be `brew upgrade`. There is deliberately no auto-updater: Homebrew
-verifies a pinned hash for each release, so there is no update server to trust.
+`brew trust` is not optional: since Homebrew 6 a cask from a third-party tap is refused
+until the tap is trusted, and on a managed Mac you may not be able to grant that.
 
-Requirements when it ships: **macOS on Apple silicon**, and a Google account.
+Updating is `brew upgrade`. There is deliberately no auto-updater: Homebrew verifies a
+pinned hash for each release, so there is no update server to trust.
+
+Requirements: **Apple silicon, macOS Ventura or newer**, and a Google account.
 
 > [!WARNING]
 > **macOS will refuse to open it the first time, and after every update.** This project
@@ -44,14 +43,15 @@ Requirements when it ships: **macOS on Apple silicon**, and a Google account.
 > [security overview](https://upnextapp.co.uk/security.html) explains what that does and
 > does not mean.
 
-### What is left before that works
+### Where this has got to
 
-| Step                                  | Status                                       |
-| ------------------------------------- | -------------------------------------------- |
-| The tap repository and cask           | Not created                                  |
-| First tagged release                  | None yet; the release workflow has never run |
-| Google OAuth consent screen published | In progress                                  |
-| Apple Developer Program               | Declined; see the warning above              |
+| Step                                | Status                                                   |
+| ----------------------------------- | -------------------------------------------------------- |
+| The tap repository and cask         | Live, `edspressomartini/homebrew-tap`                    |
+| First tagged release                | `v0.1.0`                                                 |
+| Google OAuth brand verification     | Passed 2 October 2026                                    |
+| Google sensitive-scope verification | Not submitted; sign-in still warns the app is unverified |
+| Apple Developer Program             | Declined; see the warning above                          |
 
 The full list, in dependency order, is in [`docs/launch-checklist.md`](docs/launch-checklist.md).
 
