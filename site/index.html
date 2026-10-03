@@ -28,6 +28,36 @@
         ambushing you mid-task.
       </p>
 
+      <h2>Install</h2>
+      <p>With <a href="https://brew.sh/">Homebrew</a>:</p>
+      <pre><code>brew tap edspressomartini/tap
+brew trust edspressomartini/tap
+brew install --cask up-next</code></pre>
+      <p>
+        Without it,
+        <a href="https://github.com/edspressomartini/calendar/releases/latest"
+          >download the latest DMG</a
+        >
+        and drag Up&nbsp;Next to your Applications folder. Homebrew is only worth it for the
+        upgrades; the app is identical either way.
+      </p>
+      <div class="note">
+        <p>
+          <strong>macOS will refuse to open it the first time.</strong> After it is blocked, go to
+          System&nbsp;Settings → Privacy&nbsp;&amp;&nbsp;Security, scroll down and click
+          <strong>Open&nbsp;Anyway</strong>. You will have to do this once per version, including
+          after an upgrade.
+        </p>
+        <p>
+          This is because the project has no Apple Developer Program membership, so builds are
+          signed but not notarised by Apple. The
+          <a href="./security.html">security overview</a> explains exactly what that does and does
+          not mean, and how to check the download yourself before trusting it. On a Mac managed by
+          your employer the override may be unavailable, in which case your IT team has to allow the
+          app.
+        </p>
+      </div>
+
       <h2>What it does</h2>
       <ul>
         <li>Shows today&rsquo;s events in a compact panel on the monitor you choose.</li>
@@ -61,7 +91,7 @@
       </p>
 
       <h2>Requirements</h2>
-      <p>macOS on Apple silicon, and a Google account.</p>
+      <p>Apple silicon, macOS Ventura or newer, and a Google account.</p>
 
       <footer>
         <p>
