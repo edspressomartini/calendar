@@ -1,20 +1,86 @@
+/* Poppins is served from this origin, not from Google's CDN. A page that
+   promises the app talks to nobody should not make the browser announce every
+   visit to a third party to fetch a typeface. Latin subset only, 24 KB total.
+   SIL Open Font License — see fonts/OFL.txt. */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/poppins-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/poppins-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/poppins-700.woff2') format('woff2');
+}
+
+/* The page palette is the app icon's, measured from the artwork. The widget
+   recreation below uses the app's own tokens from
+   src/renderer/common/styles/theme.css, so the two cannot drift apart. */
 :root {
-  color-scheme: light dark;
-  --bg: #ffffff;
+  --sky: #58c6f8;
+  --sky-deep: #0471aa;
+  --amber: #fbbf24;
+
+  --bg: #f4f9fd;
+  --surface: #ffffff;
   --text: #0f172a;
-  --muted: #64748b;
-  --accent: #0284c7;
-  --rule: #e2e8f0;
+  --muted: #566677;
+  --accent: #0471aa;
+  --rule: #dae7f1;
+  --glow: rgb(88 198 248 / 22%);
+  --shadow: 0 1.75rem 4rem rgb(4 113 170 / 16%);
+
+  /* app tokens, light */
+  --app-bg: #ffffff;
+  --app-subtle: #f8fafc;
+  --app-border: #e2e8f0;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-accent: #0ea5e9;
+  --app-urgent: #ef4444;
+  --app-live: #10b981;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f172a;
+    --bg: #080e1a;
+    --surface: #111b2d;
     --text: #f1f5f9;
-    --muted: #94a3b8;
-    --accent: #38bdf8;
-    --rule: #334155;
+    --muted: #93a4b8;
+    --accent: #58c6f8;
+    --rule: #22304a;
+    --glow: rgb(4 113 170 / 35%);
+    --shadow: 0 1.75rem 4rem rgb(0 0 0 / 55%);
+
+    /* app tokens, dark */
+    --app-bg: #0f172a;
+    --app-subtle: #1e293b;
+    --app-border: #334155;
+    --app-text: #f1f5f9;
+    --app-muted: #94a3b8;
+    --app-accent: #38bdf8;
+    --app-urgent: #f87171;
+    --app-live: #34d399;
   }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -22,72 +88,551 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family:
+    'Poppins',
     system-ui,
     -apple-system,
-    'Helvetica Neue',
     sans-serif;
-  line-height: 1.6;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
-  max-width: 44rem;
+  max-width: 60rem;
   margin: 0 auto;
-  padding: 3rem 1.5rem 5rem;
-}
-
-h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-/* The wordmark in the artwork is near-black, so it is never used on a page
-   that follows the system colour scheme. The mark carries its own background. */
-.masthead {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-h2 {
-  margin-top: 2.5rem;
-  font-size: 1.125rem;
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 0.35rem;
-}
-
-.lede {
-  font-size: 1.05rem;
-  color: var(--muted);
+  padding: 1.75rem 1.5rem 5rem;
 }
 
 a {
   color: var(--accent);
 }
 
-code {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.9em;
+/* ---------- masthead ---------- */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 3rem;
 }
+
+.masthead img {
+  border-radius: 0.5rem;
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  display: grid;
+  gap: 3.5rem;
+  align-items: center;
+  margin-bottom: 6rem;
+}
+
+@media (width >= 56rem) {
+  .hero {
+    grid-template-columns: 1fr 23rem;
+    gap: 4rem;
+  }
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0 0 1.1rem;
+}
+
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--sky), var(--sky-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lede {
+  font-size: 1.08rem;
+  color: var(--muted);
+  margin: 0 0 2rem;
+  max-width: 33rem;
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.button {
+  display: inline-block;
+  padding: 0.7rem 1.45rem;
+  border-radius: 0.7rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  background: linear-gradient(120deg, var(--sky), var(--sky-deep));
+  color: #ffffff;
+  box-shadow: 0 0.6rem 1.4rem rgb(4 113 170 / 32%);
+}
+
+.button--quiet {
+  background: none;
+  box-shadow: none;
+  color: var(--accent);
+  border: 1px solid var(--rule);
+}
+
+.cta-note {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+/* ---------- the widget, recreated ---------- */
+
+/* Drawn in CSS rather than screenshotted. A screenshot of a calendar app is a
+   screenshot of somebody's actual day, and it goes stale the moment the UI
+   changes. This mirrors the real components: TitleBar, NextUpBar, DayTimeline
+   and TodoPanel, using the app's own palette. */
+.stage {
+  position: relative;
+  padding: 2.5rem 0;
+}
+
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 50% at 50% 45%, var(--glow), transparent 70%);
+  filter: blur(0.5rem);
+}
+
+/* The countdown the app puts in the real menu bar, shown where it actually
+   lives rather than as a floating pill. */
+.menubar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 1.1rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 0.45rem;
+  background: rgb(15 23 42 / 78%);
+  color: #f1f5f9;
+  font-size: 0.62rem;
+  backdrop-filter: blur(0.5rem);
+}
+
+.menubar .apple {
+  opacity: 0.75;
+}
+
+.menubar .spacer {
+  flex: 1;
+}
+
+.menubar svg {
+  flex: none;
+}
+
+.menubar .countdown {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.25rem;
+  background: rgb(255 255 255 / 12%);
+}
+
+.widget {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: 0.65rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.widget-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.widget-clock {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.widget-day {
+  flex: 1;
+  color: var(--app-muted);
+}
+
+.widget-chip {
+  border: 1px solid var(--app-border);
+  border-radius: 0.25rem;
+  padding: 0 0.3rem;
+  font-size: 9px;
+  color: var(--app-muted);
+}
+
+.widget-chip--on {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.widget-next {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+  background: rgb(239 68 68 / 10%);
+}
+
+.widget-next .dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--app-accent);
+  flex: none;
+}
+
+.widget-next .label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.widget-next .time {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-urgent);
+}
+
+.widget-next .join {
+  border: 1px solid var(--app-border);
+  border-radius: 0.2rem;
+  padding: 0 0.3rem;
+  font-size: 10px;
+  color: var(--app-accent);
+}
+
+/* the hour grid */
+
+.timeline {
+  position: relative;
+  display: flex;
+  height: 13.5rem;
+  padding: 0.35rem 0.5rem 0.35rem 0;
+}
+
+.gutter {
+  width: 2.6rem;
+  flex: none;
+  position: relative;
+}
+
+.gutter span {
+  position: absolute;
+  right: 0.45rem;
+  transform: translateY(-50%);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 10px;
+  color: var(--app-muted);
+}
+
+.tracks {
+  position: relative;
+  flex: 1;
+}
+
+.tracks .rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--app-border);
+  opacity: 0.55;
+}
+
+.event {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 0.1rem 0.35rem;
+  border-left: 2px solid var(--app-border);
+  border-radius: 0.2rem;
+  background: var(--app-subtle);
+  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.event time {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 10px;
+  color: var(--app-muted);
+  flex: none;
+}
+
+.event span {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event--past {
+  opacity: 0.45;
+}
+
+.event--now {
+  background: rgb(239 68 68 / 14%);
+  border-left-color: var(--app-urgent);
+}
+
+.nowline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.nowline .bead {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--app-urgent);
+  margin-left: -0.15rem;
+  flex: none;
+}
+
+.nowline .wire {
+  flex: 1;
+  height: 1px;
+  background: var(--app-urgent);
+}
+
+.nowline .stamp {
+  background: var(--app-urgent);
+  color: #ffffff;
+  border-radius: 0.2rem;
+  padding: 0 0.25rem;
+  margin-left: 0.25rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 9px;
+}
+
+/* the TODO half */
+
+.todos {
+  border-top: 1px solid var(--app-border);
+  padding: 0.3rem 0 0.45rem;
+}
+
+.todos header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem 0.15rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.todos header .count {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0;
+}
+
+.todos header .spacer {
+  flex: 1;
+}
+
+.todos header .hint {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+
+.todo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0.75rem;
+}
+
+.todo .box {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.15rem;
+  flex: none;
+}
+
+.todo--done {
+  color: var(--app-muted);
+}
+
+.todo--done .text {
+  text-decoration: line-through;
+}
+
+.todo--done .box {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.todo .late {
+  margin-left: auto;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 9px;
+  color: var(--app-urgent);
+}
+
+.widget-status {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--app-border);
+  padding: 0.25rem 0.75rem;
+  color: var(--app-muted);
+}
+
+.widget-status .spacer {
+  flex: 1;
+}
+
+.caption {
+  position: relative;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 1rem 0 0;
+}
+
+/* ---------- sections ---------- */
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.6rem;
+}
+
+.section {
+  margin-bottom: 5rem;
+}
+
+.section > p {
+  color: var(--muted);
+  margin-top: 0;
+  max-width: 42rem;
+}
+
+.cards {
+  display: grid;
+  gap: 1rem;
+  /* 20rem rather than something smaller, so four cards land as a tidy 2×2
+     instead of three across and one orphan. */
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  margin-top: 1.9rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 0.85rem;
+  padding: 1.35rem 1.4rem;
+}
+
+.card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+/* ---------- install ---------- */
 
 pre {
-  background: var(--rule);
-  border-radius: 0.4rem;
-  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 0.7rem;
+  padding: 1rem 1.1rem;
   overflow-x: auto;
+  margin: 0 0 1rem;
 }
 
-/* The Gatekeeper refusal looks like a broken download if nobody warns you,
-   so the warning has to be impossible to skim past. */
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.88em;
+}
+
 .note {
-  border-left: 3px solid var(--accent);
-  padding: 0.1rem 0 0.1rem 1rem;
-  margin: 1.5rem 0;
+  border-left: 3px solid var(--amber);
+  padding: 0.1rem 0 0.1rem 1.1rem;
+  margin: 1.75rem 0 0;
   color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.note strong {
+  color: var(--text);
 }
 
 footer {
   margin-top: 3rem;
-  padding-top: 1rem;
+  padding-top: 1.25rem;
   border-top: 1px solid var(--rule);
   color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- the long documents share this sheet ---------- */
+
+/* privacy.html and security.html are documents, not a landing page: they want
+   a reading measure and rules under the headings. */
+.prose {
+  max-width: 44rem;
+  padding-top: 3rem;
+}
+
+.prose h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.prose h2 {
+  margin-top: 2.5rem;
+  font-size: 1.125rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.35rem;
 }

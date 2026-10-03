@@ -3,95 +3,247 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Up Next</title>
+    <title>Up Next — today&rsquo;s calendar, always on screen</title>
     <meta
       name="description"
-      content="Up Next is a small always-on-top macOS widget that shows today's calendar in your peripheral vision."
+      content="A native macOS widget that keeps today's meetings and your TODO list on screen above everything else. No menu to open, no tab to go and find."
     />
     <link rel="canonical" href="https://upnextapp.co.uk/" />
     <link rel="icon" href="./icon.png" type="image/png" />
-    <meta property="og:title" content="Up Next" />
+    <meta property="og:title" content="Up Next — today&rsquo;s calendar, always on screen" />
     <meta
       property="og:description"
-      content="A small always-on-top macOS widget that shows today's calendar in your peripheral vision."
+      content="A native macOS widget that keeps today's meetings and your TODO list on screen above everything else."
     />
     <meta property="og:image" content="https://upnextapp.co.uk/social-preview.png" />
     <meta property="og:url" content="https://upnextapp.co.uk/" />
     <meta property="og:type" content="website" />
+    <link rel="preload" href="./fonts/poppins-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main>
-      <h1 class="masthead"><img src="./icon.png" alt="" width="56" height="56" />Up Next</h1>
-      <p class="lede">
-        A small always-on-top macOS widget that shows today&rsquo;s calendar, so meetings stop
-        ambushing you mid-task.
-      </p>
+      <p class="masthead"><img src="./icon.png" alt="" width="32" height="32" />Up Next</p>
 
-      <h2>Install</h2>
-      <p>With <a href="https://brew.sh/">Homebrew</a>:</p>
-      <pre><code>brew tap edspressomartini/tap
+      <section class="hero">
+        <div>
+          <h1>Your day, <em>always on screen</em>.</h1>
+          <p class="lede">
+            A real macOS window that floats above whatever you are working in, showing what is
+            coming and what you still owe people. Nothing to open. Nothing to go and check.
+          </p>
+          <div class="cta">
+            <a class="button" href="#install">Install for macOS</a>
+            <a
+              class="button button--quiet"
+              href="https://github.com/edspressomartini/calendar"
+              rel="noopener noreferrer"
+              >View the source</a
+            >
+            <p class="cta-note">Free and open source. Apple silicon, macOS Ventura or newer.</p>
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="menubar" aria-hidden="true">
+            <span class="apple">Figma</span>
+            <span class="spacer"></span>
+            <span class="countdown">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="2" y="3" width="7" height="2" rx="1" />
+                <rect x="2" y="7" width="10" height="2" rx="1" />
+                <rect x="2" y="11" width="5" height="2" rx="1" />
+              </svg>
+              Design review · 12m
+            </span>
+          </div>
+
+          <div class="widget" aria-hidden="true">
+            <div class="widget-title">
+              <span class="widget-clock">10:48</span>
+              <span class="widget-day">Thursday 8 October</span>
+              <span class="widget-chip widget-chip--on">Pin</span>
+              <span class="widget-chip">Hide</span>
+            </div>
+
+            <div class="widget-next">
+              <span class="dot"></span>
+              <span class="label">Design review</span>
+              <span class="time">in 12m</span>
+              <span class="join">Join</span>
+            </div>
+
+            <div class="timeline">
+              <div class="gutter">
+                <span style="top: 0%">09:00</span>
+                <span style="top: 12.5%">10:00</span>
+                <span style="top: 25%">11:00</span>
+                <span style="top: 37.5%">12:00</span>
+                <span style="top: 50%">13:00</span>
+                <span style="top: 62.5%">14:00</span>
+                <span style="top: 75%">15:00</span>
+                <span style="top: 87.5%">16:00</span>
+                <span style="top: 100%">17:00</span>
+              </div>
+
+              <div class="tracks">
+                <i class="rule" style="top: 0%"></i>
+                <i class="rule" style="top: 12.5%"></i>
+                <i class="rule" style="top: 25%"></i>
+                <i class="rule" style="top: 37.5%"></i>
+                <i class="rule" style="top: 50%"></i>
+                <i class="rule" style="top: 62.5%"></i>
+                <i class="rule" style="top: 75%"></i>
+                <i class="rule" style="top: 87.5%"></i>
+                <i class="rule" style="top: 100%"></i>
+
+                <div class="event event--past" style="top: 6.25%; height: 6.25%">
+                  <time>09:30</time><span>Standup</span>
+                </div>
+                <div class="event event--now" style="top: 25%; height: 12.5%">
+                  <time>11:00</time><span>Design review</span>
+                </div>
+                <div class="event" style="top: 62.5%; height: 6.25%">
+                  <time>14:00</time><span>1:1 with Priya</span>
+                </div>
+                <div class="event" style="top: 87.5%; height: 9.3%">
+                  <time>16:00</time><span>Release retro</span>
+                </div>
+
+                <div class="nowline" style="top: 22.5%">
+                  <span class="bead"></span><span class="wire"></span
+                  ><span class="stamp">10:48</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="todos">
+              <header>
+                Todo <span class="count">3</span><span class="spacer"></span>
+                <span class="hint">⌃⌥Space</span>
+              </header>
+              <p class="todo todo--done">
+                <span class="box"></span><span class="text">Reply to the audit</span>
+              </p>
+              <p class="todo">
+                <span class="box"></span><span class="text">Write up the migration plan</span>
+              </p>
+              <p class="todo">
+                <span class="box"></span><span class="text">Chase the invoice</span>
+                <span class="late">2d</span>
+              </p>
+              <p class="todo"><span class="box"></span><span class="text">Book the venue</span></p>
+            </div>
+
+            <div class="widget-status">
+              <span>synced just now</span><span class="spacer"></span><span>Refresh</span>
+            </div>
+          </div>
+
+          <p class="caption">The widget, drawn to scale. Nobody&rsquo;s real diary was harmed.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Why not just use the menu bar?</h2>
+        <p>
+          Most calendar apps for the Mac live behind a click. They put an icon up top, and you find
+          out what is next by going and asking. That works right until you are concentrating, which
+          is exactly when it stops working.
+        </p>
+        <div class="cards">
+          <div class="card">
+            <h3>It is a window, not a menu</h3>
+            <p>
+              A real panel on the monitor you choose, floating above full-screen apps and present on
+              every Space. It never takes focus, so it cannot interrupt what you are typing.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Your TODO list lives beside it</h3>
+            <p>
+              Tasks sit under the day, added from anywhere with a keyboard shortcut, and roll
+              forward to tomorrow when you do not get to them. One glance covers both halves of
+              being on top of your day.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Built for screen sharing</h3>
+            <p>
+              Privacy mode blanks every meeting and task title before you present, and the widget
+              can withhold itself from screen capture entirely.
+            </p>
+          </div>
+          <div class="card">
+            <h3>It talks to nobody</h3>
+            <p>
+              No server, no account, no analytics, no telemetry. Just your Mac and Google, over
+              read-only access it could not use to change anything if it wanted to.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <h2>Install</h2>
+        <p>With <a href="https://brew.sh/">Homebrew</a>:</p>
+        <pre><code>brew tap edspressomartini/tap
 brew trust edspressomartini/tap
 brew install --cask up-next</code></pre>
-      <p>
-        Without it,
-        <a href="https://github.com/edspressomartini/calendar/releases/latest"
-          >download the latest DMG</a
-        >
-        and drag Up&nbsp;Next to your Applications folder. Homebrew is only worth it for the
-        upgrades; the app is identical either way.
-      </p>
-      <div class="note">
         <p>
-          <strong>macOS will refuse to open it the first time.</strong> After it is blocked, go to
-          System&nbsp;Settings → Privacy&nbsp;&amp;&nbsp;Security, scroll down and click
-          <strong>Open&nbsp;Anyway</strong>. You will have to do this once per version, including
-          after an upgrade.
+          Without it,
+          <a href="https://github.com/edspressomartini/calendar/releases/latest"
+            >download the latest DMG</a
+          >
+          and drag Up&nbsp;Next to your Applications folder. Homebrew is only worth it for the
+          upgrades; the app is identical either way.
         </p>
-        <p>
-          This is because the project has no Apple Developer Program membership, so builds are
-          signed but not notarised by Apple. The
-          <a href="./security.html">security overview</a> explains exactly what that does and does
-          not mean, and how to check the download yourself before trusting it. On a Mac managed by
-          your employer the override may be unavailable, in which case your IT team has to allow the
-          app.
-        </p>
-      </div>
+        <div class="note">
+          <p>
+            <strong>macOS will refuse to open it the first time.</strong> After it is blocked, go to
+            System&nbsp;Settings → Privacy&nbsp;&amp;&nbsp;Security, scroll down and click
+            <strong>Open&nbsp;Anyway</strong>. You will have to do this once per version, including
+            after an upgrade.
+          </p>
+          <p>
+            This is because the project has no Apple Developer Program membership, so builds are
+            signed but not notarised by Apple. The
+            <a href="./security.html">security overview</a> explains exactly what that does and does
+            not mean, and how to check the download yourself before trusting it. On a Mac managed by
+            your employer the override may be unavailable, in which case your IT team has to allow
+            the app.
+          </p>
+        </div>
+      </section>
 
-      <h2>What it does</h2>
-      <ul>
-        <li>Shows today&rsquo;s events in a compact panel on the monitor you choose.</li>
-        <li>
-          Floats above full-screen apps and appears on every Space, without stealing focus from
-          whatever you are typing in.
-        </li>
-        <li>Counts down to your next meeting in the menu bar. There is no Dock icon.</li>
-        <li>Notifies you shortly before a meeting starts, and can open the meeting link.</li>
-        <li>Shows a work and a personal Google account side by side, or merged into one stream.</li>
-        <li>
-          Keeps a TODO list beside the day, added from anywhere with a keyboard shortcut and rolled
-          forward to the next day when you do not get to it.
-        </li>
-        <li>Has a privacy mode that hides meeting and TODO titles before screen sharing.</li>
-      </ul>
-
-      <h2>What it reads</h2>
-      <p>
-        Up Next asks Google for read-only access to your events and your list of calendars, and
-        nothing else. It cannot create, edit or delete anything, and it has no access to Gmail,
-        Drive or Contacts.
-      </p>
-
-      <h2>Where your data goes</h2>
-      <p>
-        Nowhere. The app runs entirely on your Mac and talks only to Google. There is no server, no
-        account to create, and no analytics. See the
-        <a href="./privacy.html">privacy policy</a> for the detail, or the
-        <a href="./security.html">security overview</a> if you are the person who has to approve it.
-      </p>
-
-      <h2>Requirements</h2>
-      <p>Apple silicon, macOS Ventura or newer, and a Google account.</p>
+      <section class="section">
+        <h2>The rest of it</h2>
+        <div class="cards">
+          <div class="card">
+            <h3>Counts down in the menu bar</h3>
+            <p>
+              The next meeting and how long you have, with no Dock icon cluttering things up. It can
+              show only the countdown if the titles are nobody else&rsquo;s business.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Two accounts at once</h3>
+            <p>Work and personal side by side, or merged into a single stream. Your choice.</p>
+          </div>
+          <div class="card">
+            <h3>Gets you into the call</h3>
+            <p>A nudge shortly before a meeting starts, and one click to open the link.</p>
+          </div>
+          <div class="card">
+            <h3>Reads almost nothing</h3>
+            <p>
+              Your events and your list of calendars. No Gmail, no Drive, no Contacts, and no
+              ability to create, edit or delete anything. See the
+              <a href="./privacy.html">privacy policy</a>.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <footer>
         <p>
