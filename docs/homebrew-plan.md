@@ -197,10 +197,11 @@ revocable identity. Not in-process hardening.
       untrusted tap"_ — until the tap is trusted. It is one more step between
       a user and the app, and on a managed Mac it may be refused entirely.
 
-      Installing on the machine that built the app proves nothing about
-      Gatekeeper: this Mac has already approved the ad-hoc signature, so the
-      installed copy launched straight away despite carrying the quarantine
-      attribute.
+      Having built the app on the same Mac does **not** pre-approve it. The
+      tap install on 3 October was refused exactly as a stranger's would be:
+      `spctl -a -t exec` rejects it, the quarantine attribute is set, and the
+      app does not start. Approval is recorded against the signature's code
+      hash, so it is needed once per build — every release re-prompts.
 
       Read the caveats Homebrew prints, then follow them as a user would.
       Confirm the Privacy & Security override actually makes the app open —
