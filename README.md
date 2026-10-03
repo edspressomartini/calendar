@@ -30,6 +30,10 @@ brew install --cask up-next
 `brew trust` is not optional: since Homebrew 6 a cask from a third-party tap is refused
 until the tap is trusted, and on a managed Mac you may not be able to grant that.
 
+No Homebrew? [Download the latest DMG](https://github.com/edspressomartini/calendar/releases/latest)
+and drag Up Next to Applications. Same app. For a work Mac, or for colleagues who would
+rather build it themselves, see [distribution routes](docs/distribution-routes.md).
+
 Updating is `brew upgrade`. There is deliberately no auto-updater: Homebrew verifies a
 pinned hash for each release, so there is no update server to trust.
 
