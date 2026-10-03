@@ -56,9 +56,14 @@ dmg:
   # release URL as %20 and into every cask that has to quote it.
   artifactName: up-next-${version}-${arch}.${ext}
 
-# Where the release workflow uploads the DMG. The app itself never checks for
-# updates: there is no electron-updater and no update server. Homebrew is the
-# update channel, and the cask pins a SHA-256 per release (§8.8).
+# Declared so electron-builder knows where the DMG is destined, but it never
+# uploads: the release workflow runs --publish never and creates the release
+# with `gh` afterwards, because letting electron-builder do it raced the DMG
+# against its own blockmap and silently dropped the DMG.
+#
+# The app itself never checks for updates — no electron-updater, no update
+# server. Homebrew is the update channel, and the cask pins a SHA-256 per
+# release (§8.8).
 publish:
   provider: github
   releaseType: release
