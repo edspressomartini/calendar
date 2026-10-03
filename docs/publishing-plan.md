@@ -140,7 +140,8 @@ a shortcut — it is a cask that stops working.
 14. **Restore the real signing settings** in `electron-builder.yml`: `identity:
 null`, `hardenedRuntime: true`, `notarize: true`. A Developer ID gives
     every nested binary the same Team ID, which is what ad-hoc signing cannot
-    do and why the hardened runtime is off today (docs/homebrew-plan.md).
+    do, and why the disable-library-validation entitlement is needed today
+    (docs/homebrew-plan.md).
 
 15. **Run the release workflow end to end on a throwaway tag.** It has never
     executed. Expect to fix something.

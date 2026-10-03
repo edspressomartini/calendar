@@ -219,10 +219,15 @@
           load code from outside the validated archive.
         </li>
         <li>
-          <strong>Minimal entitlements</strong> &mdash; <code>allow-jit</code> only, which V8
-          requires. Notably absent is <code>disable-library-validation</code>, which would reopen a
-          code-injection path. The code signature is also what the Keychain uses to decide the app
-          is entitled to its own key.
+          <strong>The hardened runtime is enabled</strong>, on the app and on every helper process.
+          Among other things it blocks <code>DYLD_INSERT_LIBRARIES</code>, the usual way code is
+          injected into a running macOS application, and it prevents a debugger attaching.
+          Entitlements are limited to <code>allow-jit</code>, which V8 requires, and
+          <code>disable-library-validation</code>, which a build signed without an Apple Developer
+          ID cannot start without. Deliberately absent:
+          <code>allow-dyld-environment-variables</code> and
+          <code>allow-unsigned-executable-memory</code>. The code signature is also what the
+          Keychain uses to decide the app is entitled to its own key.
         </li>
         <li>
           <strong>Privacy mode</strong> replaces meeting and TODO titles before they are drawn, in
@@ -287,15 +292,14 @@
             >Builds are signed ad-hoc, not with an Apple Developer ID, and are not
             notarised.</strong
           >
-          There is no Apple Developer Program membership behind this project. Two consequences, both
-          real. macOS Gatekeeper will refuse to open the app until it is allowed by hand in System
-          Settings &rarr; Privacy &amp; Security, on install and again after each update. And the
-          hardened runtime is switched off, because it enforces library validation that an ad-hoc
-          signature cannot satisfy &mdash; the app would refuse to load its own framework. The
-          alternative, the <code>disable-library-validation</code> entitlement, would be worse: it
-          reopens the code-injection path the runtime exists to close. So that protection is absent
-          rather than faked. If this matters for your environment, it is the honest reason to say
-          no, and it is fixed by a certificate rather than by a code change.
+          There is no Apple Developer Program membership behind this project. macOS Gatekeeper
+          therefore refuses to open the app until it is allowed by hand in System Settings &rarr;
+          Privacy &amp; Security, on install and again after each update. What that costs you is
+          Apple&rsquo;s malware scan of the binary and a named, revocable developer identity &mdash;
+          a genuine loss, and the honest reason to decline if your environment requires either. What
+          it does not cost is the hardened runtime, which is enabled; the single protection relaxed
+          so an ad-hoc build can start is library validation, described under Hardening above. A
+          certificate restores both, with no change to the code.
         </li>
       </ul>
 

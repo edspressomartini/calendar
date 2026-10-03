@@ -34,16 +34,21 @@ The `--no-quarantine` escape hatch is
 [being removed from `brew`](https://github.com/Homebrew/brew/issues/20755)
 precisely to stop taps doing this, so do not plan around it.
 
-**What it costs the app itself.** Builds are ad-hoc signed (`identity: '-'`),
-which an unsigned arm64 binary needs in order to execute at all. The hardened
-runtime has to come off with it: it enforces library validation, and an ad-hoc
-signature has no Team ID for the app's own Electron framework to match. The
-only way to keep the runtime would be the `disable-library-validation`
-entitlement, which reopens the code-injection path the runtime exists to close
-— worse than not having it. See `docs/spec.md` §8.8.
+**What it costs the app itself: less than first thought.** Builds are ad-hoc
+signed (`identity: '-'`), which an unsigned arm64 binary needs in order to
+execute at all. The **hardened runtime stays on** — verified on the packaged
+app, `flags=0x10002(adhoc,runtime)`. It needs the
+`disable-library-validation` entitlement to tolerate a signature with no Team
+ID, which relaxes one protection and keeps the rest, including the DYLD
+environment variable restrictions that block `DYLD_INSERT_LIBRARIES`. See
+`docs/spec.md` §8.8.
 
-**Reversing this is three lines**, the day a certificate exists: `identity:
-null`, `hardenedRuntime: true`, `notarize: true`.
+So the loss is notarisation: Apple's malware scan of the binary, and a named
+revocable identity. Not in-process hardening.
+
+**Reversing this is two lines plus a deletion**, the day a certificate exists:
+`identity: null`, `notarize: true`, and drop `disable-library-validation` from
+`build/entitlements.mac.plist`.
 
 ## What is still required
 

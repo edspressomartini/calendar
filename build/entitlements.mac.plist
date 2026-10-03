@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Minimal hardened-runtime entitlements (docs/spec.md §8.8).
+  Hardened-runtime entitlements (docs/spec.md §8.8).
 
-  V8 needs JIT. Nothing else is granted: no disable-library-validation and no
-  allow-dyld-environment-variables, because each one reopens a code-injection
-  path. Add an entitlement only if a signed build genuinely fails without it,
-  and record the reason in the spec.
+  allow-jit: V8 requires it.
+
+  disable-library-validation: required only because the build is signed
+  ad-hoc. Library validation demands that every loaded library share the
+  app's Team ID, and an ad-hoc signature has no Team ID at all, so the app
+  cannot load its own Electron framework without this. It relaxes exactly one
+  hardened-runtime protection. Everything else the runtime enforces stays on,
+  most importantly the DYLD environment variable restrictions that block
+  DYLD_INSERT_LIBRARIES, and the restriction on attaching a debugger.
+
+  Delete this entitlement the day a Developer ID exists; it is not needed with
+  a real certificate.
+
+  Still deliberately absent: allow-dyld-environment-variables, which really
+  would open a code-injection path, and allow-unsigned-executable-memory.
+  Add an entitlement only if a signed build genuinely fails without it, and
+  record the reason in the spec.
 -->
 <plist version="1.0">
   <dict>
     <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
   </dict>
 </plist>

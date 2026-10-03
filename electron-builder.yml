@@ -32,15 +32,16 @@ mac:
   # Ad-hoc. There is no Apple Developer account, so there is no Developer ID
   # to sign with, and an unsigned arm64 binary will not execute at all.
   #
-  # The hardened runtime has to come off with it: it enforces library
-  # validation, and an ad-hoc signature carries no Team ID for the app's own
-  # Electron framework to match, so the app refuses to load it. The other way
-  # out would be the disable-library-validation entitlement, which reopens the
-  # code-injection path §8.8 closes — worse than not enabling the runtime at
-  # all. Restore `identity: null`, `hardenedRuntime: true` and `notarize: true`
-  # the day a Developer ID exists (docs/homebrew-plan.md).
+  # The hardened runtime stays on. It needs the disable-library-validation
+  # entitlement to tolerate an ad-hoc signature, which has no Team ID for the
+  # app's own Electron framework to match — see build/entitlements.mac.plist.
+  # That relaxes one protection and keeps the rest, which is strictly better
+  # than turning the runtime off and losing all of them.
+  #
+  # The day a Developer ID exists: `identity: null`, `notarize: true`, and
+  # delete the entitlement (docs/homebrew-plan.md).
   identity: '-'
-  hardenedRuntime: false
+  hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
