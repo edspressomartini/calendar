@@ -33,6 +33,7 @@ export class PreferencesService {
     nativeTheme.themeSource = settings.theme
     this.loginItem.apply(settings.launchAtLogin)
     this.widget.applyAlwaysOnTop(settings.alwaysOnTop)
+    this.widget.applyScreenShareVisibility(settings.hideFromScreenShare)
     this.widget.applyTextScale(settings.widgetTextScale)
     this.shortcuts.apply(settings.quickAddShortcut)
   }
@@ -49,6 +50,9 @@ export class PreferencesService {
     }
     if (patch.alwaysOnTop !== undefined) {
       this.widget.applyAlwaysOnTop(updated.alwaysOnTop)
+    }
+    if (patch.hideFromScreenShare !== undefined) {
+      this.widget.applyScreenShareVisibility(updated.hideFromScreenShare)
     }
     if (patch.syncIntervalMinutes !== undefined) {
       this.scheduler.reconcile()

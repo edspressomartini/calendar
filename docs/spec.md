@@ -541,7 +541,7 @@ All of this lives in `windows/windowSecurity.ts` and is applied to every window 
 - **No permissions:** `setPermissionRequestHandler` and `setPermissionCheckHandler` deny everything — camera, microphone, geolocation, clipboard, web notifications. Native notifications come from main.
 - **Calendar content is untrusted text.** It's rendered only as React text nodes: `dangerouslySetInnerHTML` is banned by an ESLint `no-restricted-syntax` rule, and nothing renders HTML or Markdown from events.
 - **DevTools are unavailable in production builds** (`devTools: false`).
-- **Screen sharing:** the widget still calls `setContentProtection(true)`, but Electron's own docs say apps that capture through macOS ScreenCaptureKit — most current screen-share tools — capture the window anyway. Treat it as a bonus, not a control. The control is privacy mode (§6), which replaces titles with "Busy" in main before they reach the widget, the menu bar or a notification.
+- **Screen sharing:** the widget calls `setContentProtection` with the **Hide from screen sharing** setting, on by default. Electron's own docs say apps that capture through macOS ScreenCaptureKit — most current screen-share tools — capture the window anyway, so treat it as a bonus, not a control. The control is privacy mode (§6), which replaces titles with "Busy" in main before they reach the widget, the menu bar or a notification. The setting exists because content protection also hides the panel from the owner: from a screen recording they are making on purpose, and from anyone they are deliberately demonstrating it to. Defaulting it on, and defaulting it on again for files written before it existed, means nobody has their day shared by upgrading.
 
 ### 8.5 IPC boundary
 

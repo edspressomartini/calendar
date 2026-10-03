@@ -56,6 +56,17 @@ describe('parseSettings', () => {
     expect(parsed.accounts).toHaveLength(1)
   })
 
+  it('keeps the widget hidden from capture when upgrading from before the setting', () => {
+    const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
+    delete older['hideFromScreenShare']
+
+    const parsed = parseSettings(older)
+
+    // Defaulting the other way would put someone's day on a shared screen
+    // because they upgraded.
+    expect(parsed.hideFromScreenShare).toBe(true)
+  })
+
   it('replaces one bad value without resetting everything around it', () => {
     const tampered = {
       ...DEFAULT_SETTINGS,

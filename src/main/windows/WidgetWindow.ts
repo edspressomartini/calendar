@@ -83,7 +83,7 @@ export class WidgetWindow {
 
     // Best effort only: ScreenCaptureKit ignores it, which is why privacy mode
     // exists (§8.4).
-    window.setContentProtection(true)
+    window.setContentProtection(settings.hideFromScreenShare)
     window.setAlwaysOnTop(settings.alwaysOnTop, 'floating')
 
     window.on('moved', () => {
@@ -139,6 +139,14 @@ export class WidgetWindow {
   /** Persisting is PreferencesService's job; this only moves the window. */
   applyAlwaysOnTop(pinned: boolean): void {
     this.window?.setAlwaysOnTop(pinned, 'floating')
+  }
+
+  /**
+   * Hiding the panel from capture is the default, but it also hides it from a
+   * demo recording and from anyone the user is deliberately showing it to.
+   */
+  applyScreenShareVisibility(hidden: boolean): void {
+    this.window?.setContentProtection(hidden)
   }
 
   /**

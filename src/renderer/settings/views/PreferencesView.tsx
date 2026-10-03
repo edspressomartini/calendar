@@ -189,6 +189,13 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
       />
 
       <Toggle
+        label="Hide from screen sharing"
+        hint="Keeps the widget out of recordings and shared screens. Turn it off to show it on a call. Some capture tools ignore this, so use privacy mode if the day must not be read."
+        checked={settings.hideFromScreenShare}
+        onChange={(checked) => void state.update({ hideFromScreenShare: checked })}
+      />
+
+      <Toggle
         label="Launch at login"
         checked={settings.launchAtLogin}
         onChange={(checked) => void state.update({ launchAtLogin: checked })}

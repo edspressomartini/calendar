@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   privacyMode: false,
   launchAtLogin: false,
   alwaysOnTop: true,
+  hideFromScreenShare: true,
   placement: { display: null, corner: 'topRight', bounds: null },
   accounts: [],
 }

@@ -46,6 +46,11 @@ export interface AppSettings {
   readonly privacyMode: boolean
   readonly launchAtLogin: boolean
   readonly alwaysOnTop: boolean
+  /**
+   * Whether the widget is withheld from screen capture. On by default: the
+   * panel sits over everything, so the failure mode is a shared screen.
+   */
+  readonly hideFromScreenShare: boolean
   readonly placement: WidgetPlacement
   readonly accounts: readonly AccountConfig[]
 }

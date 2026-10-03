@@ -90,6 +90,7 @@ export const updateSettingsSchema = z
     privacyMode: z.boolean(),
     launchAtLogin: z.boolean(),
     alwaysOnTop: z.boolean(),
+    hideFromScreenShare: z.boolean(),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'no settings supplied' })
@@ -243,6 +244,7 @@ export const appSettingsSchema = z.strictObject({
   privacyMode: z.boolean(),
   launchAtLogin: z.boolean(),
   alwaysOnTop: z.boolean(),
+  hideFromScreenShare: z.boolean(),
   placement: widgetPlacementSchema,
   accounts: z.array(accountConfigSchema),
 })
