@@ -74,15 +74,23 @@ revocable identity. Not in-process hardening.
       the hardened runtime, so a build that silently went unsigned fails the
       release instead of shipping a DMG that cannot launch.
 
-- [ ] **Run the release workflow on a throwaway tag**, `v0.0.1-test`. It has
-      never executed. Expect to fix something.
+- [ ] **Tag the version already in `package.json`.** There is no useful
+      throwaway tag: electron-builder names the release from `package.json`,
+      not from the tag that triggered the workflow, so a `v0.0.1-test` tag
+      makes it try to publish against a `v0.1.0` tag that does not exist and
+      fail with a bare 422. The workflow now checks the two agree before
+      building rather than after.
 
       ```sh
-      git tag v0.0.1-test && git push origin v0.0.1-test
+      git tag v0.1.0 && git push origin v0.1.0
       ```
 
-- [ ] **Delete the test tag and its release** once it works, so the first real
-      release is `v0.1.0`.
+      To retry after a failure, delete both the tag and any release it made:
+
+      ```sh
+      git push origin :refs/tags/v0.1.0 && git tag -d v0.1.0
+      gh release delete v0.1.0 --yes
+      ```
 
 ### Verify before anyone else sees it
 
