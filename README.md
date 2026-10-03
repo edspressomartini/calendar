@@ -71,14 +71,19 @@ as **External**, and create an OAuth client of type **Desktop app**. Put the cli
 secret in `.env.local`. The app requests two read-only scopes and nothing else:
 `calendar.events.readonly` and `calendar.calendarlist.readonly`.
 
-To produce a `.app` and a DMG for your own machine:
+To build it and put it in `/Applications` as a real app:
 
 ```sh
-npm run package
+npm run install:local
 ```
 
-If you copy that DMG to another Mac it will be blocked by Gatekeeper, because it is not
-notarised. That is the problem the Apple Developer account solves.
+That packages, ad-hoc signs and replaces the installed copy, quitting it first if it is
+running. Run it again after any change — the installed app is a copy, so editing the
+source does nothing to it until it is rebuilt.
+
+`npm run package` on its own just produces the DMG. Either way, copying the result to
+another Mac gets it blocked by Gatekeeper, because it is not notarised. That is the
+problem the Apple Developer account solves.
 
 ---
 
@@ -102,12 +107,14 @@ Found a vulnerability? Please report it privately rather than opening an issue.
 
 ## Development
 
-| Command           | What it does                                                         |
-| ----------------- | -------------------------------------------------------------------- |
-| `npm run dev`     | Run the app with hot reload                                          |
-| `npm run check`   | Typecheck, lint, format check and tests — run this before committing |
-| `npm test`        | Vitest, 220 tests                                                    |
-| `npm run package` | Build a local unsigned DMG                                           |
+| Command                 | What it does                                                         |
+| ----------------------- | -------------------------------------------------------------------- |
+| `npm run dev`           | Run the app with hot reload                                          |
+| `npm run check`         | Typecheck, lint, format check and tests — run this before committing |
+| `npm test`              | Vitest, 236 tests                                                    |
+| `npm run package`       | Build a local unsigned DMG                                           |
+| `npm run install:local` | Build, sign and replace `/Applications/Up Next.app`                  |
+| `npm run icons`         | Redraw the tray glyph and the app icon                               |
 
 Node 24 is required and enforced; `npm run dev` fails fast on anything else.
 
