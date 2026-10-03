@@ -48,8 +48,7 @@ mac:
   extendInfo:
     # Menu-bar app: no Dock icon (§10).
     LSUIElement: true
-  # Turned on in the release workflow, which supplies the Apple API key.
-  # Signing and notarisation need an Apple Developer account (§11).
+  # Notarisation needs a Developer ID, which an ad-hoc signature is not.
   notarize: false
 
 dmg:

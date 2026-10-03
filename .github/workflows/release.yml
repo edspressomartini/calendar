@@ -1,8 +1,12 @@
 name: Release
 
-# Tag a version to build, sign, notarise and publish the DMG (docs/spec.md §9,
-# Phase 4). Signing needs an Apple Developer account and the secrets below;
-# without them this workflow will fail, which is intended.
+# Tag a version to build the DMG and publish it as a GitHub Release
+# (docs/spec.md §9, Phase 4).
+#
+# The build is ad-hoc signed and not notarised: there is no Apple Developer
+# account, so there is no Developer ID to sign with and nothing Apple will
+# notarise (docs/homebrew-plan.md). The job prints the SHA-256 of the DMG,
+# which is the value the Homebrew cask has to pin.
 on:
   push:
     tags: ['v*']
@@ -35,16 +39,35 @@ jobs:
       - name: Verify registry signatures
         run: npm audit signatures
 
-      - name: Build, sign and notarise
+      - name: Audit dependencies
+        run: npm run audit
+
+      - name: Build and publish
         run: npx electron-builder --mac --publish always
         env:
           # The OAuth client is injected at build time and never committed (§8.3).
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          # Developer ID certificate and the App Store Connect key for notarytool (§11).
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           GH_TOKEN: ${{ github.token }}
+
+      # The signature is worth nothing to Gatekeeper without a Developer ID, but
+      # it still has to be there and cover the hardened runtime, or the DMG is
+      # unusable on arm64. Fail the release rather than publish a broken one.
+      - name: Verify the signature
+        run: |
+          app="dist/mac-arm64/Up Next.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --display --verbose=2 "$app" 2>&1 | tee /tmp/sig.txt
+          grep -q 'flags=.*runtime' /tmp/sig.txt || {
+            echo "::error::the hardened runtime is missing from the signature"
+            exit 1
+          }
+
+      - name: Checksum for the Homebrew cask
+        run: |
+          dmg=$(ls dist/up-next-*-arm64.dmg)
+          echo "### Homebrew cask" >> "$GITHUB_STEP_SUMMARY"
+          echo '```ruby' >> "$GITHUB_STEP_SUMMARY"
+          echo "  version \"${GITHUB_REF_NAME#v}\"" >> "$GITHUB_STEP_SUMMARY"
+          echo "  sha256 \"$(shasum -a 256 "$dmg" | cut -d' ' -f1)\"" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

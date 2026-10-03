@@ -24,7 +24,8 @@
     "package": "npm run build && electron-builder --mac --publish never",
     "install:local": "./scripts/install-local.sh",
     "icons": "npm run check-node && node scripts/generate-tray-icon.ts && node scripts/generate-app-icon.ts && iconutil -c icns -o build/icon.icns build/icon.iconset",
-    "spike:oauth": "npm run check-node && node --env-file-if-exists=.env.local scripts/oauth-spike.ts"
+    "spike:oauth": "npm run check-node && node --env-file-if-exists=.env.local scripts/oauth-spike.ts",
+    "audit": "npm run check-node && node scripts/audit.ts"
   },
   "dependencies": {
     "@googleapis/calendar": "20.0.0",
