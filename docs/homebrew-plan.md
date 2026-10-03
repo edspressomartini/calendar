@@ -63,16 +63,16 @@ revocable identity. Not in-process hardening.
 
 ### Make the first release
 
-- [ ] **Add the two build secrets** to the GitHub `release` environment
+- [x] **Add the two build secrets** to the GitHub `release` environment
       (Settings → Environments → release → Add secret): `GOOGLE_CLIENT_ID` and
-      `GOOGLE_CLIENT_SECRET`. The OAuth client is injected at build time and
-      never committed, so a release built without them cannot sign in to
-      Google at all.
+      `GOOGLE_CLIENT_SECRET`. Done 3 October 2026. The OAuth client is injected
+      at build time and never committed, so a release built without them cannot
+      sign in to Google at all.
 
-      The five Apple secrets the workflow also reads — `CSC_LINK`,
-      `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`,
-      `APPLE_API_ISSUER` — stay unset. electron-builder falls back to the
-      ad-hoc identity in `electron-builder.yml`.
+      The workflow no longer reads any Apple secrets. It signs ad-hoc with the
+      identity in `electron-builder.yml` and then asserts the signature carries
+      the hardened runtime, so a build that silently went unsigned fails the
+      release instead of shipping a DMG that cannot launch.
 
 - [ ] **Run the release workflow on a throwaway tag**, `v0.0.1-test`. It has
       never executed. Expect to fix something.
@@ -201,8 +201,9 @@ A release goes like this:
 
 1. Bump `version` in `package.json`, commit, and push a matching tag:
    `git tag v0.2.0 && git push --tags`.
-2. The release workflow builds, signs, notarises and attaches the DMG to a new
-   GitHub Release.
+2. The release workflow builds, ad-hoc signs and attaches the DMG to a new
+   GitHub Release. Its job summary prints the `version` and `sha256` lines for
+   the next step, so the hash never has to be computed by hand.
 3. In the tap, edit `Casks/up-next.rb`: new `version`, new `sha256`. Commit.
 4. Users run `brew upgrade` — or `brew upgrade --cask up-next` for just this
    one — and Homebrew downloads the new DMG, checks it against the pinned
@@ -236,8 +237,7 @@ Two things users should know, and the README should say:
 
 | Step                           | How long                    |
 | ------------------------------ | --------------------------- |
-| Apple Developer enrolment      | Same day, up to 48 hours    |
-| Certificates and secrets       | An hour                     |
+| Build secrets                  | Done                        |
 | First successful release build | An afternoon, realistically |
 | Tap and cask                   | An hour                     |
 | Each release afterwards        | Ten minutes                 |

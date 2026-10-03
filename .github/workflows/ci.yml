@@ -37,8 +37,9 @@ jobs:
       - name: Verify registry signatures
         run: npm audit signatures
 
+      # Not plain `npm audit`: see the exception list in scripts/audit.ts.
       - name: Audit dependencies
-        run: npm audit --audit-level=moderate
+        run: npm run audit
 
       - name: Typecheck
         run: npm run typecheck
