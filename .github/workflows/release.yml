@@ -42,12 +42,27 @@ jobs:
       - name: Audit dependencies
         run: npm run audit
 
-      - name: Build and publish
-        run: npx electron-builder --mac --publish always
+      # This is where the OAuth client is baked in: electron-vite inlines
+      # MAIN_VITE_* at build time (§8.3). Setting it on the packaging step
+      # instead would produce an app that installs and cannot sign in.
+      - name: Build
+        run: npm run build
         env:
-          # The OAuth client is injected at build time and never committed (§8.3).
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      # A missing or misnamed secret does not fail the build; it produces an app
+      # that installs, launches, and cannot sign in to Google. Catch it here.
+      - name: Check the OAuth client was baked in
+        run: |
+          grep -q 'apps.googleusercontent.com' out/main/index.js || {
+            echo "::error::no Google client id in the bundle — check the release environment secrets"
+            exit 1
+          }
+
+      - name: Package and publish
+        run: npx electron-builder --mac --publish always
+        env:
           GH_TOKEN: ${{ github.token }}
 
       # The signature is worth nothing to Gatekeeper without a Developer ID, but
