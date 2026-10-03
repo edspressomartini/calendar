@@ -72,10 +72,12 @@ jobs:
             exit 1
           }
 
-      - name: Package and publish
-        run: npx electron-builder --mac --publish always
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # --publish never, and the release is created below instead. Letting
+      # electron-builder publish raced the DMG against its own blockmap: both
+      # uploads found no release, both created one, and the DMG lost and was
+      # dropped without an error. The step still passed.
+      - name: Package
+        run: npx electron-builder --mac --publish never
 
       # The signature is worth nothing to Gatekeeper without a Developer ID, but
       # it still has to be there and cover the hardened runtime, or the DMG is
@@ -90,11 +92,44 @@ jobs:
             exit 1
           }
 
-      - name: Checksum for the Homebrew cask
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          dmg=$(ls dist/up-next-*-arm64.dmg)
-          echo "### Homebrew cask" >> "$GITHUB_STEP_SUMMARY"
-          echo '```ruby' >> "$GITHUB_STEP_SUMMARY"
-          echo "  version \"${GITHUB_REF_NAME#v}\"" >> "$GITHUB_STEP_SUMMARY"
-          echo "  sha256 \"$(shasum -a 256 "$dmg" | cut -d' ' -f1)\"" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          version="${GITHUB_REF_NAME#v}"
+          dmg="dist/up-next-$version-arm64.dmg"
+          sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
+
+          cat > /tmp/notes.md <<EOF
+          Apple silicon, macOS Sonoma or newer.
+
+          \`\`\`sh
+          brew tap edspressomartini/tap
+          brew install --cask up-next
+          \`\`\`
+
+          **macOS will refuse to open this the first time.** Up Next is not
+          notarised by Apple, so after trying to open it, go to System Settings
+          → Privacy & Security and click **Open Anyway**. You will need to do
+          this again after each upgrade.
+          [What that means](https://upnextapp.co.uk/security.html).
+
+          Verify the download before you trust it:
+
+          \`\`\`sh
+          shasum -a 256 up-next-$version-arm64.dmg
+          # $sha
+          \`\`\`
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" "$dmg" \
+            --title "$version" \
+            --notes-file /tmp/notes.md
+
+          {
+            echo "### Homebrew cask"
+            echo '```ruby'
+            echo "  version \"$version\""
+            echo "  sha256 \"$sha\""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
