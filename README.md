@@ -22,10 +22,8 @@ Everything runs on your own Mac. No server, no account to create, no analytics.
 ## Install
 
 > [!IMPORTANT]
-> **Not yet.** The Homebrew tap below does not exist, and there is no release to
-> download. Installing needs a signed and notarised build, which needs an Apple Developer
-> account, which has not been bought. Until then the only way to run this is to
-> [build it yourself](#run-it-yourself).
+> **Not yet.** The Homebrew tap below does not exist and there is no release to download.
+> Until then the only way to run this is to [build it yourself](#run-it-yourself).
 
 When it is published, installing will be:
 
@@ -34,19 +32,26 @@ brew install --cask edspressomartini/tap/up-next
 ```
 
 and updating will be `brew upgrade`. There is deliberately no auto-updater: Homebrew
-verifies a pinned hash for each release and macOS checks the signature on first launch,
-so there is no update server to trust.
+verifies a pinned hash for each release, so there is no update server to trust.
 
 Requirements when it ships: **macOS on Apple silicon**, and a Google account.
 
+> [!WARNING]
+> **macOS will refuse to open it the first time, and after every update.** This project
+> has no Apple Developer Program membership, so builds are signed ad-hoc rather than with
+> an Apple Developer ID, and are not notarised. You will need to allow the app by hand in
+> System Settings → Privacy & Security → **Open Anyway**. The
+> [security overview](https://upnextapp.co.uk/security.html) explains what that does and
+> does not mean.
+
 ### What is left before that works
 
-| Step                                           | Status                                       |
-| ---------------------------------------------- | -------------------------------------------- |
-| Apple Developer Program, signing, notarisation | Not started — this is the blocker            |
-| The tap repository and cask                    | Not created                                  |
-| First tagged release                           | None yet; the release workflow has never run |
-| Google OAuth consent screen published          | In progress                                  |
+| Step                                  | Status                                       |
+| ------------------------------------- | -------------------------------------------- |
+| The tap repository and cask           | Not created                                  |
+| First tagged release                  | None yet; the release workflow has never run |
+| Google OAuth consent screen published | In progress                                  |
+| Apple Developer Program               | Declined; see the warning above              |
 
 The full list, in dependency order, is in [`docs/launch-checklist.md`](docs/launch-checklist.md).
 
@@ -82,8 +87,8 @@ running. Run it again after any change — the installed app is a copy, so editi
 source does nothing to it until it is rebuilt.
 
 `npm run package` on its own just produces the DMG. Either way, copying the result to
-another Mac gets it blocked by Gatekeeper, because it is not notarised. That is the
-problem the Apple Developer account solves.
+another Mac gets it blocked by Gatekeeper, because it is not notarised — allow it in
+System Settings → Privacy & Security.
 
 ---
 

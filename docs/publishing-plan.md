@@ -137,10 +137,10 @@ a shortcut — it is a cask that stops working.
     from shapes and builds `build/icon.icns`; builds before this one shipped
     the default Electron icon.
 
-14. **Turn notarisation on** in `electron-builder.yml` (`notarize: false` today)
-    and keep `hardenedRuntime: true`. A real Developer ID gives every nested
-    binary the same Team ID, which is what local ad-hoc signing cannot do and
-    why `scripts/sign-local.sh` has to drop the hardened runtime.
+14. **Restore the real signing settings** in `electron-builder.yml`: `identity:
+null`, `hardenedRuntime: true`, `notarize: true`. A Developer ID gives
+    every nested binary the same Team ID, which is what ad-hoc signing cannot
+    do and why the hardened runtime is off today (docs/homebrew-plan.md).
 
 15. **Run the release workflow end to end on a throwaway tag.** It has never
     executed. Expect to fix something.
@@ -194,4 +194,5 @@ Not blocking, but all three are first-impression problems:
 
 If the answer to Apple is no, Part 1 and Part 2 still stand on their own: you
 get a clean consent screen and a permanent login, and you keep building the app
-locally with `npm run package && ./scripts/sign-local.sh`.
+locally with `npm run install:local`. That path is documented in
+`docs/homebrew-plan.md`, including what it costs the people you give it to.

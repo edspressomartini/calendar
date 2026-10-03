@@ -603,10 +603,10 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | `grantFileProtocolExtraPrivileges`      | off     | `file://` loses its special powers; we load from `app://`           |
 | `enableCookieEncryption`                | on      | Defence in depth; the app relies on no cookies                      |
 
-- **Hardened runtime and notarisation** for every build that leaves your machine (Phase 4).
+- **Hardened runtime and notarisation** for every build that leaves your machine — **not currently true, and this is the one deliberate exception in §8.** There is no Apple Developer account, so there is no Developer ID, so builds are signed ad-hoc. An ad-hoc signature carries no Team ID, and the hardened runtime enforces library validation, so the app refuses to load its own Electron framework. The alternative is the `disable-library-validation` entitlement, which reopens the exact code-injection path the runtime was turned on to close — strictly worse than leaving the runtime off. So `hardenedRuntime: false` and `identity: '-'`, knowingly. The cost: no library validation, no notarisation, and every user clears Gatekeeper by hand in System Settings on install and after each upgrade. Restoring it is three lines in `electron-builder.yml` the day a certificate exists (`docs/homebrew-plan.md`).
 - **Minimal entitlements:** start with `com.apple.security.cs.allow-jit` only (V8 needs it). No `disable-library-validation`, no `allow-dyld-environment-variables` — each one reopens a code-injection path. Add an entitlement only if the signed build fails without it, and record why here.
-- **The Developer ID signature also protects the tokens:** it's how the Keychain decides that the app asking for the `safeStorage` key is really ours.
-- **No auto-updater.** Homebrew is the update channel: the cask pins a SHA-256 for every release, and Gatekeeper checks the signature and notarisation on first launch. There's no update server to compromise and no signature-checking code of our own to get wrong.
+- **The signature also protects the tokens:** it's how the Keychain decides that the app asking for the `safeStorage` key is really ours. An ad-hoc signature still binds the Keychain item, but it binds it to that exact build — which is why every rebuild re-prompts for access, and why a Developer ID would be an improvement here as well as at install time.
+- **No auto-updater.** Homebrew is the update channel: the cask pins a SHA-256 for every release. That hash is the integrity check that still works without notarisation, and it is the reason the cask is edited by hand per release rather than pointing at a `latest` URL.
 
 ### 8.9 Supply chain
 

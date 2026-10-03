@@ -9,72 +9,72 @@ has to happen.
 
 ---
 
-## What Homebrew actually requires
+## The decision this plan is built on
 
-Three things, and only the first costs money:
+**No Apple Developer Program membership.** Taken deliberately on 3 October
+2026, with the costs below understood. Everything here follows from it.
 
-1. **A signed and notarised `.dmg`.** Since 1 September 2026 Homebrew disables
-   casks whose contents fail Gatekeeper. An ad-hoc signature — what
-   `scripts/sign-local.sh` produces — is fine on the machine that built it and
-   fails on every other machine.
-2. **A public download URL that never changes shape.** A GitHub Release asset
-   is the normal answer, and the release workflow already publishes one.
-3. **A cask file in a tap**, which is just a public repository named
-   `homebrew-<something>`. No review, no approval, no waiting. The official
-   `homebrew/cask` repository has rules about notability that a personal
-   project will not meet; a tap has none.
+The Gatekeeper requirement — [casks must be signed and notarised, with
+unsigned ones disabled from 1 September
+2026](https://github.com/Homebrew/homebrew-cask/issues/222922) — applies to
+the official `homebrew/cask` repository. A personal tap is not covered by it,
+so this is possible. It is not pleasant.
+
+**What a user actually experiences.** `brew install --cask` succeeds. The app
+does not open. Homebrew applies the `com.apple.quarantine` attribute, macOS
+assesses the app, finds no notarisation and refuses — and on current macOS
+there is no "open anyway" button in that dialog. They have to know to go to
+System Settings → Privacy & Security and click **Open Anyway**, and they have
+to do it again after every `brew upgrade`, because the replaced binary is
+assessed afresh. Homebrew's own maintainers put it plainly: _"The system
+doesn't prompt you with any way to work around it — unless you know how
+Gatekeeper works on macOS."_
+
+The `--no-quarantine` escape hatch is
+[being removed from `brew`](https://github.com/Homebrew/brew/issues/20755)
+precisely to stop taps doing this, so do not plan around it.
+
+**What it costs the app itself.** Builds are ad-hoc signed (`identity: '-'`),
+which an unsigned arm64 binary needs in order to execute at all. The hardened
+runtime has to come off with it: it enforces library validation, and an ad-hoc
+signature has no Team ID for the app's own Electron framework to match. The
+only way to keep the runtime would be the `disable-library-validation`
+entitlement, which reopens the code-injection path the runtime exists to close
+— worse than not having it. See `docs/spec.md` §8.8.
+
+**Reversing this is three lines**, the day a certificate exists: `identity:
+null`, `hardenedRuntime: true`, `notarize: true`.
+
+## What is still required
+
+1. **A download URL that never changes shape.** A GitHub Release asset. The
+   release workflow already publishes one.
+2. **A cask file in a tap**, which is just a public repository named
+   `homebrew-<something>`. No review, no approval, no waiting.
 
 ---
 
 ## Step by step
 
-### Apple, the only paid part
+### Make the first release
 
-- [ ] **Join the Apple Developer Program**, £79/year, at
-      <https://developer.apple.com/programs/>. Enrolment is usually same-day
-      for an individual but can take 48 hours if they ask for ID.
+- [ ] **Add the two build secrets** to the GitHub `release` environment
+      (Settings → Environments → release → Add secret): `GOOGLE_CLIENT_ID` and
+      `GOOGLE_CLIENT_SECRET`. The OAuth client is injected at build time and
+      never committed, so a release built without them cannot sign in to
+      Google at all.
 
-      Use your own account. A friend's account means the app is published under
-      his legal identity, his name appears on the certificate, and he can
-      revoke it. It also breaks the moment he leaves or stops paying.
-
-- [ ] **Create a Developer ID Application certificate** in the developer
-      portal. Not "Mac App Distribution" — that one is for the App Store and
-      will not work outside it. Export it from Keychain Access as a `.p12`
-      with a password.
-
-- [ ] **Create an App Store Connect API key** with the Developer role, under
-      Users and Access → Integrations. Download the `.p8` once; it cannot be
-      downloaded twice. Note the Key ID and Issuer ID shown beside it. This is
-      what notarisation authenticates with.
-
-### Wire it into the release workflow
-
-- [ ] **Add five secrets** to the GitHub `release` environment
-      (Settings → Environments → release → Add secret):
-
-      | Secret                | Value                                     |
-      | --------------------- | ----------------------------------------- |
-      | `CSC_LINK`            | the `.p12`, base64-encoded                |
-      | `CSC_KEY_PASSWORD`    | the password you set when exporting it    |
-      | `APPLE_API_KEY`       | the `.p8`, base64-encoded                 |
-      | `APPLE_API_KEY_ID`    | the Key ID                                |
-      | `APPLE_API_ISSUER`    | the Issuer ID                             |
-
-      `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` need to be there too; the
-      OAuth client is injected at build time and never committed.
-
-      Base64 on macOS: `base64 -i cert.p12 | pbcopy`.
-
-- [ ] **Turn notarisation on.** In `electron-builder.yml`, `notarize: false`
-      becomes `true`. Leave `hardenedRuntime: true` alone. A real Developer ID
-      gives every nested binary the same Team ID, which is exactly what ad-hoc
-      signing cannot do and why the local signing script has to drop the
-      hardened runtime.
+      The five Apple secrets the workflow also reads — `CSC_LINK`,
+      `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`,
+      `APPLE_API_ISSUER` — stay unset. electron-builder falls back to the
+      ad-hoc identity in `electron-builder.yml`.
 
 - [ ] **Run the release workflow on a throwaway tag**, `v0.0.1-test`. It has
-      never executed. Expect to fix something. Notarisation adds 5–15 minutes
-      to the build while Apple's service scans the binary.
+      never executed. Expect to fix something.
+
+      ```sh
+      git tag v0.0.1-test && git push origin v0.0.1-test
+      ```
 
 - [ ] **Delete the test tag and its release** once it works, so the first real
       release is `v0.1.0`.
@@ -82,19 +82,25 @@ Three things, and only the first costs money:
 ### Verify before anyone else sees it
 
 - [ ] **Download the DMG on a Mac that has never built this project** — a
-      colleague's, or a fresh user account. Confirm: it opens without a
-      Gatekeeper warning, the tray icon appears, Google sign-in completes, the
-      Keychain prompt appears exactly once, and launch-at-login works.
+      colleague's, or a fresh user account. This is the only way to see what a
+      real user sees; the machine that built it has the app already trusted.
 
-- [ ] **Check the signature and notarisation explicitly:**
+      Expect Gatekeeper to refuse it. Confirm that System Settings → Privacy &
+      Security → **Open Anyway** works, and that afterwards the tray icon
+      appears, Google sign-in completes, the Keychain prompt appears, and
+      launch-at-login works.
+
+- [ ] **Check the signature explicitly:**
 
       ```sh
-      spctl -a -vvv -t install "/Applications/Up Next.app"
       codesign -dv --verbose=4 "/Applications/Up Next.app"
-      xcrun stapler validate "/Applications/Up Next.app"
+      spctl -a -vvv -t install "/Applications/Up Next.app"
       ```
 
-      The first should say `accepted` and `source=Notarized Developer ID`.
+      `codesign` should report `Signature=adhoc`. `spctl` will **reject** it —
+      that is expected and is exactly the Gatekeeper refusal users hit. If
+      `codesign` reports no signature at all, the build is broken: an unsigned
+      arm64 binary will not run on Apple silicon under any circumstances.
 
 - [ ] **Confirm the Electron fuses survived packaging**, since signing happens
       after they are flipped:
@@ -131,6 +137,21 @@ Three things, and only the first costs money:
 
         app "Up Next.app"
 
+        # Without this the install looks like it worked and the app will not
+        # open, with nothing on screen explaining why.
+        caveats <<~EOS
+          Up Next is not notarised by Apple, so macOS will refuse to open it
+          the first time, and again after each upgrade.
+
+          To allow it:
+            1. Try to open Up Next. macOS will block it.
+            2. Open System Settings > Privacy & Security.
+            3. Scroll down and click "Open Anyway" next to Up Next.
+
+          This is because the project has no Apple Developer Program
+          membership. See https://upnextapp.co.uk/security.html
+        EOS
+
         zap trash: [
           "~/Library/Application Support/Up Next",
           "~/Library/Logs/Up Next",
@@ -148,6 +169,11 @@ Three things, and only the first costs money:
       brew tap edspressomartini/tap
       brew install --cask up-next
       ```
+
+      Read the caveats Homebrew prints, then follow them as a user would.
+      Confirm the Privacy & Security override actually makes the app open —
+      this is the step most likely to lose people, and it needs to have been
+      walked at least once by someone who did not build the app.
 
 - [ ] **Check `brew uninstall --cask up-next` leaves nothing behind**, then
       `brew uninstall --zap --cask up-next` and confirm the support directory

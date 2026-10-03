@@ -31,7 +31,6 @@ if pgrep -x "${APP_NAME}" >/dev/null; then
 fi
 
 npm run package
-./scripts/sign-local.sh "${BUILT}"
 
 rm -rf "${INSTALLED}"
 cp -R "${BUILT}" "${INSTALLED}"

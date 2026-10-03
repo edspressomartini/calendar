@@ -219,10 +219,10 @@
           load code from outside the validated archive.
         </li>
         <li>
-          <strong>Hardened runtime, Developer ID signing and Apple notarisation</strong> for any
-          build that leaves the developer&rsquo;s machine, with the minimum entitlements needed to
-          run. The signature is also what the Keychain uses to decide the app is entitled to its own
-          key.
+          <strong>Minimal entitlements</strong> &mdash; <code>allow-jit</code> only, which V8
+          requires. Notably absent is <code>disable-library-validation</code>, which would reopen a
+          code-injection path. The code signature is also what the Keychain uses to decide the app
+          is entitled to its own key.
         </li>
         <li>
           <strong>Privacy mode</strong> replaces meeting and TODO titles before they are drawn, in
@@ -281,6 +281,21 @@
         <li>
           <strong>Until Google verifies the app</strong>, sign-in shows an &ldquo;unverified
           app&rdquo; warning. That is a statement about review status, not about what the app does.
+        </li>
+        <li>
+          <strong
+            >Builds are signed ad-hoc, not with an Apple Developer ID, and are not
+            notarised.</strong
+          >
+          There is no Apple Developer Program membership behind this project. Two consequences, both
+          real. macOS Gatekeeper will refuse to open the app until it is allowed by hand in System
+          Settings &rarr; Privacy &amp; Security, on install and again after each update. And the
+          hardened runtime is switched off, because it enforces library validation that an ad-hoc
+          signature cannot satisfy &mdash; the app would refuse to load its own framework. The
+          alternative, the <code>disable-library-validation</code> entitlement, would be worse: it
+          reopens the code-injection path the runtime exists to close. So that protection is absent
+          rather than faked. If this matters for your environment, it is the honest reason to say
+          no, and it is fixed by a certificate rather than by a code change.
         </li>
       </ul>
 
