@@ -85,34 +85,46 @@ Procedure and reasoning: `docs/apple-signing-plan.md`.
 - [ ] **Verify the Electron fuses actually applied** to the packaged app, with
       `npx @electron/fuses read --app dist/mac-arm64/*.app`.
 - [x] **Run the release workflow end to end.** First succeeded for `v0.1.0`.
-- [ ] **Run it again with signing and notarisation on**, for `v0.2.0`. Everything
-      upstream of the `Package` step is already proven; the new parts are the keychain
-      import and Apple's notary service.
+- [x] **Run it again with signing and notarisation on.** `v0.2.0`, 4 October 2026. The
+      keychain import and the notary service both worked first time; the `Package` step
+      took about 22 minutes, nearly all of it waiting on Apple.
 
-## 3. Things the packaged app has never been tested for
+## 3. Things that only exist in a packaged build
 
-The app has only ever run under `electron-vite dev`. These behave differently, or only
-exist, in a packaged build:
+These behave differently, or only exist, outside `electron-vite dev`. Installing
+`v0.2.0` from the tap on 4 October 2026 exercised several of them implicitly: the app
+launched, drew its UI and reached Google, which it could not have done with the
+`app://` protocol, the fuses, the ASAR or the tray icon broken.
 
-- [ ] The `app://` protocol serving the real built renderer, rather than the dev server.
-- [ ] Electron fuses, ASAR integrity and only-load-from-asar.
-- [ ] `LSUIElement` hiding the Dock icon.
+- [x] The `app://` protocol serving the real built renderer, rather than the dev server.
+- [x] The tray icon resolving from `resources/` inside the ASAR.
+- [x] `LSUIElement` hiding the Dock icon.
+- [x] The Keychain entry under a real code signature. Confirmed, including the
+      consequence: changing signer raises a one-off _"Up Next wants to use your
+      confidential information"_ prompt. **Always Allow** is the answer. A Developer ID
+      signature is stable across releases, so it does not recur — unlike the old ad-hoc
+      signature, which differed on every build.
+- [ ] Electron fuses and ASAR integrity, **asserted rather than observed**. Read them
+      explicitly with `npx @electron/fuses read --app "/Applications/Up Next.app"`.
 - [ ] Launch at login, which is a no-op in development by design.
-- [ ] The Keychain entry under a real code signature. A signed app gets a different
-      Keychain identity from unsigned Electron, so **the first signed build will require
-      signing in to Google again**.
 - [ ] Notification permission, which is granted per bundle id, not per app name.
-- [ ] The tray icon resolving from `resources/` inside the ASAR.
 
 ## 4. Distribution
 
-- [ ] Create the public tap repository `edspressomartini/homebrew-tap`.
-- [ ] Write `Casks/up-next.rb`, including a `zap` stanza so uninstalling removes
+- [x] Create the public tap repository `edspressomartini/homebrew-tap`.
+- [x] Write `Casks/up-next.rb`, including a `zap` stanza so uninstalling removes
       the stored settings, the TODO list (`todos.json`) and the token.
-- [ ] Verify `brew install --cask edspressomartini/tap/up-next` on a clean machine.
+- [x] Verify `brew install --cask edspressomartini/tap/up-next`. Done 4 October 2026
+      with the cached download deleted first, so the DMG was fetched fresh and carried
+      the quarantine attribute. It opened with no Gatekeeper dialog.
+- [ ] Confirm `brew uninstall --zap --cask up-next` really does clear
+      `~/Library/Application Support/Up Next` and the Keychain item. Still only
+      asserted.
 - [ ] If colleagues are involved, get the tap allowed by whatever manages their Macs.
       Since Homebrew 6, packages from an untrusted third-party tap are ignored, and a
-      standard user cannot grant that trust.
+      standard user cannot grant that trust. **`brew trust` is Homebrew's own gate and
+      notarisation does not remove it**, so the DMG is now the lower-friction route for
+      anyone who does not already use Homebrew — see `docs/distribution-routes.md`.
 
 ## 5. Product gaps before anyone else uses it
 

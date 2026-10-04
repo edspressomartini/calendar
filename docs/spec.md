@@ -413,7 +413,8 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 - Countdown title, kept short because the MacBook notch hides long menu-bar items: `Standup · 4m`, `Standup · now`, `1:1 · 12m left`. Titles are truncated to about 16 characters; nothing is shown once the day is done.
 - **Privacy mode**, toggled from the menu-bar menu: meeting titles become "Busy" in the widget, the menu-bar title and notifications. Turn it on before you share your screen — macOS can't reliably keep the widget out of screen shares (§8.4). It's applied in main, so titles don't even reach the renderer while it's on.
 - **Hide meeting titles in the menu bar** (preference) makes that part permanent: the menu bar shows the countdown only, e.g. `4m`.
-- Menu: Show/Hide widget · Privacy mode · Move to display ▸ (connected monitors by name) · Sync now · Settings… · Quit. Accounts that need re-auth appear at the top as "Reconnect Work…".
+- Menu: Show/Hide widget · Privacy mode · Move to display ▸ (connected monitors by name) · Add TODO… · Sync now · Settings… · **Version _x.y.z_** · Quit. Accounts that need re-auth appear at the top as "Reconnect Work…".
+- **The version line is disabled and purely informational.** With no Dock icon there is no About box, so this menu is the only place a user can discover what they are running — which matters because "upgrade" is the answer to several problems, including the Gatekeeper prompt that `v0.1.0` produces. It sits immediately above Quit rather than at the top, so it never competes with an account that needs reconnecting. The string comes from `app.getVersion()`, injected into `TrayController` rather than read from Electron inside it, so the menu stays testable.
 
 ### Notifications
 
