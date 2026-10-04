@@ -88,6 +88,39 @@ than the default and refuses everything that did not come from the App Store,
 notarised or not. Nothing about how the app is built changes this; only the
 IT team can.
 
+This is not hypothetical. The development machine is in exactly that state,
+found on 4 October 2026 while verifying the first notarised release:
+
+```
+$ spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
+/Applications/Up Next.app: rejected
+source=Notarized Developer ID
+origin=Developer ID Application: Edward Martin (LRHKHKMD3J)
+
+$ spctl --status --verbose
+assessments enabled
+developer id disabled
+```
+
+Read those together: Gatekeeper recognised the notarisation **and** the
+identity, then refused on policy alone. `developer id disabled` is the line
+that matters.
+
+So **the development machine cannot be used to check what a colleague sees**,
+in either direction. It let `v0.2.0` launch anyway, because the quarantine
+flag had already been consumed by approving `v0.1.0` on that Mac, which is a
+local artefact and not something a new user has.
+
+The one command worth asking a colleague to run before anything else:
+
+```sh
+spctl --status --verbose
+```
+
+`developer id enabled` means the app will simply open. `developer id disabled`
+means no route in this document will work for them, and it is an IT
+conversation rather than a packaging one.
+
 **Homebrew may be unavailable or the tap untrustable**, since granting
 `brew trust` on a managed machine may not be a standard user's to give.
 Route 2 sidesteps this entirely.

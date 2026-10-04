@@ -12,14 +12,14 @@ the workarounds this plan makes unnecessary.
 Apple Developer Program enrolment purchased 4 October 2026. Team ID
 `LRHKHKMD3J`.
 
-| Step                                 | State                                |
-| ------------------------------------ | ------------------------------------ |
-| Apple Developer Program membership   | active                               |
-| Developer ID Application certificate | created 4 October 2026               |
-| App Store Connect API key            | not created                          |
-| GitHub `release` environment secrets | not added                            |
-| Repo changes                         | done, on `feat/developer-id-signing` |
-| Tagged `v0.2.0` release              | not cut                              |
+| Step                                 | State                   |
+| ------------------------------------ | ----------------------- |
+| Apple Developer Program membership   | active                  |
+| Developer ID Application certificate | created 4 October 2026  |
+| App Store Connect API key            | created 4 October 2026  |
+| GitHub `release` environment secrets | all five added          |
+| Repo changes                         | merged, #23             |
+| Tagged `v0.2.0` release              | published and notarised |
 
 ## What this changes
 
@@ -216,8 +216,41 @@ Framework.framework`, which is the specific fact that makes
 - the app launched with three helper processes, stayed up, and produced no
   crash report
 
-So the only parts still unproven at the point of tagging `v0.2.0` are the
-keychain import in CI and Apple's notary service.
+So the only parts still unproven at the point of tagging `v0.2.0` were the
+keychain import in CI and Apple's notary service. Both worked first time.
+
+## What the first notarised release actually did
+
+Run 37208424273, `v0.2.0`, 4 October 2026. The `Package` step took roughly
+22 minutes of a 31-minute run, nearly all of it waiting on Apple. First
+submissions from a new team are slow; later ones should not be.
+
+```
+• notarization successful
+Authority=Developer ID Application: Edward Martin (LRHKHKMD3J)
+Authority=Developer ID Certification Authority
+Authority=Apple Root CA
+flags=0x10000(runtime)
+dist/mac-arm64/Up Next.app: accepted
+source=Notarized Developer ID
+```
+
+Installed from the tap afterwards, with the quarantine attribute set by
+Homebrew and never cleared, the app opened with no dialog.
+
+**But see `docs/distribution-routes.md` route 4 before drawing conclusions
+from that.** The development machine has `developer id disabled`, so its
+Gatekeeper behaviour is not representative either way.
+
+## Renewal and loss
+
+- The **Developer ID certificate** expires five years from issue, so
+  October 2031. Nothing warns about this. A release will simply start failing.
+- The **App Store Connect API key** does not expire but can be revoked. Apple
+  serves the `.p8` once; if the backup is lost, revoke the key and generate a
+  new one, then update three secrets.
+- Membership itself renews annually. A lapsed membership invalidates the
+  certificate for new signing, though already-notarised builds keep working.
 
 ## Part 4 — Verify
 
