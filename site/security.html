@@ -221,11 +221,10 @@
         <li>
           <strong>The hardened runtime is enabled</strong>, on the app and on every helper process.
           Among other things it blocks <code>DYLD_INSERT_LIBRARIES</code>, the usual way code is
-          injected into a running macOS application, and it prevents a debugger attaching.
-          Entitlements are limited to <code>allow-jit</code>, which V8 requires, and
-          <code>disable-library-validation</code>, which a build signed without an Apple Developer
-          ID cannot start without. Deliberately absent:
-          <code>allow-dyld-environment-variables</code> and
+          injected into a running macOS application, and it prevents a debugger attaching. The app
+          holds exactly one entitlement, <code>allow-jit</code>, which V8 requires. Library
+          validation is enforced, so the app will only load code signed by the same developer.
+          Deliberately absent: <code>allow-dyld-environment-variables</code> and
           <code>allow-unsigned-executable-memory</code>. The code signature is also what the
           Keychain uses to decide the app is entitled to its own key.
         </li>
@@ -288,18 +287,11 @@
           app&rdquo; warning. That is a statement about review status, not about what the app does.
         </li>
         <li>
-          <strong
-            >Builds are signed ad-hoc, not with an Apple Developer ID, and are not
-            notarised.</strong
-          >
-          There is no Apple Developer Program membership behind this project. macOS Gatekeeper
-          therefore refuses to open the app until it is allowed by hand in System Settings &rarr;
-          Privacy &amp; Security, on install and again after each update. What that costs you is
-          Apple&rsquo;s malware scan of the binary and a named, revocable developer identity &mdash;
-          a genuine loss, and the honest reason to decline if your environment requires either. What
-          it does not cost is the hardened runtime, which is enabled; the single protection relaxed
-          so an ad-hoc build can start is library validation, described under Hardening above. A
-          certificate restores both, with no change to the code.
+          <strong>Notarisation is a malware scan, not an audit.</strong> Builds are signed with an
+          Apple Developer ID and notarised, which means Apple has checked the binary for known
+          malicious code and can revoke the signing identity if it later turns out to be malicious.
+          It does not mean Apple has reviewed what the app does, and nobody should read it that way.
+          The source and the design document below are the thing to judge it on.
         </li>
       </ul>
 

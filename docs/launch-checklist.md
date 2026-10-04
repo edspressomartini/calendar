@@ -12,11 +12,11 @@ been signed, packaged for distribution, or shown to anyone else.
 
 ## 0. The three decisions everything else waits on
 
-| Decision                                            | Who  | Why it blocks things                                                                                                                                                                |
-| --------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ~~Bundle identifier~~ — settled as `com.upnext.app` | Done | Was `com.pinnedcalendar.app`. Changed during the rename, while the author was the only user, because the Keychain entry, notification permission and login item are all keyed to it |
-| Apple Developer Program membership                  | You  | Nothing can be given to anyone else without it. Since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper                                                                       |
-| Whether the company is asked at all                 | You  | Determines whether this stays a personal tool or needs a company-owned OAuth client. See `docs/company-questions.md`                                                                |
+| Decision                                                                           | Who  | Why it blocks things                                                                                                                                                                |
+| ---------------------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Bundle identifier~~ — settled as `com.upnext.app`                                | Done | Was `com.pinnedcalendar.app`. Changed during the rename, while the author was the only user, because the Keychain entry, notification permission and login item are all keyed to it |
+| ~~Apple Developer Program membership~~ — enrolled 4 Oct 2026, Team ID `LRHKHKMD3J` | Done | Nothing could be given to anyone else without it. Since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper                                                                     |
+| Whether the company is asked at all                                                | You  | Determines whether this stays a personal tool or needs a company-owned OAuth client. See `docs/company-questions.md`                                                                |
 
 ---
 
@@ -67,17 +67,27 @@ been signed, packaged for distribution, or shown to anyone else.
 
 ## 2. Blocking: signing and packaging
 
-- [ ] **Join the Apple Developer Program** ($99/yr).
+Procedure and reasoning: `docs/apple-signing-plan.md`.
+
+- [x] **Join the Apple Developer Program** (£79/yr). Enrolled 4 October 2026.
 - [ ] **Create a Developer ID Application certificate** and an App Store Connect API key
       for `notarytool`.
-- [ ] **Add the release secrets** to the GitHub `release` environment: `CSC_LINK`,
-      `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`,
+- [x] **Add the Google secrets** to the GitHub `release` environment:
       `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-- [ ] **Confirm the entitlements are sufficient.** Currently `allow-jit` only. If the
-      signed build fails to launch, add the minimum needed and record why in the spec.
+- [ ] **Add the Apple secrets** to the same environment: `CSC_LINK`,
+      `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`.
+      Note `APPLE_API_KEY_BASE64`: the workflow decodes it to a file, because
+      `@electron/notarize` wants a path rather than the key itself.
+- [ ] **Confirm the entitlements are sufficient.** Now `allow-jit` only, since a
+      Developer ID makes `disable-library-validation` unnecessary. If the signed build
+      fails to launch, that assumption is wrong — add the minimum needed and record why
+      in the spec rather than reaching for the ad-hoc plist.
 - [ ] **Verify the Electron fuses actually applied** to the packaged app, with
       `npx @electron/fuses read --app dist/mac-arm64/*.app`.
-- [ ] **Run the release workflow end to end** on a throwaway tag. It has never executed.
+- [x] **Run the release workflow end to end.** First succeeded for `v0.1.0`.
+- [ ] **Run it again with signing and notarisation on**, for `v0.2.0`. Everything
+      upstream of the `Package` step is already proven; the new parts are the keychain
+      import and Apple's notary service.
 
 ## 3. Things the packaged app has never been tested for
 

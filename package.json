@@ -1,7 +1,7 @@
 {
   "name": "up-next",
   "productName": "Up Next",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An always-on-top macOS widget showing today's calendar.",
   "private": true,
   "type": "module",

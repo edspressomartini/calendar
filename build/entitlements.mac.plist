@@ -3,29 +3,21 @@
 <!--
   Hardened-runtime entitlements (docs/spec.md §8.8).
 
-  allow-jit: V8 requires it.
+  allow-jit: V8 requires it. This is the only entitlement the app has.
 
-  disable-library-validation: required only because the build is signed
-  ad-hoc. Library validation demands that every loaded library share the
-  app's Team ID, and an ad-hoc signature has no Team ID at all, so the app
-  cannot load its own Electron framework without this. It relaxes exactly one
-  hardened-runtime protection. Everything else the runtime enforces stays on,
-  most importantly the DYLD environment variable restrictions that block
-  DYLD_INSERT_LIBRARIES, and the restriction on attaching a debugger.
+  disable-library-validation used to be here, because an ad-hoc signature has
+  no Team ID and the app could not load its own Electron framework without it.
+  Signing with a Developer ID gives every nested binary the same Team ID, so
+  library validation is satisfied and the entitlement is gone.
 
-  Delete this entitlement the day a Developer ID exists; it is not needed with
-  a real certificate.
-
-  Still deliberately absent: allow-dyld-environment-variables, which really
-  would open a code-injection path, and allow-unsigned-executable-memory.
-  Add an entitlement only if a signed build genuinely fails without it, and
-  record the reason in the spec.
+  Deliberately absent: allow-dyld-environment-variables, which really would
+  open a code-injection path, and allow-unsigned-executable-memory. Add an
+  entitlement only if a signed build genuinely fails without it, and record
+  the reason in the spec.
 -->
 <plist version="1.0">
   <dict>
     <key>com.apple.security.cs.allow-jit</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
   </dict>
 </plist>
