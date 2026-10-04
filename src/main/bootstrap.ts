@@ -214,6 +214,7 @@ class Application {
           app.quit()
         },
       },
+      app.getVersion(),
       this.logger.child('tray'),
     )
     this.tray = tray

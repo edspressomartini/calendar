@@ -54,6 +54,96 @@ export const app = {
   getAppPath(): string {
     return '/tmp'
   },
+  getVersion(): string {
+    return '0.0.0-test'
+  },
+}
+
+/** Mirrors the subset of Electron's MenuItemConstructorOptions the app uses. */
+export interface FakeMenuItem {
+  readonly label?: string
+  readonly type?: string
+  readonly enabled?: boolean
+  readonly checked?: boolean
+  readonly accelerator?: string
+  readonly submenu?: FakeMenuItem[]
+  readonly click?: (item: { checked: boolean }) => void
+}
+
+/** Every template passed to Menu.buildFromTemplate, newest last. */
+export const builtMenus: FakeMenuItem[][] = []
+
+export const Menu = {
+  buildFromTemplate(template: FakeMenuItem[]): FakeMenuItem[] {
+    builtMenus.push(template)
+    return template
+  },
+}
+
+export class Tray {
+  contextMenu: FakeMenuItem[] | null = null
+  title = ''
+  toolTip = ''
+  destroyed = false
+
+  setContextMenu(menu: FakeMenuItem[]): void {
+    this.contextMenu = menu
+  }
+
+  setTitle(title: string): void {
+    this.title = title
+  }
+
+  setToolTip(toolTip: string): void {
+    this.toolTip = toolTip
+  }
+
+  destroy(): void {
+    this.destroyed = true
+  }
+}
+
+export const nativeImage = {
+  createFromPath(): { setTemplateImage(value: boolean): void } {
+    return { setTemplateImage(): void {} }
+  },
+}
+
+interface FakeRectangle {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+interface FakeDisplay {
+  readonly id: number
+  readonly label: string
+  readonly size: { readonly width: number; readonly height: number }
+  readonly bounds: FakeRectangle
+  readonly workArea: FakeRectangle
+}
+
+const primaryBounds: FakeRectangle = { x: 0, y: 0, width: 1920, height: 1080 }
+
+const primaryDisplay: FakeDisplay = {
+  id: 1,
+  label: 'Built-in Display',
+  size: { width: primaryBounds.width, height: primaryBounds.height },
+  bounds: primaryBounds,
+  workArea: { x: 0, y: 25, width: 1920, height: 1055 },
+}
+
+export const screen = {
+  getPrimaryDisplay(): FakeDisplay {
+    return primaryDisplay
+  },
+  getAllDisplays(): FakeDisplay[] {
+    return [primaryDisplay]
+  },
+  getDisplayMatching(): FakeDisplay {
+    return primaryDisplay
+  },
 }
 
 export interface NotificationAction {
@@ -143,6 +233,7 @@ export function resetElectronMock(): void {
   safeStorageState.available = true
   safeStorageState.failDecrypt = false
   openedExternalUrls.length = 0
+  builtMenus.length = 0
   ipcHandlers.clear()
   Notification.shown.length = 0
   Notification.supported = true
