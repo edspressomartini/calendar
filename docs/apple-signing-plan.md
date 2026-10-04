@@ -266,17 +266,24 @@ After the release publishes, on a machine that has never run the app:
 codesign --display --verbose=4 "/Applications/Up Next.app" 2>&1 | grep Authority
 
 # The notarisation ticket is stapled into the bundle, so this works offline.
+# This is the authoritative check.
 xcrun stapler validate "/Applications/Up Next.app"
-
-# What Gatekeeper itself will decide. "accepted" with source
-# "Notarized Developer ID" is the goal.
-spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
 ```
 
-The real test is behavioural, not diagnostic: download the DMG in a browser so
-it carries the quarantine attribute, install, double-click, and confirm macOS
-shows the ordinary "downloaded from the internet, are you sure" prompt rather
-than the "unidentified developer" refusal.
+**Do not use `spctl` for this.** On macOS 15 and later it reports against a
+policy engine the system no longer consults for launch decisions, and it told
+us the first notarised release would be rejected on a machine that then opened
+it without a murmur. `docs/distribution-routes.md` route 4 has the detail.
+`release.yml` still runs it, because a GitHub runner has a known-default
+policy where it does behave, and there it is a useful extra assertion.
+
+The real test is behavioural, not diagnostic: install so the app carries the
+quarantine attribute, open it from Finder, and see what happens. On
+4 October 2026 that produced no Gatekeeper dialog at all.
+
+Expect one Keychain prompt on the upgrade from an ad-hoc build, asking to use
+"Up Next Safe Storage". Answer **Always Allow**. It is the signature change,
+not Gatekeeper, and it does not recur.
 
 ## If something goes wrong
 

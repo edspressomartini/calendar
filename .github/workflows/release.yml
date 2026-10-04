@@ -127,7 +127,12 @@ jobs:
           # happened rather than that Apple would approve it if asked.
           xcrun stapler validate "$app"
 
-          # The verdict Gatekeeper itself will reach on a user's machine.
+          # Trustworthy here and nowhere else. On macOS 15+ spctl reports
+          # against a policy engine the system no longer consults when
+          # deciding whether to launch something, so on a user's machine it
+          # can say rejected about an app that opens without a dialog. A
+          # GitHub runner has a known-default policy, which is what makes it
+          # a usable assertion in this one place.
           spctl --assess --type execute --verbose=4 "$app" 2>&1 | tee /tmp/spctl.txt
           grep -q 'source=Notarized Developer ID' /tmp/spctl.txt || {
             echo "::error::Gatekeeper did not accept the app as notarised"

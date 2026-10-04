@@ -103,18 +103,16 @@ nested binary shares one Team ID. See `docs/spec.md` §8.8.
       ```sh
       codesign -dv --verbose=4 "/Applications/Up Next.app"
       xcrun stapler validate "/Applications/Up Next.app"
-      spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
       ```
 
       `codesign` should report `Authority=Developer ID Application: …
       (LRHKHKMD3J)` and `flags=0x10000(runtime)`. `stapler` should report the
-      ticket is valid. `spctl` should say `accepted` with
-      `source=Notarized Developer ID`.
+      ticket is valid.
 
-      A `rejected` from `spctl` means the release shipped without
-      notarisation, which the workflow is supposed to catch — see
-      `docs/apple-signing-plan.md` for why that failure is silent in
-      electron-builder.
+      Deliberately not `spctl`: on current macOS it reports against a policy
+      engine the system no longer uses to decide launches, and it called the
+      first notarised release rejected on a machine that opened it without a
+      dialog. See `docs/distribution-routes.md` route 4.
 
 - [ ] **Confirm the Electron fuses survived packaging**, since signing happens
       after they are flipped:
