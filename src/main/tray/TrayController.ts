@@ -5,7 +5,7 @@ import type { AgendaSnapshot } from '../../shared/types/agenda.ts'
 import type { AccountId } from '../../shared/types/calendar.ts'
 import type { DisplayKey } from '../../shared/types/settings.ts'
 import type { AppLogger } from '../infra/logger.ts'
-import type { SettingsStore } from '../storage/SettingsStore.ts'
+import type { SettingsReader } from '../storage/SettingsStore.ts'
 import { listDisplayOptions } from '../windows/displayPlacement.ts'
 
 /**
@@ -56,8 +56,15 @@ export class TrayController {
   private snapshot: AgendaSnapshot | null = null
 
   constructor(
-    private readonly settings: SettingsStore,
+    private readonly settings: SettingsReader,
     private readonly actions: TrayActions,
+    /**
+     * From package.json via app.getVersion(). Shown because there is no Dock
+     * icon and therefore no About box, so this menu is the only place a user
+     * can find out what they are running — which matters when the answer to a
+     * problem is "upgrade".
+     */
+    private readonly version: string,
     private readonly logger: AppLogger,
   ) {}
 
@@ -166,6 +173,9 @@ export class TrayController {
         },
       },
       { type: 'separator' },
+      // Last, not first: an account that needs reconnecting is at the top of
+      // this menu and should not have to compete with a version string.
+      { label: `Version ${this.version}`, enabled: false },
       {
         label: 'Quit Up Next',
         accelerator: 'Command+Q',
