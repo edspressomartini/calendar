@@ -13,20 +13,24 @@ This file is only about the person on the other end.
 
 From `v0.2.0` onwards, Up Next is **signed with a Developer ID Application
 certificate and notarised by Apple**, with the ticket stapled into the bundle.
-macOS opens it the way it opens any other downloaded app: one "are you sure,
-this came from the internet" prompt, and nothing to override.
+macOS opens it the way it opens any other downloaded app. Verified on
+4 October 2026 by a clean install from the tap with the quarantine attribute
+present: no dialog at all.
 
 Anyone still on `v0.1.0` has an ad-hoc signed build and will keep seeing the
 **Open Anyway** dance until they upgrade. Tell them to upgrade rather than
 explaining the workaround.
 
 Nobody has to take that on trust. Every release body carries the DMG's
-SHA-256, and the installed app can be checked directly:
+SHA-256, and the notarisation ticket can be read out of the installed bundle:
 
 ```sh
-spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
-# accepted, source=Notarized Developer ID
+xcrun stapler validate "/Applications/Up Next.app"
+# The validate action worked!
 ```
+
+Use `stapler`, not `spctl` — see route 4 for why `spctl` lies on current
+macOS.
 
 ## Route 1 — Homebrew, for people who already have it
 
@@ -88,38 +92,53 @@ than the default and refuses everything that did not come from the App Store,
 notarised or not. Nothing about how the app is built changes this; only the
 IT team can.
 
-This is not hypothetical. The development machine is in exactly that state,
-found on 4 October 2026 while verifying the first notarised release:
+### Do not diagnose this with `spctl`
+
+An earlier version of this section claimed the development machine was locked
+to App Store only, on the strength of this:
 
 ```
 $ spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
 /Applications/Up Next.app: rejected
 source=Notarized Developer ID
-origin=Developer ID Application: Edward Martin (LRHKHKMD3J)
 
 $ spctl --status --verbose
 assessments enabled
 developer id disabled
 ```
 
-Read those together: Gatekeeper recognised the notarisation **and** the
-identity, then refused on policy alone. `developer id disabled` is the line
-that matters.
+**That conclusion was wrong.** On macOS 15 and later `spctl` is a legacy
+interface onto a policy engine the system no longer uses for launch
+decisions, and `developer id disabled` is a stale flag rather than the
+current setting. The machine reporting it is on macOS 26.6.2.
 
-So **the development machine cannot be used to check what a colleague sees**,
-in either direction. It let `v0.2.0` launch anyway, because the quarantine
-flag had already been consumed by approving `v0.1.0` on that Mac, which is a
-local artefact and not something a new user has.
+What actually happened on that machine, 4 October 2026: `brew uninstall`,
+cached download deleted, clean `brew install --cask up-next`, quarantine
+attribute confirmed present
+(`0181;6ac2668f;Homebrew Cask;…`), app opened from Finder. **No Gatekeeper
+dialog of any kind.** The notarisation was accepted silently, on the same
+Mac that `spctl` said would reject it.
 
-The one command worth asking a colleague to run before anything else:
+The earlier reasoning was wrong twice over: it also explained the successful
+launch as the `v0.1.0` approval carrying over, which cannot be true, because
+`v0.2.0` has a different code hash and a different signer.
 
-```sh
-spctl --status --verbose
-```
+So: judge this by **installing and opening the app**, not by `spctl`. If you
+want to know a machine's real policy, read
+**System Settings → Privacy & Security → "Allow applications from"**. There
+is no reliable command-line equivalent on current macOS.
 
-`developer id enabled` means the app will simply open. `developer id disabled`
-means no route in this document will work for them, and it is an IT
-conversation rather than a packaging one.
+### The one prompt that does appear, once
+
+Upgrading from `v0.1.0` to `v0.2.0` raises a Keychain dialog: _"Up Next wants
+to use your confidential information stored in 'Up Next Safe Storage'"_.
+Answer **Always Allow**.
+
+This is not Gatekeeper. macOS binds a Keychain item to the signature that
+created it, and the signature changed from ad-hoc to Developer ID. It will
+not recur: an ad-hoc signature differed on every build, which is why the old
+builds re-prompted constantly, whereas a Developer ID signature is stable
+across releases (`docs/spec.md` §8.8).
 
 **Homebrew may be unavailable or the tap untrustable**, since granting
 `brew trust` on a managed machine may not be a standard user's to give.
