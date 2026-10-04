@@ -39,13 +39,9 @@ pinned hash for each release, so there is no update server to trust.
 
 Requirements: **Apple silicon, macOS Ventura or newer**, and a Google account.
 
-> [!WARNING]
-> **macOS will refuse to open it the first time, and after every update.** This project
-> has no Apple Developer Program membership, so builds are signed ad-hoc rather than with
-> an Apple Developer ID, and are not notarised. You will need to allow the app by hand in
-> System Settings → Privacy & Security → **Open Anyway**. The
-> [security overview](https://upnextapp.co.uk/security.html) explains what that does and
-> does not mean.
+Releases are signed with an Apple Developer ID and notarised by Apple, so macOS opens
+them normally. The [security overview](https://upnextapp.co.uk/security.html) covers what
+that does and does not tell you.
 
 ### Where this has got to
 
@@ -55,7 +51,7 @@ Requirements: **Apple silicon, macOS Ventura or newer**, and a Google account.
 | First tagged release                | `v0.1.0`                                                 |
 | Google OAuth brand verification     | Passed 2 October 2026                                    |
 | Google sensitive-scope verification | Not submitted; sign-in still warns the app is unverified |
-| Apple Developer Program             | Declined; see the warning above                          |
+| Apple Developer Program             | Enrolled; releases are signed and notarised              |
 
 The full list, in dependency order, is in [`docs/launch-checklist.md`](docs/launch-checklist.md).
 
@@ -63,8 +59,9 @@ The full list, in dependency order, is in [`docs/launch-checklist.md`](docs/laun
 
 ## Run it yourself
 
-Building locally needs no Apple account and no signing. The app is ad-hoc signed, which
-is enough for a binary you compiled on the machine you are running it on.
+Building locally needs no Apple account. electron-builder signs with whatever Developer ID
+it finds in your keychain and falls back to an ad-hoc signature if there is none, which is
+enough for a binary you compiled on the machine you are running it on.
 
 ```sh
 brew bundle                 # Node 24 and the rest of the toolchain
@@ -86,13 +83,36 @@ To build it and put it in `/Applications` as a real app:
 npm run install:local
 ```
 
-That packages, ad-hoc signs and replaces the installed copy, quitting it first if it is
-running. Run it again after any change — the installed app is a copy, so editing the
-source does nothing to it until it is rebuilt.
+That packages, signs and replaces the installed copy, quitting it first if it is running.
+Run it again after any change — the installed app is a copy, so editing the source does
+nothing to it until it is rebuilt. `npm run package` on its own just produces the DMG.
 
-`npm run package` on its own just produces the DMG. Either way, copying the result to
-another Mac gets it blocked by Gatekeeper, because it is not notarised — allow it in
-System Settings → Privacy & Security.
+Neither is notarised, because notarisation needs credentials only CI has. A local build
+therefore runs fine on the machine that built it and gets blocked by Gatekeeper on any
+other Mac. Use a real release for that.
+
+**On a Mac behind a TLS-intercepting proxy** — most managed fleets — packaging fails with
+`unable to get local issuer certificate`. electron-builder downloads the Electron binary
+over HTTPS and Node does not read the system keychain, so it never sees the proxy's CA.
+Hand it the machine's trust store:
+
+```sh
+security find-certificate -a -p /Library/Keychains/System.keychain > /tmp/ca-bundle.pem
+security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain >> /tmp/ca-bundle.pem
+export NODE_EXTRA_CA_CERTS=/tmp/ca-bundle.pem
+```
+
+CI is unaffected; GitHub's runners are not behind a proxy.
+
+**Without a Developer ID certificate in your keychain**, the build is signed ad-hoc, which
+has no Team ID for library validation to match the Electron framework against, and the app
+will not launch. Build with the entitlements that tolerate it:
+
+```sh
+npm run build && electron-builder --mac --publish never \
+  --config.mac.entitlements=build/entitlements.adhoc.plist \
+  --config.mac.entitlementsInherit=build/entitlements.adhoc.plist
+```
 
 ---
 

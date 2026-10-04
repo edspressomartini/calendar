@@ -603,10 +603,11 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | `grantFileProtocolExtraPrivileges`      | off     | `file://` loses its special powers; we load from `app://`           |
 | `enableCookieEncryption`                | on      | Defence in depth; the app relies on no cookies                      |
 
-- **Hardened runtime on; notarisation not available.** There is no Apple Developer account, so there is no Developer ID and builds are signed **ad-hoc**. That costs notarisation — users clear Gatekeeper by hand in System Settings on install and after each upgrade — but it does **not** cost the hardened runtime, which is enabled and verified on the packaged app (`flags=0x10002(adhoc,runtime)` on the bundle and on every helper).
-- **Entitlements:** `allow-jit`, which V8 requires, and `disable-library-validation`, which an ad-hoc build cannot run without: library validation demands every loaded library share the app's Team ID, and an ad-hoc signature has none, so the app cannot load its own Electron framework. An earlier version of this document claimed that entitlement was worse than disabling the hardened runtime outright. That was wrong. It relaxes **one** protection; turning the runtime off loses all of them, including the DYLD environment variable restrictions that block `DYLD_INSERT_LIBRARIES` — which is the actual code-injection path, and which remains closed. Still deliberately absent: `allow-dyld-environment-variables` and `allow-unsigned-executable-memory`. Delete `disable-library-validation` the day a Developer ID exists. Add an entitlement only if a signed build genuinely fails without it, and record why here.
-- **The signature also protects the tokens:** it's how the Keychain decides that the app asking for the `safeStorage` key is really ours. An ad-hoc signature still binds the Keychain item, but it binds it to that exact build — which is why every rebuild re-prompts for access, and why a Developer ID would be an improvement here as well as at install time.
-- **No auto-updater.** Homebrew is the update channel: the cask pins a SHA-256 for every release. That hash is the integrity check that still works without notarisation, and it is the reason the cask is edited by hand per release rather than pointing at a `latest` URL.
+- **Signed, hardened and notarised.** From `v0.2.0` releases carry a **Developer ID Application** certificate (Team ID `LRHKHKMD3J`), the hardened runtime, and an Apple notarisation ticket stapled into the bundle, so Gatekeeper accepts the app on first launch without a network round trip. `docs/apple-signing-plan.md` records how the credentials are held and rotated. Before `v0.2.0` there was no Apple Developer account and builds were signed **ad-hoc**, which worked but obliged every user to clear Gatekeeper by hand on install and after each upgrade.
+- **Entitlements: `allow-jit`, and nothing else.** V8 requires it. `disable-library-validation` was here until `v0.2.0` because an ad-hoc signature has no Team ID, so library validation could not match the app's own Electron framework and the app would not start. A Developer ID gives every nested binary the same Team ID, so library validation is now enforced rather than relaxed. Still deliberately absent: `allow-dyld-environment-variables`, which would open a real code-injection path, and `allow-unsigned-executable-memory`. `build/entitlements.adhoc.plist` keeps the old pair for local builds on a machine with no certificate; it is never used by a release. Add an entitlement only if a signed build genuinely fails without it, and record why here.
+- **The signature also protects the tokens:** it's how the Keychain decides that the app asking for the `safeStorage` key is really ours. An ad-hoc signature bound the Keychain item to one exact build, which is why every rebuild re-prompted for access. A Developer ID signature is stable across releases, so upgrading no longer re-prompts.
+- **No auto-updater.** Homebrew is the update channel: the cask pins a SHA-256 for every release. That is a second, independent integrity check alongside notarisation, and it is the reason the cask is edited by hand per release rather than pointing at a `latest` URL.
+- **Release verification is not optional.** `notarizeIfProvided` in `app-builder-lib` logs a warning and returns normally when credentials are missing, so a mistyped secret yields a signed, un-notarised DMG that passes every `codesign` check. `release.yml` therefore asserts `xcrun stapler validate` and `spctl --assess --type execute` on the packaged bundle.
 
 ### 8.9 Supply chain
 
@@ -659,7 +660,7 @@ engine-strict=true
 
 **Phase 3 — Work + personal.** `ProviderRegistry` populated from settings, account management UI, split view, per-account colours, cross-account dedupe.
 
-**Phase 4 — Sharing it with colleagues.** Needs an Apple Developer account (§11).
+**Phase 4 — Sharing it with colleagues.** Needs an Apple Developer account (§11), enrolled 4 October 2026.
 
 - Sign with a Developer ID certificate, enable the hardened runtime, notarise and staple — all through `electron-builder`.
 - `release.yml`: git tag → build → sign → notarise → `.dmg` on GitHub Releases.
@@ -763,11 +764,13 @@ Anyone can install with `brew install --cask edspressomartini/tap/up-next`. Nami
 
 Since Homebrew 6, packages from an untrusted third-party tap are ignored, and on a Mac where the user is not an administrator they cannot grant that trust themselves. Fleets managed centrally therefore need the tap allowed by whatever manages them, which is a Phase 4 conversation rather than a code change.
 
-### Apple Developer account — when you need it
+### Apple Developer account
 
-> To give the app to anyone but yourself, you need Apple Developer Program membership ($99/yr) for a Developer ID certificate and notarisation. Since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper, and `--no-quarantine` is deprecated. Local builds for yourself need neither.
+Enrolled 4 October 2026, Team ID `LRHKHKMD3J`. Needed because giving the app to anyone else requires a Developer ID certificate and notarisation: since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper, and `--no-quarantine` is deprecated. Local builds for yourself need neither.
 
-When you get it: create a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, then store them as GitHub Actions secrets in the release environment (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`). The future EventKit integration needs a signed build too.
+The release job's protected environment holds a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`. Full procedure, including renewal, in `docs/apple-signing-plan.md`. The future EventKit integration needs a signed build too.
+
+Two things that will eventually need attention: the certificate expires five years from issue, and because this is an individual rather than an organisation enrolment, the certificate's common name is a personal legal name and is readable in every shipped build.
 
 ---
 

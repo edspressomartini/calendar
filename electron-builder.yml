@@ -29,27 +29,25 @@ mac:
     - target: dmg
       arch:
         - arm64
-  # Ad-hoc. There is no Apple Developer account, so there is no Developer ID
-  # to sign with, and an unsigned arm64 binary will not execute at all.
-  #
-  # The hardened runtime stays on. It needs the disable-library-validation
-  # entitlement to tolerate an ad-hoc signature, which has no Team ID for the
-  # app's own Electron framework to match — see build/entitlements.mac.plist.
-  # That relaxes one protection and keeps the rest, which is strictly better
-  # than turning the runtime off and losing all of them.
-  #
-  # The day a Developer ID exists: `identity: null`, `notarize: true`, and
-  # delete the entitlement (docs/homebrew-plan.md).
-  identity: '-'
+  # `identity` is deliberately absent. electron-builder imports the Developer ID
+  # Application certificate from CSC_LINK into a temporary keychain and finds it
+  # itself. Setting `identity: null` would not pin the certificate, it would
+  # disable signing entirely.
   hardenedRuntime: true
+  # Left off because electron-builder assesses between signing and stapling,
+  # where Gatekeeper cannot yet accept the app. The release workflow runs
+  # spctl against the finished bundle instead.
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     # Menu-bar app: no Dock icon (§10).
     LSUIElement: true
-  # Notarisation needs a Developer ID, which an ad-hoc signature is not.
-  notarize: false
+  # Submitted to Apple during packaging, authenticated with the App Store
+  # Connect API key in APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER.
+  # The resulting ticket is stapled into the bundle, so Gatekeeper accepts the
+  # app on first launch without a network round trip.
+  notarize: true
 
 dmg:
   # Slug, not ${productName}: that holds a space, which survives into the

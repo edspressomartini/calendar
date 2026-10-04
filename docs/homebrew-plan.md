@@ -9,46 +9,42 @@ has to happen.
 
 ---
 
-## The decision this plan is built on
+## The decision this plan was built on, and its reversal
 
-**No Apple Developer Program membership.** Taken deliberately on 3 October
-2026, with the costs below understood. Everything here follows from it.
+**Originally: no Apple Developer Program membership**, taken deliberately on
+3 October 2026. **Reversed on 4 October 2026** after watching what it actually
+cost a user. Releases from `v0.2.0` are signed with a Developer ID and
+notarised; `docs/apple-signing-plan.md` is the procedure.
+
+The rest of this section is kept because the constraint it describes still
+applies to `v0.1.0`, and because the reasoning explains why several decisions
+further down look the way they do.
 
 The Gatekeeper requirement — [casks must be signed and notarised, with
 unsigned ones disabled from 1 September
 2026](https://github.com/Homebrew/homebrew-cask/issues/222922) — applies to
 the official `homebrew/cask` repository. A personal tap is not covered by it,
-so this is possible. It is not pleasant.
+which is why an un-notarised cask was possible at all. It was not pleasant.
 
-**What a user actually experiences.** `brew install --cask` succeeds. The app
-does not open. Homebrew applies the `com.apple.quarantine` attribute, macOS
-assesses the app, finds no notarisation and refuses — and on current macOS
-there is no "open anyway" button in that dialog. They have to know to go to
-System Settings → Privacy & Security and click **Open Anyway**, and they have
-to do it again after every `brew upgrade`, because the replaced binary is
-assessed afresh. Homebrew's own maintainers put it plainly: _"The system
-doesn't prompt you with any way to work around it — unless you know how
-Gatekeeper works on macOS."_
+**What a user actually experienced.** `brew install --cask` succeeded. The app
+did not open. Homebrew applies the `com.apple.quarantine` attribute, macOS
+assessed the app, found no notarisation and refused — and on current macOS
+there is no "open anyway" button in that dialog. They had to know to go to
+System Settings → Privacy & Security and click **Open Anyway**, and to do it
+again after every `brew upgrade`, because the replaced binary is assessed
+afresh. Homebrew's own maintainers put it plainly: _"The system doesn't prompt
+you with any way to work around it — unless you know how Gatekeeper works on
+macOS."_
 
-The `--no-quarantine` escape hatch is
+That last paragraph, written as a cost to be tolerated, is what made the £79
+obviously worth paying. The `--no-quarantine` escape hatch is
 [being removed from `brew`](https://github.com/Homebrew/brew/issues/20755)
-precisely to stop taps doing this, so do not plan around it.
+precisely to stop taps doing this, so there was never a way around it.
 
-**What it costs the app itself: less than first thought.** Builds are ad-hoc
-signed (`identity: '-'`), which an unsigned arm64 binary needs in order to
-execute at all. The **hardened runtime stays on** — verified on the packaged
-app, `flags=0x10002(adhoc,runtime)`. It needs the
-`disable-library-validation` entitlement to tolerate a signature with no Team
-ID, which relaxes one protection and keeps the rest, including the DYLD
-environment variable restrictions that block `DYLD_INSERT_LIBRARIES`. See
-`docs/spec.md` §8.8.
-
-So the loss is notarisation: Apple's malware scan of the binary, and a named
-revocable identity. Not in-process hardening.
-
-**Reversing this is two lines plus a deletion**, the day a certificate exists:
-`identity: null`, `notarize: true`, and drop `disable-library-validation` from
-`build/entitlements.mac.plist`.
+**What it never cost was in-process hardening.** Ad-hoc builds kept the
+hardened runtime, at the price of the `disable-library-validation`
+entitlement. A Developer ID has now removed that price too, because every
+nested binary shares one Team ID. See `docs/spec.md` §8.8.
 
 ## What is still required
 
@@ -69,12 +65,11 @@ revocable identity. Not in-process hardening.
       at build time and never committed, so a release built without them cannot
       sign in to Google at all.
 
-      The workflow no longer reads any Apple secrets. It signs ad-hoc with the
-      identity in `electron-builder.yml` and then asserts the signature carries
-      the hardened runtime, so a build that silently went unsigned fails the
-      release instead of shipping a DMG that cannot launch.
+- [ ] **Add the five Apple secrets** to the same environment: `CSC_LINK`,
+      `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and
+      `APPLE_API_ISSUER`. Procedure in `docs/apple-signing-plan.md`.
 
-- [ ] **Tag the version already in `package.json`.** There is no useful
+- [x] **Tag the version already in `package.json`.** There is no useful
       throwaway tag: electron-builder names the release from `package.json`,
       not from the tag that triggered the workflow, so a `v0.0.1-test` tag
       makes it try to publish against a `v0.1.0` tag that does not exist and
@@ -96,24 +91,30 @@ revocable identity. Not in-process hardening.
 
 - [ ] **Download the DMG on a Mac that has never built this project** — a
       colleague's, or a fresh user account. This is the only way to see what a
-      real user sees; the machine that built it has the app already trusted.
+      real user sees.
 
-      Expect Gatekeeper to refuse it. Confirm that System Settings → Privacy &
-      Security → **Open Anyway** works, and that afterwards the tray icon
-      appears, Google sign-in completes, the Keychain prompt appears, and
+      Expect it to **open normally**, with nothing worse than the ordinary
+      "this was downloaded from the internet" prompt. Then confirm the tray
+      icon appears, Google sign-in completes, the Keychain prompt appears, and
       launch-at-login works.
 
 - [ ] **Check the signature explicitly:**
 
       ```sh
       codesign -dv --verbose=4 "/Applications/Up Next.app"
-      spctl -a -vvv -t install "/Applications/Up Next.app"
+      xcrun stapler validate "/Applications/Up Next.app"
+      spctl --assess --type execute --verbose=4 "/Applications/Up Next.app"
       ```
 
-      `codesign` should report `Signature=adhoc`. `spctl` will **reject** it —
-      that is expected and is exactly the Gatekeeper refusal users hit. If
-      `codesign` reports no signature at all, the build is broken: an unsigned
-      arm64 binary will not run on Apple silicon under any circumstances.
+      `codesign` should report `Authority=Developer ID Application: …
+      (LRHKHKMD3J)` and `flags=0x10000(runtime)`. `stapler` should report the
+      ticket is valid. `spctl` should say `accepted` with
+      `source=Notarized Developer ID`.
+
+      A `rejected` from `spctl` means the release shipped without
+      notarisation, which the workflow is supposed to catch — see
+      `docs/apple-signing-plan.md` for why that failure is silent in
+      electron-builder.
 
 - [ ] **Confirm the Electron fuses survived packaging**, since signing happens
       after they are flipped:
@@ -153,25 +154,13 @@ revocable identity. Not in-process hardening.
           strategy :github_latest
         end
 
-        depends_on macos: ">= :sonoma"
+        depends_on macos: :ventura
         depends_on arch: :arm64
 
         app "Up Next.app"
 
-        # Without this the install looks like it worked and the app will not
-        # open, with nothing on screen explaining why.
-        caveats <<~EOS
-          Up Next is not notarised by Apple, so macOS will refuse to open it
-          the first time, and again after each upgrade.
-
-          To allow it:
-            1. Try to open Up Next. macOS will block it.
-            2. Open System Settings > Privacy & Security.
-            3. Scroll down and click "Open Anyway" next to Up Next.
-
-          This is because the project has no Apple Developer Program
-          membership. See https://upnextapp.co.uk/security.html
-        EOS
+        # No caveats. The build is notarised, so there is nothing the user has
+        # to be warned about or talked through.
 
         zap trash: [
           "~/Library/Application Support/Up Next",
@@ -194,19 +183,15 @@ revocable identity. Not in-process hardening.
 
       `brew trust` is required and was not in the original plan. Homebrew 6
       refuses a third-party cask outright — _"Refusing to load cask … from
-      untrusted tap"_ — until the tap is trusted. It is one more step between
-      a user and the app, and on a managed Mac it may be refused entirely.
+      untrusted tap"_ — until the tap is trusted. Notarisation does not change
+      this: it is Homebrew's own gate, not Gatekeeper's. It remains one more
+      step between a user and the app, and on a managed Mac it may be refused
+      entirely, which is why `docs/distribution-routes.md` now sends anyone
+      without Homebrew straight to the DMG.
 
-      Having built the app on the same Mac does **not** pre-approve it. The
-      tap install on 3 October was refused exactly as a stranger's would be:
-      `spctl -a -t exec` rejects it, the quarantine attribute is set, and the
-      app does not start. Approval is recorded against the signature's code
-      hash, so it is needed once per build — every release re-prompts.
-
-      Read the caveats Homebrew prints, then follow them as a user would.
-      Confirm the Privacy & Security override actually makes the app open —
-      this is the step most likely to lose people, and it needs to have been
-      walked at least once by someone who did not build the app.
+      Then just open the app. Having built it on the same Mac does **not**
+      pre-approve anything — the 3 October tap install was refused exactly as
+      a stranger's would be — so this is a real test of the notarised build.
 
 - [ ] **Check `brew uninstall --cask up-next` leaves nothing behind**, then
       `brew uninstall --zap --cask up-next` and confirm the support directory
@@ -229,9 +214,12 @@ A release goes like this:
 
 1. Bump `version` in `package.json`, commit, and push a matching tag:
    `git tag v0.2.0 && git push --tags`.
-2. The release workflow builds, ad-hoc signs and attaches the DMG to a new
-   GitHub Release. Its job summary prints the `version` and `sha256` lines for
-   the next step, so the hash never has to be computed by hand.
+2. The release workflow builds, signs with the Developer ID, waits for Apple
+   to notarise, staples the ticket and attaches the DMG to a new GitHub
+   Release. Its job summary prints the `version` and `sha256` lines for the
+   next step, so the hash never has to be computed by hand. Budget a few extra
+   minutes for the notary service; it is the slowest step and Apple gives no
+   guarantee.
 3. In the tap, edit `Casks/up-next.rb`: new `version`, new `sha256`. Commit.
 4. Users run `brew upgrade` — or `brew upgrade --cask up-next` for just this
    one — and Homebrew downloads the new DMG, checks it against the pinned
@@ -263,12 +251,14 @@ Two things users should know, and the README should say:
 
 ## Rough timings
 
-| Step                           | How long                    |
-| ------------------------------ | --------------------------- |
-| Build secrets                  | Done                        |
-| First successful release build | An afternoon, realistically |
-| Tap and cask                   | An hour                     |
-| Each release afterwards        | Ten minutes                 |
+| Step                           | How long                      |
+| ------------------------------ | ----------------------------- |
+| Build secrets                  | Done                          |
+| First successful release build | Done, `v0.1.0`                |
+| Tap and cask                   | Done                          |
+| Apple certificate and API key  | Half an hour, mostly waiting  |
+| First notarised release        | One run, plus Apple's queue   |
+| Each release afterwards        | Ten minutes plus notarisation |
 
 None of this depends on Google verification. An unverified app shows a warning
 at sign-in; it still installs and still works.
