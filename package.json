@@ -28,7 +28,7 @@
     "audit": "npm run check-node && node scripts/audit.ts"
   },
   "dependencies": {
-    "@googleapis/calendar": "20.0.0",
+    "@googleapis/calendar": "20.0.1",
     "electron-log": "5.4.4",
     "electron-store": "11.0.2",
     "google-auth-library": "11.1.0",
