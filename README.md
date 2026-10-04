@@ -91,6 +91,19 @@ Neither is notarised, because notarisation needs credentials only CI has. A loca
 therefore runs fine on the machine that built it and gets blocked by Gatekeeper on any
 other Mac. Use a real release for that.
 
+**On a Mac behind a TLS-intercepting proxy** — most managed fleets — packaging fails with
+`unable to get local issuer certificate`. electron-builder downloads the Electron binary
+over HTTPS and Node does not read the system keychain, so it never sees the proxy's CA.
+Hand it the machine's trust store:
+
+```sh
+security find-certificate -a -p /Library/Keychains/System.keychain > /tmp/ca-bundle.pem
+security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain >> /tmp/ca-bundle.pem
+export NODE_EXTRA_CA_CERTS=/tmp/ca-bundle.pem
+```
+
+CI is unaffected; GitHub's runners are not behind a proxy.
+
 **Without a Developer ID certificate in your keychain**, the build is signed ad-hoc, which
 has no Team ID for library validation to match the Electron framework against, and the app
 will not launch. Build with the entitlements that tolerate it:

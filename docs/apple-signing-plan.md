@@ -15,7 +15,7 @@ Apple Developer Program enrolment purchased 4 October 2026. Team ID
 | Step                                 | State                                |
 | ------------------------------------ | ------------------------------------ |
 | Apple Developer Program membership   | active                               |
-| Developer ID Application certificate | not created                          |
+| Developer ID Application certificate | created 4 October 2026               |
 | App Store Connect API key            | not created                          |
 | GitHub `release` environment secrets | not added                            |
 | Repo changes                         | done, on `feat/developer-id-signing` |
@@ -194,6 +194,30 @@ execute` both pass
 
 6. **Homebrew cask** (`edspressomartini/homebrew-tap`) — drop the `caveats`
    block entirely, bump `version` and `sha256`.
+
+## Proven locally before the first release
+
+Signing, the entitlement removal and launch were all verified on 4 October
+2026 by packaging on the development machine, which has the certificate but
+not the notarisation key. electron-builder logged
+`skipped macOS notarization reason=\`notarize\` options were unable to be
+generated` and carried on, which is the silent skip described above,
+observed rather than assumed.
+
+What the resulting bundle showed:
+
+- `flags=0x10000(runtime)` — hardened runtime, and no `adhoc`
+- authority chain Developer ID Application → Developer ID Certification
+  Authority → Apple Root CA
+- `TeamIdentifier=LRHKHKMD3J` on the app **and** on `Electron
+Framework.framework`, which is the specific fact that makes
+  `disable-library-validation` unnecessary
+- entitlements reduced to `com.apple.security.cs.allow-jit` alone
+- the app launched with three helper processes, stayed up, and produced no
+  crash report
+
+So the only parts still unproven at the point of tagging `v0.2.0` are the
+keychain import in CI and Apple's notary service.
 
 ## Part 4 — Verify
 
