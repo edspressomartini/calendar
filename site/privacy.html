@@ -18,7 +18,7 @@
         accounts and no analytics. This policy describes exactly what it accesses and where that
         data goes.
       </p>
-      <p><strong>Last updated:</strong> 30 September 2026</p>
+      <p><strong>Last updated:</strong> 5 October 2026</p>
 
       <h2>What the app accesses</h2>
       <p>With your permission, Up Next requests two read-only Google Calendar scopes:</p>
@@ -74,6 +74,112 @@
           never contain event titles, attendees, meeting links or credentials.
         </li>
       </ul>
+
+      <h2>How this data is protected</h2>
+      <p>
+        Up Next has no servers and no database, so there is no central store of anyone&rsquo;s
+        calendar data to protect. What protection means here is keeping the data safe in transit
+        between Google and your Mac, and keeping the Google sign-in token safe on the machine
+        itself. The specific mechanisms are below.
+      </p>
+
+      <h3>Encryption in transit</h3>
+      <p>
+        Every request the app makes travels over HTTPS with TLS, and the certificate is validated by
+        macOS against the system trust store. The app connects to Google&rsquo;s own API and sign-in
+        endpoints and to nothing else, so there is no other destination for data to reach. Plain
+        HTTP is never used.
+      </p>
+
+      <h3>Encryption at rest</h3>
+      <p>
+        Your Google access and refresh tokens are encrypted before they are written to disk, using
+        an encryption key held in the macOS Keychain. The Keychain releases that key only to this
+        application, identified by its Apple code signature, and only while you are logged in to
+        your macOS user account. An attacker who copies the token file off the machine cannot read
+        it, because the key does not travel with it.
+      </p>
+      <p>
+        The encrypted token file, your settings and your TODO list are written inside the
+        application&rsquo;s own support directory, with file-system permissions that restrict them
+        to your macOS user account. Other users of the same Mac cannot read them.
+      </p>
+
+      <h3>Minimising what is held at all</h3>
+      <p>
+        Calendar events are never written to disk. They are held in memory for as long as the app is
+        running and are discarded when it closes. Event descriptions and attendee lists are examined
+        in memory to find a meeting link and to detect a declined invitation, then discarded
+        immediately; they are never stored, logged or displayed.
+      </p>
+      <p>
+        The app requests two read-only scopes and no others, which is the minimum needed to draw
+        your agenda. It cannot create, modify or delete anything in your calendar, so a compromise
+        of the app could not be used to alter your data.
+      </p>
+      <p>
+        Logs record counts, timings and error codes only. Credentials, event titles, attendees and
+        meeting links are redacted before anything is written, so they cannot leak through a log
+        file or a crash report. Crash reporting is disabled outright.
+      </p>
+
+      <h3>Protecting the application itself</h3>
+      <p>
+        A stolen credential is only useful if something can be made to misuse it, so the app is
+        hardened against being tampered with or used as a host for other code:
+      </p>
+      <ul>
+        <li>
+          Builds are signed with an Apple Developer ID certificate and notarised by Apple, so macOS
+          verifies on every launch that the code has not been altered since it was built.
+        </li>
+        <li>
+          The macOS hardened runtime is enabled, with library validation enforced, so the app will
+          load only code signed by the same developer. The usual code-injection routes, including
+          <code>DYLD_INSERT_LIBRARIES</code> and attaching a debugger, are blocked.
+        </li>
+        <li>
+          The parts of the app that draw the interface run sandboxed, with no access to the network,
+          no access to the file system and no ability to run privileged code. They never receive a
+          credential, and they never receive a URL.
+        </li>
+        <li>
+          Only the privileged part of the app holds the token or talks to Google. Messages between
+          the two halves travel over a small, fixed set of channels, each with a schema that the
+          payload must satisfy and a check on where the message came from.
+        </li>
+        <li>
+          Dependencies are pinned to exact versions, package install scripts are disabled, and every
+          change runs registry-signature and vulnerability checks before it can be released.
+        </li>
+      </ul>
+      <p>
+        There is no automatic update mechanism and no update server, so there is no channel through
+        which code could be pushed to your machine.
+      </p>
+
+      <h3>Retention and deletion</h3>
+      <p>
+        The sign-in token is kept only until you disconnect the account or uninstall the app.
+        Calendar data is not retained at all. Completed TODO items are deleted after 30 days, and
+        deleting an item removes it immediately. Because nothing is held on a server, there is
+        nothing to request deletion of &mdash; removing the app removes the data.
+      </p>
+
+      <h3>Reporting a problem</h3>
+      <p>
+        If you believe you have found a vulnerability, please report it privately to the support
+        address on the Google consent screen before disclosing it publicly. The source code is
+        public and can be reviewed by anyone.
+      </p>
+
+      <h2>No use for AI or machine-learning training</h2>
+      <p>
+        Google user data obtained through Up Next is <strong>not</strong> used to develop, improve
+        or train generalised or non-personalised artificial-intelligence or machine-learning models,
+        and is not transferred to any third party for that purpose. The app contains no
+        machine-learning components, and no calendar data ever leaves your Mac.
+      </p>
 
       <h2>What is never sent anywhere</h2>
       <p>
