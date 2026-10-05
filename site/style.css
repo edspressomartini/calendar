@@ -636,3 +636,13 @@ footer {
   border-bottom: 1px solid var(--rule);
   padding-bottom: 0.35rem;
 }
+
+/* No rule under these: the line belongs to h2, and repeating it would flatten
+   the distinction between a section and the parts of one. */
+.prose h3 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
