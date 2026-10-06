@@ -36,6 +36,20 @@ const ACCEPTED: readonly AcceptedAdvisory[] = [
       'the app. The downloaded binary is checked against SHASUMS regardless.',
     reviewBy: '2027-01-31',
   },
+  {
+    id: 'GHSA-hp3w-g68c-fv3c',
+    package: 'sprintf-js',
+    reason:
+      'Denial of service through an unbounded precision specifier, reached ' +
+      'only through electron-builder -> @electron/get -> global-agent -> ' +
+      'roarr, which is the logger a build machine uses while downloading the ' +
+      'Electron binary. 1.1.3 is the latest release and no fix is published. ' +
+      'The format strings come from electron-builder, not from anything a ' +
+      'user or an attacker supplies, and none of this chain is a runtime ' +
+      'dependency, so it does not ship in the app. The worst case is a build ' +
+      'that hangs, on a single-use runner, which fails the release loudly.',
+    reviewBy: '2027-01-31',
+  },
 ]
 
 const SEVERITY_FLOOR = 'moderate'

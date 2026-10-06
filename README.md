@@ -45,13 +45,13 @@ that does and does not tell you.
 
 ### Where this has got to
 
-| Step                                | Status                                                   |
-| ----------------------------------- | -------------------------------------------------------- |
-| The tap repository and cask         | Live, `edspressomartini/homebrew-tap`                    |
-| Latest release                      | `v0.2.0`, signed and notarised                           |
-| Google OAuth brand verification     | Passed 2 October 2026                                    |
-| Google sensitive-scope verification | Not submitted; sign-in still warns the app is unverified |
-| Apple Developer Program             | Enrolled; releases are signed and notarised              |
+| Step                                | Status                                       |
+| ----------------------------------- | -------------------------------------------- |
+| The tap repository and cask         | Live, `edspressomartini/homebrew-tap`        |
+| Latest release                      | `v0.2.1`, signed and notarised               |
+| Google OAuth brand verification     | Passed 2 October 2026                        |
+| Google sensitive-scope verification | Passed 6 October 2026; no warning at sign-in |
+| Apple Developer Program             | Enrolled; releases are signed and notarised  |
 
 The full list, in dependency order, is in [`docs/launch-checklist.md`](docs/launch-checklist.md).
 
@@ -158,9 +158,9 @@ and why. It is worth reading before changing anything structural.
 
 ## Status
 
-Version 0.2.0, released 4 October 2026: signed with an Apple Developer ID, notarised,
+Version 0.2.1, released 5 October 2026: signed with an Apple Developer ID, notarised,
 and installable from the Homebrew tap or as a DMG. Runs daily against a real calendar.
 The app shows its own version at the bottom of the menu-bar menu.
 
-Not done yet: Google's sensitive-scope verification, so sign-in still warns that the app
-is unverified and there is a 100-user cap.
+Google's sensitive-scope verification passed on 6 October 2026, so sign-in is the
+ordinary Google flow with no "unverified app" warning and no 100-user cap.

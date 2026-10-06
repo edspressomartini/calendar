@@ -22,7 +22,7 @@
         at any of it. The threat model and the full design are in the repository, in
         <code>docs/spec.md</code> &sect;8.
       </p>
-      <p><strong>Last updated:</strong> 30 September 2026</p>
+      <p><strong>Last updated:</strong> 6 October 2026</p>
 
       <h2>Summary</h2>
       <ul>
@@ -38,6 +38,10 @@
         <li>Calendar content is held in memory only and never written to disk.</li>
         <li>Outbound traffic goes to Google&rsquo;s endpoints and nowhere else.</li>
         <li>No telemetry, no analytics, no crash reporting, no auto-updater.</li>
+        <li>
+          Builds are signed with an Apple Developer ID, notarised by Apple, and verified by Google
+          for the scopes they request.
+        </li>
       </ul>
 
       <h2>What it is technically</h2>
@@ -208,9 +212,13 @@
         </li>
         <li>
           <strong>Meeting links are opened by the privileged process only</strong>, and only if they
-          are <code>https:</code> on a short allowlist of known conferencing hosts. The UI asks to
-          join an event by its identifier and never handles a URL, so a link embedded in an invite
-          cannot become an arbitrary thing to open.
+          are <code>https:</code> on a short allowlist of conferencing hosts &mdash;
+          <code>meet.google.com</code>, <code>zoom.us</code> and its subdomains,
+          <code>teams.microsoft.com</code> and <code>teams.live.com</code>, and nothing else.
+          Embedded credentials and non-<code>https</code> schemes are refused outright, so
+          <code>https://meet.google.com@evil.example</code> does not pass. The UI asks to join an
+          event by its identifier and never handles a URL, so a link embedded in an invite cannot
+          become an arbitrary thing to open.
         </li>
         <li>
           <strong>Electron fuses</strong> disable the routes that normally turn an Electron app into
@@ -256,10 +264,20 @@
           audit on every change, alongside linting, type checking and the test suite.
         </li>
         <li>
+          <strong>The release pipeline is the other half of the supply chain.</strong> Nothing
+          reaches <code>main</code> except through a pull request that passed the checks, and the
+          branch cannot be force-pushed or deleted, with no bypass for anyone including the owner.
+          Releases are built only by a tagged run on a GitHub-hosted runner; the signing certificate
+          and the notarisation key are held in a separate deployment environment and are not
+          readable by ordinary CI. Every release asserts its own signature, hardened runtime and
+          stapled notarisation ticket before it publishes, because electron-builder&rsquo;s
+          notarisation step warns and continues when credentials are missing rather than failing.
+        </li>
+        <li>
           <strong>No auto-updater and no update server.</strong> Updates arrive through Homebrew,
           which checks a pinned hash for each release, and Gatekeeper checks the signature and
           notarisation on first launch. There is no self-update code to get wrong and no update
-          endpoint to compromise.
+          endpoint to compromise. The cost of that is stated under limits below.
         </li>
       </ul>
 
@@ -283,8 +301,10 @@
           process. No in-process control can.
         </li>
         <li>
-          <strong>Until Google verifies the app</strong>, sign-in shows an &ldquo;unverified
-          app&rdquo; warning. That is a statement about review status, not about what the app does.
+          <strong>Google&rsquo;s verification is a policy review, not a security audit.</strong>
+          The app passed it in October 2026, so sign-in no longer warns that it is unverified. What
+          that confirms is that the scopes are justified, the privacy policy is accurate and the
+          brand is genuinely ours. It is not a statement that the code is sound.
         </li>
         <li>
           <strong>Notarisation is a malware scan, not an audit.</strong> Builds are signed with an
@@ -292,6 +312,27 @@
           malicious code and can revoke the signing identity if it later turns out to be malicious.
           It does not mean Apple has reviewed what the app does, and nobody should read it that way.
           The source and the design document below are the thing to judge it on.
+        </li>
+        <li>
+          <strong>Having no updater means patches are pulled, not pushed.</strong> This is the real
+          cost of the decision above. The app embeds Chromium, Chromium has security releases, and
+          there is no mechanism to make anyone take one. Someone who installed through Homebrew gets
+          the fix when they next run <code>brew upgrade</code>; someone who installed the DMG gets
+          it when they decide to go and look. Running an old copy is therefore possible and the app
+          will not say so.
+        </li>
+        <li>
+          <strong>One maintainer, one signing identity.</strong> The certificate that signs releases
+          and the Google Cloud project that owns the OAuth client both belong to one person. A
+          compromise of that person&rsquo;s accounts would produce a correctly signed and notarised
+          build, and there is nobody else able to issue a fix. For anything beyond individual use
+          this is the thing to resolve first, not the technical controls.
+        </li>
+        <li>
+          <strong>Nothing here has been independently reviewed.</strong> There has been no external
+          audit and no penetration test. Every claim on this page is the developer&rsquo;s own, made
+          checkable by publishing the source, the threat model and the tests rather than by anyone
+          else having confirmed it.
         </li>
       </ul>
 

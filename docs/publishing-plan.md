@@ -9,14 +9,16 @@ needs the other two:
 | Goal                                       | Needs                   | Status                   |
 | ------------------------------------------ | ----------------------- | ------------------------ |
 | A native app on my own Mac                 | Nothing                 | Done                     |
-| No "unverified app" warning at sign-in     | Google verification     | Not submitted            |
+| No "unverified app" warning at sign-in     | Google verification     | Passed, 6 Oct 2026       |
 | Anyone else can install it, including brew | Apple Developer Program | Done, 4 Oct 2026, £79/yr |
 
 > Parts 3 onwards below describe the Apple work as future. It happened on
 > 4 October 2026 and the record of what was actually done, including the
 > credentials and their renewal, is in
-> [`docs/apple-signing-plan.md`](apple-signing-plan.md). Only the Google half
-> of this plan is still outstanding.
+> [`docs/apple-signing-plan.md`](apple-signing-plan.md). The Google half
+> completed on 6 October 2026, so this file is now a record rather than a plan.
+> What the verification review actually asked for is in
+> [`docs/launch-checklist.md`](launch-checklist.md).
 
 ---
 
