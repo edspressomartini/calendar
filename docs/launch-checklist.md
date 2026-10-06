@@ -108,8 +108,14 @@ launched, drew its UI and reached Google, which it could not have done with the
       confidential information"_ prompt. **Always Allow** is the answer. A Developer ID
       signature is stable across releases, so it does not recur — unlike the old ad-hoc
       signature, which differed on every build.
-- [ ] Electron fuses and ASAR integrity, **asserted rather than observed**. Read them
-      explicitly with `npx @electron/fuses read --app "/Applications/Up Next.app"`.
+- [x] Electron fuses and ASAR integrity, **observed** on the installed `v0.2.1` bundle
+      on 6 October 2026 with `npx @electron/fuses read --app "/Applications/Up Next.app"`.
+      Every fuse is in the intended state: `RunAsNode`, `EnableNodeOptionsEnvironmentVariable`,
+      `EnableNodeCliInspectArguments`, `LoadBrowserProcessSpecificV8Snapshot` and
+      `GrantFileProtocolExtraPrivileges` disabled; `EnableCookieEncryption`,
+      `EnableEmbeddedAsarIntegrityValidation` and `OnlyLoadAppFromAsar` enabled. Re-read
+      this after any Electron major upgrade — a new fuse defaults to enabled, and the
+      tool prints one the installed `@electron/fuses` does not have a name for.
 - [ ] Launch at login, which is a no-op in development by design.
 - [ ] Notification permission, which is granted per bundle id, not per app name.
 
