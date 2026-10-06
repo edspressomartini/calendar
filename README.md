@@ -164,3 +164,8 @@ The app shows its own version at the bottom of the menu-bar menu.
 
 Google's sensitive-scope verification passed on 6 October 2026, so sign-in is the
 ordinary Google flow with no "unverified app" warning and no 100-user cap.
+
+## Licence
+
+[MIT](LICENSE). Vulnerability reports go to the address in [`SECURITY.md`](SECURITY.md)
+rather than the issue tracker.
