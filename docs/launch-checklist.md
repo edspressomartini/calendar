@@ -27,12 +27,16 @@ been signed, packaged for distribution, or shown to anyone else.
 - [ ] **Move to In production.** Testing expires refresh tokens after 7 days, so the
       app stops working weekly. This does not need verification and should not wait
       for it.
-- [ ] **Understand the 100-user cap.** An unverified production app is limited to 100
-      users _for the lifetime of the project_, and the cap cannot be reset. Irrelevant at
-      two users; fatal if this ever goes public from the same project.
-- [ ] **Google verification**, only needed to remove the "unverified app" warning and
-      lift the cap. Needs a demo video, scope justification and brand verification.
-      Expect roughly 2–3 business days for branding and around 10 for sensitive scopes.
+- [x] **Understand the 100-user cap.** An unverified production app is limited to 100
+      users _for the lifetime of the project_, and the cap cannot be reset. Moot now
+      verification has passed, but it is why verification was worth doing before sharing
+      the app around rather than after.
+- [x] **Google verification passed**, 6 October 2026, lifting the cap and removing the
+      "unverified app" warning. The first submission was rejected because the privacy
+      policy said what data is held and where, but not how it is protected — a separate
+      requirement. Adding a "How this data is protected" section and a contact address
+      on the page itself cleared it. Replying to the rejection email is the
+      resubmission; the console hides the submit button while a request is open.
 - [x] **Prove ownership of the home page URL.** Google's branding attempt failed with
       "not registered to you". `github.io` is on the Public Suffix List, so a _Domain_
       property is impossible, but _URL prefix_ properties are not. Two now exist, both
@@ -129,7 +133,9 @@ launched, drew its UI and reached Google, which it could not have done with the
 ## 5. Product gaps before anyone else uses it
 
 - [ ] **An onboarding path.** A first run with no account shows an empty widget and a
-      Settings window. Nothing explains the unverified-app warning they are about to see.
+      Settings window, with nothing explaining what to do next. Less urgent now
+      verification has removed the unverified-app warning, but still the weakest part
+      of a first run.
 - [ ] **A visible failure state for a dead token.** The status strip says "needs
       reconnecting", but nothing prompts; a user could stare at a stale agenda for days.
 - [ ] **Uninstall story.** Confirm the `zap` stanza actually clears

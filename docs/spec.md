@@ -526,7 +526,7 @@ We can't defend against an attacker who already has root, or who can run code in
 - **Request parameters:** `access_type=offline` and `prompt=consent`, so Google always returns a refresh token; no `include_granted_scopes`; only the scopes below.
 - **Scopes:** `calendar.events.readonly` + `calendar.calendarlist.readonly`. Read-only, events and the calendar list only: a leaked token can't create, edit or delete anything, can't read calendar settings or sharing, and can't touch Gmail or Drive. If the Phase 0 spike gets a 403 from `calendarList.list` with the granular scope, fall back to `calendar.readonly` and record why here.
 - **Check what was actually granted.** Google lets users untick scopes on the consent screen. Without `calendar.events.readonly`, revoke whatever was granted and explain why. Without `calendar.calendarlist.readonly`, carry on with the primary calendar only and hide the calendar picker for that account.
-- **Consent screen:** user type **External** (a personal Gmail account can't use a Workspace-only "Internal" client), publishing status **In production** — "Testing" expires refresh tokens after 7 days. Until Google verifies the app, users see an "unverified app" warning and the project is capped at 100 users. Verification is Phase 5.
+- **Consent screen:** user type **External** (a personal Gmail account can't use a Workspace-only "Internal" client), publishing status **In production** — "Testing" expires refresh tokens after 7 days. Sensitive-scope verification passed on 6 October 2026, so there is no "unverified app" warning and no 100-user cap. Any change to the requested scopes puts the app back through review.
 - **Client ID and secret:** injected at build time from CI secrets and read only by `infra/config.ts`; never committed. Google treats desktop client secrets as non-confidential — they ship inside every copy of the app — and PKCE is what protects the code exchange. They still don't belong in a public repo. Forks bring their own through a git-ignored `.env.local`.
 - **Workspace admin:** the work account's admin may need to trust the client ID (Admin console → Security → API controls → App access control). Phase 0 finds out before anything is built.
 
@@ -668,7 +668,7 @@ engine-strict=true
 - Create the public tap `edspressomartini/homebrew-tap` with `Casks/up-next.rb`, including a `zap` stanza (§8.2).
 - Colleagues install with `brew install --cask edspressomartini/tap/up-next`, and `brew upgrade` delivers updates. On a centrally managed Mac the tap may also need to be allowed by policy (§11).
 
-**Phase 5 — Public Homebrew.** Google OAuth verification (homepage, privacy policy, demo video, scope justification) to lift the 100-user cap and remove the "unverified app" warning. A README with install instructions. Submit to the official `homebrew/cask` only once the app is popular enough to meet its notability rules.
+**Phase 5 — Public Homebrew.** Google OAuth verification (homepage, privacy policy, demo video, scope justification) to lift the 100-user cap and remove the "unverified app" warning: passed 6 October 2026. A README with install instructions. Submit to the official `homebrew/cask` only once the app is popular enough to meet its notability rules.
 
 **Later, optional.**
 

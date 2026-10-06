@@ -258,5 +258,6 @@ Two things users should know, and the README should say:
 | First notarised release        | One run, plus Apple's queue   |
 | Each release afterwards        | Ten minutes plus notarisation |
 
-None of this depends on Google verification. An unverified app shows a warning
-at sign-in; it still installs and still works.
+None of this depended on Google verification, which is a separate track and
+passed on 6 October 2026. An unverified app shows a warning at sign-in; it
+still installs and still works.
