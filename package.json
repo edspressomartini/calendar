@@ -3,6 +3,7 @@
   "productName": "Up Next",
   "version": "0.2.1",
   "description": "An always-on-top macOS widget showing today's calendar.",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
