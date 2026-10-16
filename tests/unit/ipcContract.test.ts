@@ -8,13 +8,19 @@ import {
 import {
   REQUEST_SCHEMAS,
   addTodoSchema,
+  fitHeightSchema,
   joinEventSchema,
   moveToDisplaySchema,
+  setSectionsSchema,
   setSelectedCalendarsSchema,
   todoSnapshotSchema,
   updateSettingsSchema,
 } from '../../src/shared/ipc/contract.ts'
-import { MAX_TODO_TITLE_LENGTH } from '../../src/shared/constants.ts'
+import {
+  MAX_TODO_TITLE_LENGTH,
+  MAX_WIDGET_FIT_HEIGHT,
+  TODO_COMPLETED_RETENTION_DAYS,
+} from '../../src/shared/constants.ts'
 
 /** Types vanish at runtime, so the boundary needs real checks (docs/spec.md §8.5). */
 describe('IPC contract', () => {
@@ -89,7 +95,7 @@ describe('IPC contract', () => {
   })
 
   it('refuses a TODO snapshot filed under something that is not a day', () => {
-    const snapshot = { today: '2026-09-30', overdue: [], current: [], upcoming: [] }
+    const snapshot = { today: '2026-09-30', overdue: [], current: [], upcoming: [], history: [] }
     expect(todoSnapshotSchema.safeParse(snapshot).success).toBe(true)
     expect(todoSnapshotSchema.safeParse({ ...snapshot, today: '2026-02-31' }).success).toBe(false)
     expect(todoSnapshotSchema.safeParse({ ...snapshot, today: 'tomorrow' }).success).toBe(false)
@@ -123,6 +129,40 @@ describe('IPC contract', () => {
 
   it('rejects an empty settings patch', () => {
     expect(updateSettingsSchema.safeParse({}).success).toBe(false)
+  })
+
+  it('takes both section toggles together, so neither can be half-applied', () => {
+    expect(setSectionsSchema.safeParse({ showTimeline: false, showTodos: true }).success).toBe(true)
+    expect(setSectionsSchema.safeParse({ showTimeline: false }).success).toBe(false)
+    expect(
+      setSectionsSchema.safeParse({ showTimeline: false, showTodos: true, showStatus: true })
+        .success,
+    ).toBe(false)
+  })
+
+  it('bounds a measured height, because the renderer is the one measuring', () => {
+    expect(fitHeightSchema.safeParse({ height: 140 }).success).toBe(true)
+    expect(fitHeightSchema.safeParse({ height: 0 }).success).toBe(false)
+    expect(fitHeightSchema.safeParse({ height: -40 }).success).toBe(false)
+    expect(fitHeightSchema.safeParse({ height: 140.5 }).success).toBe(false)
+    expect(fitHeightSchema.safeParse({ height: MAX_WIDGET_FIT_HEIGHT + 1 }).success).toBe(false)
+  })
+
+  it('bounds the history in a TODO snapshot by the retention that produces it', () => {
+    const day = { day: '2026-09-29', todos: [] }
+    const snapshot = { today: '2026-09-30', overdue: [], current: [], upcoming: [], history: [day] }
+
+    expect(todoSnapshotSchema.safeParse(snapshot).success).toBe(true)
+    expect(
+      todoSnapshotSchema.safeParse({ ...snapshot, history: [{ ...day, day: 'yesterday' }] })
+        .success,
+    ).toBe(false)
+    expect(
+      todoSnapshotSchema.safeParse({
+        ...snapshot,
+        history: Array.from({ length: TODO_COMPLETED_RETENTION_DAYS + 1 }, () => day),
+      }).success,
+    ).toBe(false)
   })
 
   it('validates display moves', () => {

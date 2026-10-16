@@ -22,6 +22,14 @@ export function registerWindowHandlers(router: IpcRouter, deps: WindowHandlerDep
     deps.preferences.update({ alwaysOnTop: pinned })
   })
 
+  router.handle(CHANNELS.widgetSetSections, ({ showTimeline, showTodos }) => {
+    deps.preferences.update({ showTimeline, showTodos })
+  })
+
+  router.handle(CHANNELS.widgetFitHeight, ({ height }) => {
+    deps.widget.fitHeight(height)
+  })
+
   router.handle(CHANNELS.settingsOpen, async () => {
     await deps.settingsWindow.open()
   })

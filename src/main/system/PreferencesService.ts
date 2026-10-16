@@ -35,6 +35,7 @@ export class PreferencesService {
     this.widget.applyAlwaysOnTop(settings.alwaysOnTop)
     this.widget.applyScreenShareVisibility(settings.hideFromScreenShare)
     this.widget.applyTextScale(settings.widgetTextScale)
+    this.widget.applySectionVisibility(settings.showTimeline)
     this.shortcuts.apply(settings.quickAddShortcut)
   }
 
@@ -59,6 +60,9 @@ export class PreferencesService {
     }
     if (patch.widgetTextScale !== undefined) {
       this.widget.applyTextScale(updated.widgetTextScale)
+    }
+    if (patch.showTimeline !== undefined) {
+      this.widget.applySectionVisibility(updated.showTimeline)
     }
     if (patch.quickAddShortcut !== undefined) {
       updated = this.applyShortcut(updated, before.quickAddShortcut)

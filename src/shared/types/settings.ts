@@ -38,6 +38,14 @@ export interface AppSettings {
   readonly widgetTextScale: number
   readonly todoPlacement: TodoPlacement
   /**
+   * Whether the widget draws the timeline and the TODO list at all. Both are
+   * on by default; turning them off is how the widget becomes small enough to
+   * live on a laptop screen with no second monitor (§6). "What's next" is not
+   * toggleable, because a widget showing neither would have nothing to say.
+   */
+  readonly showTimeline: boolean
+  readonly showTodos: boolean
+  /**
    * The global shortcut that opens quick add. Always one main has actually
    * registered: a value we could not claim would be a lie on screen.
    */
