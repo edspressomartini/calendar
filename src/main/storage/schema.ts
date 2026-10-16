@@ -34,6 +34,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   secondaryTimeZone: null,
   widgetTextScale: DEFAULT_WIDGET_TEXT_SCALE,
   todoPlacement: 'below',
+  showTimeline: true,
+  showTodos: true,
   quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
   hideTitlesInMenuBar: false,
   privacyMode: false,

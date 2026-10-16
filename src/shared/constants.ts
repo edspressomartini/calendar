@@ -70,5 +70,20 @@ export const WIDGET_DEFAULT_WIDTH = 320
 export const WIDGET_DEFAULT_HEIGHT = 480
 export const WIDGET_SCREEN_MARGIN = 16
 
+/**
+ * The floor once the timeline is off (§6). Lower than WIDGET_MIN_HEIGHT
+ * because with nothing that scrolls there is nothing to squash: the title bar
+ * and "what's next" are the whole window, and that has to be allowed to be
+ * genuinely small or the laptop case is not served.
+ */
+export const WIDGET_COMPACT_MIN_HEIGHT = 86
+
+/**
+ * Upper bound on a height the renderer may ask for. Not a layout value — it
+ * exists so a measurement arriving wrong cannot ask for a window taller than
+ * any display, before main clamps it to the real work area.
+ */
+export const MAX_WIDGET_FIT_HEIGHT = 4000
+
 export const SETTINGS_WINDOW_WIDTH = 720
 export const SETTINGS_WINDOW_HEIGHT = 560

@@ -1,3 +1,5 @@
+import { isLocalDayKey, parseLocalDayKey } from '../../../shared/time.ts'
+
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: '2-digit',
   minute: '2-digit',
@@ -15,6 +17,18 @@ export function formatDayLabel(iso: string): string {
     return 'Today'
   }
   return dayFormatter.format(new Date(parsed))
+}
+
+/**
+ * A `YYYY-MM-DD` day key, not an instant. Parsed as local midnight rather
+ * than handed to Date.parse, which reads a bare date as UTC and would print
+ * the day before for anyone west of Greenwich.
+ */
+export function formatDayKeyLabel(dayKey: string): string {
+  if (!isLocalDayKey(dayKey)) {
+    return dayKey
+  }
+  return dayFormatter.format(parseLocalDayKey(dayKey))
 }
 
 /** Formatters are cached: the gutter reformats every tick on each render. */

@@ -3,7 +3,12 @@ import type { AccountView } from '../types/account.ts'
 import type { CalendarId, CalendarSummary } from '../types/calendar.ts'
 import type { AppSettings, DisplayOption } from '../types/settings.ts'
 import type { TodoSnapshot } from '../types/todo.ts'
-import type { MeetingAlert, MoveToDisplayRequest, UpdateSettingsRequest } from './contract.ts'
+import type {
+  MeetingAlert,
+  MoveToDisplayRequest,
+  SetSectionsRequest,
+  UpdateSettingsRequest,
+} from './contract.ts'
 
 /**
  * The only surfaces a renderer can reach. Each preload exposes exactly one of
@@ -16,6 +21,13 @@ export interface WidgetBridge {
   join(eventId: string): Promise<void>
   hide(): Promise<void>
   setPinned(pinned: boolean): Promise<void>
+  setSections(sections: SetSectionsRequest): Promise<void>
+  /**
+   * Asks main to shrink the window to the content. Only meaningful with the
+   * timeline off, because the timeline is what fills whatever height it is
+   * given rather than having one of its own.
+   */
+  fitHeight(height: number): Promise<void>
   openSettings(): Promise<void>
   syncNow(): Promise<void>
   /** Returns an unsubscribe function. */

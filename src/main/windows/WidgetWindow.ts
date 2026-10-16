@@ -1,5 +1,6 @@
 import { BrowserWindow, type Rectangle } from 'electron'
 import {
+  WIDGET_COMPACT_MIN_HEIGHT,
   WIDGET_DEFAULT_HEIGHT,
   WIDGET_DEFAULT_WIDTH,
   WIDGET_MIN_HEIGHT,
@@ -13,6 +14,7 @@ import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import { resolveRendererUrl } from './appProtocol.ts'
 import {
+  boundsForFittedHeight,
   computeBounds,
   displayForBounds,
   findDisplay,
@@ -60,7 +62,7 @@ export class WidgetWindow {
     const window = new BrowserWindow({
       ...bounds,
       minWidth: WIDGET_MIN_WIDTH,
-      minHeight: WIDGET_MIN_HEIGHT,
+      minHeight: settings.showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
       // NSPanel behaviour: all Spaces, above full-screen apps, non-activating.
       type: 'panel',
       frame: false,
@@ -156,6 +158,46 @@ export class WidgetWindow {
    */
   applyTextScale(percent: number): void {
     this.window?.webContents.setZoomFactor(percent / 100)
+  }
+
+  /**
+   * Lets the window be shorter than its normal minimum once the timeline is
+   * off, and puts the floor back when it returns (§6). Called on every
+   * settings change, so it has to be safe to call with nothing to do.
+   */
+  applySectionVisibility(showTimeline: boolean): void {
+    if (!this.window) {
+      return
+    }
+    const minHeight = showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT
+    this.window.setMinimumSize(WIDGET_MIN_WIDTH, minHeight)
+
+    // Growing back is main's job because the renderer has no height to
+    // measure once the timeline is drawing again: it fills what it is given.
+    const bounds = this.window.getBounds()
+    if (showTimeline && bounds.height < WIDGET_MIN_HEIGHT) {
+      this.window.setBounds({ ...bounds, height: WIDGET_MIN_HEIGHT })
+    }
+  }
+
+  /**
+   * Shrinks the window to a height the renderer measured. Ignored while the
+   * timeline is on, because the timeline has no intrinsic height and the
+   * number would be meaningless.
+   */
+  fitHeight(height: number): void {
+    if (!this.window || this.settings.getSettings().showTimeline) {
+      return
+    }
+
+    const bounds = this.window.getBounds()
+    const display = displayForBounds(bounds)
+    const fitted = boundsForFittedHeight(bounds, display, height, WIDGET_COMPACT_MIN_HEIGHT)
+    if (fitted.height === bounds.height) {
+      return
+    }
+
+    this.window.setBounds(fitted)
   }
 
   moveToDisplay(display: DisplayKey, corner: WidgetCorner): void {

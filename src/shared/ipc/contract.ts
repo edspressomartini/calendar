@@ -7,9 +7,11 @@ import {
   MAX_SYNC_INTERVAL_MINUTES,
   MAX_TODOS,
   MAX_TODO_TITLE_LENGTH,
+  MAX_WIDGET_FIT_HEIGHT,
   MAX_WIDGET_TEXT_SCALE,
   MIN_SYNC_INTERVAL_MINUTES,
   MIN_WIDGET_TEXT_SCALE,
+  TODO_COMPLETED_RETENTION_DAYS,
 } from '../constants.ts'
 import { CHANNELS } from './channels.ts'
 import { isValidAccelerator } from '../shortcuts.ts'
@@ -85,6 +87,8 @@ export const updateSettingsSchema = z
     secondaryTimeZone: timeZoneName.nullable(),
     widgetTextScale: widgetTextScale,
     todoPlacement: todoPlacement,
+    showTimeline: z.boolean(),
+    showTodos: z.boolean(),
     quickAddShortcut: quickAddShortcut,
     hideTitlesInMenuBar: z.boolean(),
     privacyMode: z.boolean(),
@@ -96,6 +100,21 @@ export const updateSettingsSchema = z
   .refine((value) => Object.keys(value).length > 0, { message: 'no settings supplied' })
 
 export const setPinnedSchema = z.strictObject({ pinned: z.boolean() })
+
+/** Both sent together, so the widget cannot end up half-applied. */
+export const setSectionsSchema = z.strictObject({
+  showTimeline: z.boolean(),
+  showTodos: z.boolean(),
+})
+
+/**
+ * A measurement, not a command: main clamps it to the minimum and to the
+ * display before using it, so a wrong number cannot produce a window that is
+ * off-screen or impossible to grab.
+ */
+export const fitHeightSchema = z.strictObject({
+  height: z.number().int().min(1).max(MAX_WIDGET_FIT_HEIGHT),
+})
 export const joinEventSchema = z.strictObject({ eventId: identifier })
 
 /** Dictated text arrives with trailing whitespace, so it is trimmed first. */
@@ -108,6 +127,8 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.agendaJoin]: joinEventSchema,
   [CHANNELS.widgetHide]: noPayload,
   [CHANNELS.widgetSetPinned]: setPinnedSchema,
+  [CHANNELS.widgetSetSections]: setSectionsSchema,
+  [CHANNELS.widgetFitHeight]: fitHeightSchema,
   [CHANNELS.settingsOpen]: noPayload,
   [CHANNELS.accountsList]: noPayload,
   [CHANNELS.accountsConnect]: connectAccountSchema,
@@ -177,6 +198,8 @@ export const agendaSnapshotSchema = z.strictObject({
   nextUp: agendaItemSchema.nullable(),
   viewMode: z.enum(['merged', 'split']),
   todoPlacement: todoPlacement,
+  showTimeline: z.boolean(),
+  showTodos: z.boolean(),
   quickAddShortcut: quickAddShortcut,
   privacyMode: z.boolean(),
 })
@@ -239,6 +262,8 @@ export const appSettingsSchema = z.strictObject({
   secondaryTimeZone: timeZoneName.nullable(),
   widgetTextScale: widgetTextScale,
   todoPlacement: todoPlacement,
+  showTimeline: z.boolean(),
+  showTodos: z.boolean(),
   quickAddShortcut: quickAddShortcut,
   hideTitlesInMenuBar: z.boolean(),
   privacyMode: z.boolean(),
@@ -261,11 +286,19 @@ export const todoSchema = z.strictObject({
   rollCount: z.number().int().min(0),
 })
 
+export const todoHistoryDaySchema = z.strictObject({
+  day: localDayKey,
+  todos: z.array(todoSchema).max(MAX_TODOS),
+})
+
 export const todoSnapshotSchema = z.strictObject({
   today: localDayKey,
   overdue: z.array(todoSchema).max(MAX_TODOS),
   current: z.array(todoSchema).max(MAX_TODOS),
   upcoming: z.array(todoSchema).max(MAX_TODOS),
+  // One day per entry and retention caps the span, so the count is bounded by
+  // the days in the window rather than by the size of the list.
+  history: z.array(todoHistoryDaySchema).max(TODO_COMPLETED_RETENTION_DAYS),
 })
 
 export const accountListSchema = z.array(accountViewSchema)
@@ -279,6 +312,8 @@ export type SetSelectedCalendarsRequest = z.infer<typeof setSelectedCalendarsSch
 export type MoveToDisplayRequest = z.infer<typeof moveToDisplaySchema>
 export type UpdateSettingsRequest = z.infer<typeof updateSettingsSchema>
 export type SetPinnedRequest = z.infer<typeof setPinnedSchema>
+export type SetSectionsRequest = z.infer<typeof setSectionsSchema>
+export type FitHeightRequest = z.infer<typeof fitHeightSchema>
 export type JoinEventRequest = z.infer<typeof joinEventSchema>
 export type AddTodoRequest = z.infer<typeof addTodoSchema>
 export type TodoIdRequest = z.infer<typeof todoIdSchema>

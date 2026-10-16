@@ -242,3 +242,84 @@ describe('completing and removing', () => {
     expect(service.roll('nonsense').current).toHaveLength(1)
   })
 })
+
+/**
+ * History exists so the list can be read back as a standup update, which is
+ * why it is keyed on when the work was finished rather than on the day the
+ * item was filed under (docs/spec.md §6).
+ */
+describe('history', () => {
+  it('keeps something completed yesterday, which otherwise leaves every group', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-29', 'done', { completedAt: '2026-09-29T15:00:00.000Z' }),
+    ])
+
+    const snapshot = service.getSnapshot()
+
+    expect(snapshot.history).toHaveLength(1)
+    expect(snapshot.history[0]?.day).toBe('2026-09-29')
+    expect(snapshot.history[0]?.todos.map((todo) => todo.id)).toEqual(['done'])
+    expect(snapshot.overdue).toHaveLength(0)
+    expect(snapshot.current).toHaveLength(0)
+    expect(snapshot.upcoming).toHaveLength(0)
+  })
+
+  it('files it under the day it was ticked off, not the day it was added', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-25', 'late', { completedAt: '2026-09-29T11:00:00.000Z' }),
+    ])
+
+    expect(service.getSnapshot().history.map((entry) => entry.day)).toEqual(['2026-09-29'])
+  })
+
+  it('leaves today out, because the live list already shows it', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-30', 'today', { completedAt: '2026-09-30T08:30:00.000Z' }),
+    ])
+
+    const snapshot = service.getSnapshot()
+
+    expect(snapshot.history).toHaveLength(0)
+    expect(snapshot.current.map((todo) => todo.id)).toEqual(['today'])
+  })
+
+  it('never takes something still outstanding', () => {
+    const { service } = serviceWith([todoOn('2026-09-28', 'stale')])
+
+    const snapshot = service.getSnapshot()
+
+    expect(snapshot.history).toHaveLength(0)
+    expect(snapshot.overdue.map((todo) => todo.id)).toEqual(['stale'])
+  })
+
+  it('orders days newest first and items by when they were ticked off', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-28', 'older', { completedAt: '2026-09-28T09:00:00.000Z' }),
+      todoOn('2026-09-29', 'morning', { completedAt: '2026-09-29T09:00:00.000Z' }),
+      todoOn('2026-09-29', 'evening', { completedAt: '2026-09-29T17:00:00.000Z' }),
+    ])
+
+    const history = service.getSnapshot().history
+
+    expect(history.map((entry) => entry.day)).toEqual(['2026-09-29', '2026-09-28'])
+    expect(history[0]?.todos.map((todo) => todo.id)).toEqual(['evening', 'morning'])
+  })
+
+  it('buckets by local time, so a late finish does not land on the wrong day', () => {
+    // Local 23:30 on the 29th. Slicing the ISO string would read the UTC date
+    // and file this under the 30th for anyone east of Greenwich.
+    const completedAt = new Date(2026, 8, 29, 23, 30).toISOString()
+    const { service } = serviceWith([todoOn('2026-09-29', 'late-night', { completedAt })])
+
+    expect(service.getSnapshot().history.map((entry) => entry.day)).toEqual(['2026-09-29'])
+  })
+
+  it('redacts titles in privacy mode, like every other group', () => {
+    const { service } = serviceWith(
+      [todoOn('2026-09-29', 'done', { completedAt: '2026-09-29T15:00:00.000Z' })],
+      { ...DEFAULT_SETTINGS, privacyMode: true },
+    )
+
+    expect(service.getSnapshot().history[0]?.todos[0]?.title).toBe('Task')
+  })
+})

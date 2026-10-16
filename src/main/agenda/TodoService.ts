@@ -5,7 +5,7 @@ import {
   PRIVACY_PLACEHOLDER_TODO_TITLE,
 } from '../../shared/constants.ts'
 import { addLocalDays, toLocalDayKey } from '../../shared/time.ts'
-import type { Todo, TodoSnapshot } from '../../shared/types/todo.ts'
+import type { Todo, TodoHistoryDay, TodoSnapshot } from '../../shared/types/todo.ts'
 import { Signal } from '../infra/Signal.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import { pruneCompleted } from '../storage/todoSchema.ts'
@@ -123,8 +123,54 @@ export class TodoService {
       overdue: group((todo) => isOverdue(todo, today)),
       current: group((todo) => todo.day === today),
       upcoming: group((todo) => todo.day > today),
+      history: buildHistory(todos, today, hideTitles),
     }
   }
+}
+
+/**
+ * Completed TODOs from before today, newest day first (§6).
+ *
+ * Bucketed by when the work was ticked off, not by the day it was filed under:
+ * something added on Monday and finished on Wednesday belongs to Wednesday,
+ * because this is what the user reads out as "what I got done". Today's
+ * completions are left out because `current` already shows them, and listing
+ * them twice would make the two disagree.
+ */
+function buildHistory(
+  todos: readonly Todo[],
+  today: string,
+  hideTitles: boolean,
+): readonly TodoHistoryDay[] {
+  const byDay = new Map<string, Todo[]>()
+
+  for (const todo of todos) {
+    if (todo.completedAt === null) {
+      continue
+    }
+    // From the instant, not from slicing the string: an ISO timestamp is UTC,
+    // so slicing would file anything ticked off late in the evening under
+    // tomorrow for anyone east of Greenwich.
+    const day = toLocalDayKey(new Date(todo.completedAt))
+    if (day >= today) {
+      continue
+    }
+    const existing = byDay.get(day)
+    if (existing) {
+      existing.push(todo)
+      continue
+    }
+    byDay.set(day, [todo])
+  }
+
+  return [...byDay.entries()]
+    .sort(([left], [right]) => right.localeCompare(left))
+    .map(([day, items]) => ({
+      day,
+      todos: items
+        .sort((left, right) => (right.completedAt ?? '').localeCompare(left.completedAt ?? ''))
+        .map((todo) => (hideTitles ? redact(todo) : todo)),
+    }))
 }
 
 /** The id is what the renderer acts on, so hiding the text costs nothing. */

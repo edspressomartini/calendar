@@ -15,6 +15,18 @@ export interface Todo {
 }
 
 /**
+ * A past day's completed TODOs, for the history view (§6).
+ *
+ * Keyed by the day the work was ticked off rather than the day it was filed
+ * under, because the question history answers is "what did I get done".
+ */
+export interface TodoHistoryDay {
+  /** `YYYY-MM-DD` in local time. */
+  readonly day: string
+  readonly todos: readonly Todo[]
+}
+
+/**
  * What the widget renders. Grouped in main so the renderer never has to work
  * out what "today" means (§5).
  */
@@ -27,4 +39,9 @@ export interface TodoSnapshot {
   readonly current: readonly Todo[]
   /** Rolled past today; shown only as a count, so nothing vanishes silently. */
   readonly upcoming: readonly Todo[]
+  /**
+   * Completed before today, most recent day first. Bounded by the same
+   * retention that prunes the list, so it can never grow past 30 days.
+   */
+  readonly history: readonly TodoHistoryDay[]
 }

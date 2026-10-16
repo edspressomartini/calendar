@@ -169,6 +169,19 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
       </Row>
 
       <Toggle
+        label="Show the timeline"
+        hint="Off makes the widget small enough for a laptop screen with no second monitor. What's next stays either way. Also on the widget's title bar."
+        checked={settings.showTimeline}
+        onChange={(checked) => void state.update({ showTimeline: checked })}
+      />
+
+      <Toggle
+        label="Show the TODO list"
+        checked={settings.showTodos}
+        onChange={(checked) => void state.update({ showTodos: checked })}
+      />
+
+      <Toggle
         label="Privacy mode"
         hint="Replaces meeting titles with “Busy” everywhere. Turn this on before screen sharing."
         checked={settings.privacyMode}
