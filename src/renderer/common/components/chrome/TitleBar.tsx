@@ -5,34 +5,58 @@ interface TitleBarProps {
   readonly pinned: boolean
   readonly privacyMode: boolean
   readonly nowIso: string
+  readonly showTimeline: boolean
+  readonly showTodos: boolean
   readonly onTogglePin: () => void
+  readonly onToggleTimeline: () => void
+  readonly onToggleTodos: () => void
   readonly onHide: () => void
   readonly onOpenSettings: () => void
 }
 
 /**
- * Drag region plus the two controls the widget needs (docs/spec.md §6).
+ * Drag region plus the controls the widget needs (docs/spec.md §6).
  * "Minimise" hides to the menu bar: there is no Dock icon to fall into.
+ *
+ * The two section toggles live here rather than in Settings because the whole
+ * point of them is turning a section off for the next ten minutes. The day
+ * label gives up its width first, so the buttons survive the 260px minimum.
  */
 export function TitleBar({
   pinned,
   privacyMode,
   nowIso,
+  showTimeline,
+  showTodos,
   onTogglePin,
+  onToggleTimeline,
+  onToggleTodos,
   onHide,
   onOpenSettings,
 }: TitleBarProps): JSX.Element {
   return (
-    <header className="drag-region flex items-center gap-2 border-b border-border px-3 py-1.5">
+    <header className="drag-region flex items-center gap-1.5 border-b border-border px-3 py-1.5">
       {/* The clock anchors the timeline below it (§6). */}
       <span className="tabular shrink-0 font-mono text-[13px] font-medium">
         {formatClockTime(nowIso)}
       </span>
-      <span className="flex-1 truncate text-[11px] text-text-muted">
+      <span className="min-w-0 flex-1 truncate text-[11px] text-text-muted">
         {formatDayLabel(nowIso)}
         {privacyMode ? ' · private' : ''}
       </span>
 
+      <TitleBarButton
+        label="Cal"
+        title={showTimeline ? 'Hide the timeline' : 'Show the timeline'}
+        active={showTimeline}
+        onClick={onToggleTimeline}
+      />
+      <TitleBarButton
+        label="Todo"
+        title={showTodos ? 'Hide the TODO list' : 'Show the TODO list'}
+        active={showTodos}
+        onClick={onToggleTodos}
+      />
       <TitleBarButton
         label={pinned ? 'Unpin' : 'Pin'}
         title={pinned ? 'Stop floating on top' : 'Float on top'}
@@ -57,6 +81,9 @@ function TitleBarButton({ label, title, active, onClick }: TitleBarButtonProps):
     <button
       type="button"
       title={title}
+      // Every button here that carries `active` is a toggle, so the state is
+      // announced rather than being left to the colour alone.
+      aria-pressed={active}
       onClick={onClick}
       // Buttons must opt out of the drag region or they cannot be clicked (§10).
       className={`no-drag rounded px-1.5 py-0.5 text-[11px] hover:bg-bg-subtle ${

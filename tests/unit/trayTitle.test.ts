@@ -31,6 +31,8 @@ function snapshot(nextUp: AgendaItem | null): AgendaSnapshot {
     nextUp,
     viewMode: 'merged',
     todoPlacement: 'below',
+    showTimeline: true,
+    showTodos: true,
     quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
     privacyMode: false,
   }

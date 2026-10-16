@@ -9,6 +9,7 @@ import type {
 import type {
   MeetingAlert,
   MoveToDisplayRequest,
+  SetSectionsRequest,
   UpdateSettingsRequest,
 } from '../shared/ipc/contract.ts'
 import type { AgendaSnapshot } from '../shared/types/agenda.ts'
@@ -112,6 +113,14 @@ function createWidgetBridge(): WidgetBridge {
 
     async setPinned(pinned: boolean): Promise<void> {
       await ipcRenderer.invoke(CHANNELS.widgetSetPinned, { pinned })
+    },
+
+    async setSections(sections: SetSectionsRequest): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.widgetSetSections, sections)
+    },
+
+    async fitHeight(height: number): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.widgetFitHeight, { height })
     },
 
     async openSettings(): Promise<void> {

@@ -8,6 +8,8 @@ export const CHANNELS = {
   agendaJoin: 'agenda:join',
   widgetHide: 'widget:hide',
   widgetSetPinned: 'widget:setPinned',
+  widgetSetSections: 'widget:setSections',
+  widgetFitHeight: 'widget:fitHeight',
   settingsOpen: 'settings:open',
   accountsList: 'accounts:list',
   accountsConnect: 'accounts:connect',
@@ -51,6 +53,10 @@ export const CHANNEL_CALLERS: Record<ChannelName, readonly WindowRole[]> = {
   [CHANNELS.agendaJoin]: ['widget'],
   [CHANNELS.widgetHide]: ['widget'],
   [CHANNELS.widgetSetPinned]: ['widget'],
+  // A narrow channel rather than opening settings:update to the widget: the
+  // title-bar toggles need two booleans, not the whole settings surface.
+  [CHANNELS.widgetSetSections]: ['widget'],
+  [CHANNELS.widgetFitHeight]: ['widget'],
   [CHANNELS.settingsOpen]: ['widget'],
   [CHANNELS.accountsList]: ['settings'],
   [CHANNELS.accountsConnect]: ['settings'],

@@ -15,6 +15,15 @@ export interface WidgetSize {
   readonly height: number
 }
 
+/**
+ * The only part of a Display the geometry helpers read. Taking this rather
+ * than the whole Display keeps them honest about their dependency, and means
+ * they can be exercised without a window or a screen.
+ */
+export interface DisplayArea {
+  readonly workArea: Rectangle
+}
+
 export function toDisplayKey(display: Display): DisplayKey {
   return {
     id: display.id,
@@ -63,7 +72,7 @@ export function computeBounds(placement: WidgetPlacement, size: WidgetSize): Rec
   return cornerBounds(placement.corner, target, size)
 }
 
-export function clampToDisplay(bounds: Rectangle, display: Display): Rectangle {
+export function clampToDisplay(bounds: Rectangle, display: DisplayArea): Rectangle {
   const area = display.workArea
   const width = Math.min(bounds.width, area.width)
   const height = Math.min(bounds.height, area.height)
@@ -81,6 +90,25 @@ export function clampToDisplay(bounds: Rectangle, display: Display): Rectangle {
 /** The display a rectangle currently sits on. */
 export function displayForBounds(bounds: Rectangle): Display {
   return screen.getDisplayMatching(bounds)
+}
+
+/**
+ * The bounds for a height the renderer measured (§6).
+ *
+ * Pure, and separate from the window, because this is the part that can put
+ * the widget somewhere the user cannot reach: a measurement is untrusted
+ * input like any other, so it is floored, capped to the work area, and run
+ * through the same clamp as every other move.
+ */
+export function boundsForFittedHeight(
+  bounds: Rectangle,
+  display: DisplayArea,
+  requested: number,
+  minHeight: number,
+): Rectangle {
+  const ceiling = Math.max(minHeight, display.workArea.height - WIDGET_SCREEN_MARGIN * 2)
+  const height = Math.min(Math.max(requested, minHeight), ceiling)
+  return clampToDisplay({ ...bounds, height }, display)
 }
 
 function cornerBounds(

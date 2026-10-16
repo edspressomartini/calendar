@@ -56,6 +56,19 @@ describe('parseSettings', () => {
     expect(parsed.accounts).toHaveLength(1)
   })
 
+  it('leaves both sections showing when upgrading from before they could be hidden', () => {
+    const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
+    delete older['showTimeline']
+    delete older['showTodos']
+
+    const parsed = parseSettings(older)
+
+    // Defaulting either of these to false would silently empty the widget for
+    // everyone already using it.
+    expect(parsed.showTimeline).toBe(true)
+    expect(parsed.showTodos).toBe(true)
+  })
+
   it('keeps the widget hidden from capture when upgrading from before the setting', () => {
     const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
     delete older['hideFromScreenShare']
