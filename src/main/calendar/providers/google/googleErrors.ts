@@ -79,10 +79,26 @@ function readStatus(candidate: ErrorLike): number | null {
   return null
 }
 
+/**
+ * The `error` field of an OAuth or Calendar failure. Anything outside this set
+ * is vendor-chosen text that would end up in a log line, so it is collapsed.
+ */
+const KNOWN_PAYLOAD_ERRORS: ReadonlySet<string> = new Set([
+  'invalid_grant',
+  'invalid_request',
+  'invalid_client',
+  'invalid_scope',
+  'unauthorized_client',
+  'unsupported_grant_type',
+  'access_denied',
+  'rate_limit_exceeded',
+  'insufficient_permissions',
+])
+
 function readReason(candidate: ErrorLike): string | null {
   const payloadError = candidate.response?.data?.error
   if (typeof payloadError === 'string') {
-    return payloadError
+    return KNOWN_PAYLOAD_ERRORS.has(payloadError) ? payloadError : 'request failed'
   }
   if (typeof candidate.code === 'string') {
     return RETRYABLE_NETWORK_CODES.has(candidate.code) ? candidate.code : 'request failed'

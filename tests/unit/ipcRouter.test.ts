@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { AuthFlowError } from '../../src/main/infra/errors.ts'
 import { IpcRouter } from '../../src/main/ipc/IpcRouter.ts'
 import { CHANNELS } from '../../src/shared/ipc/channels.ts'
 import type { AppLogger, LogContext } from '../../src/main/infra/logger.ts'
@@ -199,16 +200,30 @@ describe('IpcRouter error handling', () => {
     )
   })
 
-  it('keeps the internal detail in the log rather than the response', async () => {
+  it('keeps the reason for one of our own errors in the log, not the response', async () => {
     const router = createRouter()
     router.handle(CHANNELS.agendaJoin, () => {
-      throw new Error('internal detail')
+      throw new AuthFlowError('timeout')
     })
 
-    await expect(invokeIpc(CHANNELS.agendaJoin, WIDGET, { eventId: 'e' })).rejects.not.toThrow(
-      'internal detail',
+    await expect(invokeIpc(CHANNELS.agendaJoin, WIDGET, { eventId: 'e' })).rejects.toThrow(
+      'request rejected',
     )
-    expect(JSON.stringify(logs)).toContain('internal detail')
+    expect(JSON.stringify(logs)).toContain('timeout')
+  })
+
+  it('logs only the class name of an error we did not write', async () => {
+    const router = createRouter()
+    router.handle(CHANNELS.agendaJoin, () => {
+      // A vendor message can be the raw response body, which an intercepting
+      // proxy chooses, and the log file is line-oriented.
+      throw new Error('connection string postgres://user:hunter2@db/internal')
+    })
+
+    await expect(invokeIpc(CHANNELS.agendaJoin, WIDGET, { eventId: 'e' })).rejects.toThrow(
+      'request rejected',
+    )
+    expect(JSON.stringify(logs)).not.toContain('hunter2')
   })
 })
 

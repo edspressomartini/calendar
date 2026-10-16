@@ -1,4 +1,5 @@
 import log from 'electron-log/main'
+import { describeError } from './errors.ts'
 
 /**
  * Structured, redacting logger (docs/spec.md §8.7).
@@ -53,7 +54,7 @@ export function redactValue(value: unknown, depth = 0): unknown {
     return value.map((entry) => redactValue(entry, depth + 1))
   }
   if (value instanceof Error) {
-    return `${value.name}: ${value.message}`
+    return describeError(value)
   }
 
   const source = value as Readonly<Record<string, unknown>>
