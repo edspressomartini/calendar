@@ -9,7 +9,13 @@ import {
 } from '../../../shared/constants.ts'
 import { acceleratorFromChord, formatAccelerator } from '../../../shared/shortcuts.ts'
 import { supportedTimeZones } from '../../../shared/timezone.ts'
-import type { ThemeSource, TodoPlacement, ViewMode } from '../../../shared/types/settings.ts'
+import {
+  COLOUR_SCHEMES,
+  type ColourScheme,
+  type ThemeSource,
+  type TodoPlacement,
+  type ViewMode,
+} from '../../../shared/types/settings.ts'
 import type { SettingsState } from '../../common/hooks/useSettings.ts'
 import { settingsApi } from '../../common/lib/ipcClient.ts'
 
@@ -92,6 +98,13 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
+      </Row>
+
+      <Row label="Colour" hint="Tints the widget. Light and dark still follow the theme above.">
+        <SchemePicker
+          value={settings.colourScheme}
+          onChange={(scheme) => void state.update({ colourScheme: scheme })}
+        />
       </Row>
 
       <Row label="Refresh every" hint="A shorter interval catches meetings added at short notice.">
@@ -231,6 +244,55 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
         </button>
       </div>
     </section>
+  )
+}
+
+const SCHEME_LABELS: Readonly<Record<ColourScheme, string>> = {
+  default: 'Blue',
+  pink: 'Pink',
+  lavender: 'Lavender',
+  mint: 'Mint',
+  peach: 'Peach',
+  graphite: 'Graphite',
+}
+
+interface SchemePickerProps {
+  readonly value: ColourScheme
+  readonly onChange: (scheme: ColourScheme) => void
+}
+
+/**
+ * Swatches rather than a dropdown, because the choice is the colour and a
+ * list of names makes you pick one to find out what it looks like.
+ *
+ * Each swatch carries its own `data-scheme`, so it paints itself from the
+ * same stylesheet rule that paints the app. The colours exist in exactly one
+ * place and a new scheme appears here with no change to this file beyond its
+ * name.
+ */
+function SchemePicker({ value, onChange }: SchemePickerProps): JSX.Element {
+  return (
+    <span className="flex items-center gap-2">
+      {COLOUR_SCHEMES.map((scheme) => (
+        <button
+          key={scheme}
+          type="button"
+          data-scheme={scheme}
+          aria-pressed={scheme === value}
+          title={SCHEME_LABELS[scheme]}
+          onClick={() => {
+            onChange(scheme)
+          }}
+          className={`size-6 rounded-full bg-accent ${
+            scheme === value
+              ? 'ring-2 ring-text ring-offset-2 ring-offset-bg'
+              : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <span className="sr-only">{SCHEME_LABELS[scheme]}</span>
+        </button>
+      ))}
+    </span>
   )
 }
 

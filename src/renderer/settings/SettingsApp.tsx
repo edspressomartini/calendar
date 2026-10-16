@@ -1,5 +1,6 @@
 import { useState, type JSX } from 'react'
 import { useAccounts } from '../common/hooks/useAccounts.ts'
+import { useColourScheme } from '../common/hooks/useColourScheme.ts'
 import { useSettings } from '../common/hooks/useSettings.ts'
 import { AccountsView } from './views/AccountsView.tsx'
 import { CalendarPickerView } from './views/CalendarPickerView.tsx'
@@ -19,6 +20,8 @@ export function SettingsApp(): JSX.Element {
   const [tab, setTab] = useState<Tab>('accounts')
   const accounts = useAccounts()
   const settings = useSettings()
+  // So the scheme is picked in a window already wearing it.
+  useColourScheme(settings.settings?.colourScheme ?? null)
 
   return (
     <div className="flex h-full flex-col bg-bg">

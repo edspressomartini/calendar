@@ -17,6 +17,7 @@ import { CHANNELS } from './channels.ts'
 import { isValidAccelerator } from '../shortcuts.ts'
 import { isLocalDayKey } from '../time.ts'
 import { isValidTimeZone } from '../timezone.ts'
+import { COLOUR_SCHEMES } from '../types/settings.ts'
 
 /**
  * One schema per channel. Types vanish at runtime, so main validates every
@@ -48,6 +49,7 @@ export const updateAccountSchema = z.strictObject({
 
 const widgetTextScale = z.number().int().min(MIN_WIDGET_TEXT_SCALE).max(MAX_WIDGET_TEXT_SCALE)
 const todoPlacement = z.enum(['above', 'below'])
+const colourScheme = z.enum(COLOUR_SCHEMES)
 
 /** Rejected here rather than at globalShortcut.register, which throws. */
 const quickAddShortcut = z
@@ -76,6 +78,7 @@ export const updateSettingsSchema = z
   .strictObject({
     viewMode: z.enum(['merged', 'split']),
     theme: z.enum(['system', 'light', 'dark']),
+    colourScheme: colourScheme,
     syncIntervalMinutes: z
       .number()
       .int()
@@ -200,6 +203,7 @@ export const agendaSnapshotSchema = z.strictObject({
   todoPlacement: todoPlacement,
   showTimeline: z.boolean(),
   showTodos: z.boolean(),
+  colourScheme: colourScheme,
   quickAddShortcut: quickAddShortcut,
   privacyMode: z.boolean(),
 })
@@ -251,6 +255,7 @@ export const accountConfigSchema = z.strictObject({
 export const appSettingsSchema = z.strictObject({
   viewMode: z.enum(['merged', 'split']),
   theme: z.enum(['system', 'light', 'dark']),
+  colourScheme: colourScheme,
   syncIntervalMinutes: z
     .number()
     .int()

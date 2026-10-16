@@ -2,6 +2,12 @@ import type { AccountConfig } from './account.ts'
 
 export type ViewMode = 'merged' | 'split'
 export type ThemeSource = 'system' | 'light' | 'dark'
+/**
+ * The accent the widget is tinted with. Independent of light and dark, which
+ * macOS owns: every scheme has a version of itself in both.
+ */
+export const COLOUR_SCHEMES = ['default', 'pink', 'lavender', 'mint', 'peach', 'graphite'] as const
+export type ColourScheme = (typeof COLOUR_SCHEMES)[number]
 /** Where the TODO list sits relative to the timeline in the widget. */
 export type TodoPlacement = 'above' | 'below'
 export type WidgetCorner = 'topRight' | 'topLeft' | 'bottomRight' | 'bottomLeft' | 'remembered'
@@ -26,6 +32,7 @@ export interface WidgetPlacement {
 export interface AppSettings {
   readonly viewMode: ViewMode
   readonly theme: ThemeSource
+  readonly colourScheme: ColourScheme
   readonly syncIntervalMinutes: number
   /** Null disables meeting notifications. */
   readonly notificationLeadMinutes: number | null

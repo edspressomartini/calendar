@@ -14,7 +14,10 @@ day you finished it, which is most of a standup written for you.
 
 On a laptop with no second monitor, the **Cal** and **Todo** buttons in the title bar turn
 the timeline and the list off. With both off the widget shrinks to just the countdown to
-your next meeting.
+your next meeting. However short you make it, the timeline keeps the current time in view.
+
+Six colour schemes — pink, lavender, mint, peach, graphite or the original blue — tint the
+whole panel. Light and dark still follow macOS.
 
 Everything runs on your own Mac. No server, no account to create, no analytics.
 
@@ -53,7 +56,7 @@ that does and does not tell you.
 | Step                                | Status                                       |
 | ----------------------------------- | -------------------------------------------- |
 | The tap repository and cask         | Live, `edspressomartini/homebrew-tap`        |
-| Latest release                      | `v0.3.0`, signed and notarised               |
+| Latest release                      | `v0.4.0`, signed and notarised               |
 | Google OAuth brand verification     | Passed 2 October 2026                        |
 | Google sensitive-scope verification | Passed 6 October 2026; no warning at sign-in |
 | Apple Developer Program             | Enrolled; releases are signed and notarised  |
@@ -163,7 +166,7 @@ and why. It is worth reading before changing anything structural.
 
 ## Status
 
-Version 0.3.0, released 16 October 2026: signed with an Apple Developer ID, notarised,
+Version 0.4.0, released 16 October 2026: signed with an Apple Developer ID, notarised,
 and installable from the Homebrew tap or as a DMG. Runs daily against a real calendar.
 The app shows its own version at the bottom of the menu-bar menu.
 

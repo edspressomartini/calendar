@@ -69,6 +69,26 @@ describe('parseSettings', () => {
     expect(parsed.showTodos).toBe(true)
   })
 
+  it('falls back to the default accent when upgrading from before colour schemes', () => {
+    const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
+    delete older['colourScheme']
+
+    const parsed = parseSettings(older)
+
+    // Nobody chose a colour, so nobody should find their widget recoloured.
+    expect(parsed.colourScheme).toBe('default')
+  })
+
+  it('rejects a scheme the stylesheet has no rule for', () => {
+    const tampered = { ...DEFAULT_SETTINGS, colourScheme: 'neon', accounts: [account] }
+
+    const parsed = parseSettings(tampered)
+
+    // An unknown value would leave data-scheme set to something CSS ignores,
+    // which looks like the default but cannot be changed back from the picker.
+    expect(parsed.colourScheme).toBe('default')
+  })
+
   it('keeps the widget hidden from capture when upgrading from before the setting', () => {
     const older: Record<string, unknown> = { ...DEFAULT_SETTINGS, accounts: [account] }
     delete older['hideFromScreenShare']
