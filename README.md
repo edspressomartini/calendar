@@ -9,7 +9,12 @@ typing in. There is no Dock icon — just a countdown to your next meeting in th
 
 It also keeps a TODO list beside the day: add one from anywhere with a global shortcut
 (`⌃⌥T` by default, changeable in settings), tick it off, or roll it forward when today
-gets away from you.
+gets away from you. **History** shows what you ticked off on previous days, grouped by the
+day you finished it, which is most of a standup written for you.
+
+On a laptop with no second monitor, the **Cal** and **Todo** buttons in the title bar turn
+the timeline and the list off. With both off the widget shrinks to just the countdown to
+your next meeting.
 
 Everything runs on your own Mac. No server, no account to create, no analytics.
 
@@ -48,7 +53,7 @@ that does and does not tell you.
 | Step                                | Status                                       |
 | ----------------------------------- | -------------------------------------------- |
 | The tap repository and cask         | Live, `edspressomartini/homebrew-tap`        |
-| Latest release                      | `v0.2.1`, signed and notarised               |
+| Latest release                      | `v0.3.0`, signed and notarised               |
 | Google OAuth brand verification     | Passed 2 October 2026                        |
 | Google sensitive-scope verification | Passed 6 October 2026; no warning at sign-in |
 | Apple Developer Program             | Enrolled; releases are signed and notarised  |
@@ -158,7 +163,7 @@ and why. It is worth reading before changing anything structural.
 
 ## Status
 
-Version 0.2.1, released 5 October 2026: signed with an Apple Developer ID, notarised,
+Version 0.3.0, released 16 October 2026: signed with an Apple Developer ID, notarised,
 and installable from the Homebrew tap or as a DMG. Runs daily against a real calendar.
 The app shows its own version at the bottom of the menu-bar menu.
 
