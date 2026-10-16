@@ -126,6 +126,48 @@ export function buildTicks(window: DayWindow, stepMinutes = TICK_STEP_MINUTES): 
   return ticks
 }
 
+/**
+ * How close to an edge "now" may sit before the timeline scrolls it back into
+ * the middle. Without a margin the line counts as visible while flush against
+ * the top edge, which hides everything that is about to happen — the only
+ * part of the day the widget exists to show.
+ */
+export const NOW_REVEAL_MARGIN_PX = 24
+
+/**
+ * Where the timeline should be scrolled to so "now" stays in view, or null if
+ * it is already comfortably there (docs/spec.md §6).
+ *
+ * Returns a scroll offset rather than performing one so the rule is testable
+ * without a DOM, and so the caller can tell "no change needed" from "scroll to
+ * zero" — the second would yank a user who had scrolled down to read the rest
+ * of their afternoon.
+ */
+export function scrollTopToRevealNow(
+  nowTopPx: number,
+  viewportHeightPx: number,
+  contentHeightPx: number,
+  currentScrollTopPx: number,
+): number | null {
+  const maximum = contentHeightPx - viewportHeightPx
+  if (maximum <= 0 || viewportHeightPx <= 0) {
+    // Everything fits, so there is nowhere to scroll and nothing to hide.
+    return null
+  }
+
+  // On a short window a fixed margin would exceed half the viewport and make
+  // every position count as too close to an edge, so it scales down with it.
+  const margin = Math.min(NOW_REVEAL_MARGIN_PX, viewportHeightPx / 4)
+  const offsetInViewport = nowTopPx - currentScrollTopPx
+  if (offsetInViewport >= margin && offsetInViewport <= viewportHeightPx - margin) {
+    return null
+  }
+
+  const centred = Math.round(nowTopPx - viewportHeightPx / 2)
+  const target = Math.min(Math.max(centred, 0), maximum)
+  return target === currentScrollTopPx ? null : target
+}
+
 export interface LaneAssignment<T> {
   readonly item: T
   /** Zero-based column within this item's overlapping cluster. */

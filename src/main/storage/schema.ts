@@ -27,6 +27,7 @@ export const CURRENT_SCHEMA_VERSION = 1
 export const DEFAULT_SETTINGS: AppSettings = {
   viewMode: 'merged',
   theme: 'system',
+  colourScheme: 'default',
   syncIntervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES,
   notificationLeadMinutes: DEFAULT_NOTIFICATION_LEAD_MINUTES,
   dayStartHour: DEFAULT_DAY_START_HOUR,

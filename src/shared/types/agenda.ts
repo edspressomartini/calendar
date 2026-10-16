@@ -1,6 +1,6 @@
 import type { AccountColour, AccountStatus } from './account.ts'
 import type { AccountId, EventId } from './calendar.ts'
-import type { TodoPlacement, ViewMode } from './settings.ts'
+import type { ColourScheme, TodoPlacement, ViewMode } from './settings.ts'
 
 export type EventStatus = 'past' | 'live' | 'imminent' | 'upcoming'
 
@@ -52,6 +52,8 @@ export interface AgendaSnapshot {
   /** Which of the two tall sections the widget draws at all (§6). */
   readonly showTimeline: boolean
   readonly showTodos: boolean
+  /** The accent the widget tints itself with (§6). */
+  readonly colourScheme: ColourScheme
   /** Shown in the TODO panel's header, so the hint matches the real binding. */
   readonly quickAddShortcut: string
   readonly privacyMode: boolean

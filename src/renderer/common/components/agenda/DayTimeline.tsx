@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useEffect, useRef, type JSX, type RefObject } from 'react'
 import type { AgendaItem } from '../../../../shared/types/agenda.ts'
 import type { AccountColour } from '../../../../shared/types/account.ts'
 import {
@@ -6,6 +6,7 @@ import {
   blockFor,
   buildTicks,
   ratioFor,
+  scrollTopToRevealNow,
   type DayWindow,
 } from '../../../../shared/timeline.ts'
 import { localTimeZone, timeZoneLabel } from '../../../../shared/timezone.ts'
@@ -60,6 +61,9 @@ export function DayTimeline({
     : [undefined]
   const gutterWidthPx = zones.length * GUTTER_COLUMN_WIDTH_PX
 
+  const scroller = useRef<HTMLDivElement>(null)
+  useKeepNowInView(scroller, nowRatio * heightPx)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {secondaryTimeZone && (
@@ -70,7 +74,7 @@ export function DayTimeline({
         />
       )}
 
-      <div className="scrollbar-hidden flex-1 overflow-y-auto">
+      <div ref={scroller} className="scrollbar-hidden flex-1 overflow-y-auto">
         <div className="relative flex" style={{ height: `${heightPx}px` }}>
           <TimeGutter ticks={ticks} window={window} zones={zones} widthPx={gutterWidthPx} />
 
@@ -95,6 +99,50 @@ export function DayTimeline({
       </div>
     </div>
   )
+}
+
+/**
+ * Keeps the "now" line on screen however short the timeline gets (§6).
+ *
+ * Dragging the widget shorter is the case this exists for: the window keeps
+ * its scroll offset, so the visible slice stays where it was and the current
+ * time quietly leaves through the bottom. A ResizeObserver rather than the
+ * window's resize event, because the timeline also changes height when the
+ * TODO list grows or the all-day strip appears, neither of which resizes
+ * anything.
+ *
+ * It corrects only when now has actually left the comfortable band, so
+ * scrolling down to read the rest of the afternoon is not undone a second
+ * later by the clock ticking.
+ */
+function useKeepNowInView(ref: RefObject<HTMLDivElement | null>, nowTopPx: number): void {
+  useEffect(() => {
+    const element = ref.current
+    if (!element) {
+      return
+    }
+
+    const reveal = (): void => {
+      const target = scrollTopToRevealNow(
+        nowTopPx,
+        element.clientHeight,
+        element.scrollHeight,
+        element.scrollTop,
+      )
+      if (target === null) {
+        return
+      }
+      element.scrollTop = target
+    }
+
+    reveal()
+
+    const observer = new ResizeObserver(reveal)
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+    }
+  }, [ref, nowTopPx])
 }
 
 /** Names the gutter columns, so two times are never ambiguous. */
@@ -152,8 +200,14 @@ function TimeGutter({
           {ticks.map((tick) => (
             <span
               key={tick.ms}
-              className={`tabular absolute right-1.5 -translate-y-1/2 font-mono text-[10px] ${
-                tick.major ? 'text-text-muted' : 'text-text-muted/50'
+              // The hour is the unit people read the day in, so it is the one
+              // that looks like a label. Half hours are deliberately demoted
+              // rather than dropped: without them a half-hour row reads as a
+              // whole hour and every gap looks twice as long as it is.
+              className={`tabular absolute right-1.5 -translate-y-1/2 font-mono ${
+                tick.major
+                  ? 'text-[10px] font-semibold text-text'
+                  : 'text-[9px] font-normal text-text-muted/45'
               } ${index > 0 ? 'opacity-70' : ''}`}
               style={{ top: `${ratioFor(tick.ms, window) * 100}%` }}
             >
@@ -175,13 +229,28 @@ function GridLines({
 }): JSX.Element {
   return (
     <div aria-hidden="true" className="absolute inset-0">
-      {ticks.map((tick) => (
-        <span
-          key={tick.ms}
-          className={`absolute inset-x-0 h-px ${tick.major ? 'bg-border' : 'bg-border/40'}`}
-          style={{ top: `${ratioFor(tick.ms, window) * 100}%` }}
-        />
-      ))}
+      {ticks.map((tick) =>
+        tick.major ? (
+          <span
+            key={tick.ms}
+            className="absolute inset-x-0 h-px bg-text-muted/40"
+            style={{ top: `${ratioFor(tick.ms, window) * 100}%` }}
+          />
+        ) : (
+          // Dotted, not a fainter solid line. Two solid lines a few shades
+          // apart are the same line at a glance, which is what made a
+          // half-hour slot read as an hour.
+          <span
+            key={tick.ms}
+            className="absolute inset-x-0 h-px bg-[length:4px_1px] bg-repeat-x"
+            style={{
+              top: `${ratioFor(tick.ms, window) * 100}%`,
+              backgroundImage:
+                'linear-gradient(to right, var(--border) 0 2px, transparent 2px 100%)',
+            }}
+          />
+        ),
+      )}
     </div>
   )
 }

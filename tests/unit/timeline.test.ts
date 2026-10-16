@@ -5,6 +5,7 @@ import {
   buildTicks,
   ratioFor,
   resolveDayWindow,
+  scrollTopToRevealNow,
   type DayWindow,
   type TimedBlock,
 } from '../../src/shared/timeline.ts'
@@ -166,5 +167,56 @@ describe('assignLanes', () => {
 
   it('leaves all-day events out', () => {
     expect(assignLanes([block(0, 24, true)])).toHaveLength(0)
+  })
+})
+
+/**
+ * Shrinking the widget must not let the current time slide off the bottom:
+ * a timeline you have to scroll to find yourself on is a list with extra steps.
+ */
+describe('scrollTopToRevealNow', () => {
+  const CONTENT = 1000
+
+  it('does not scroll when the whole timeline fits', () => {
+    expect(scrollTopToRevealNow(400, 1000, CONTENT, 0)).toBeNull()
+  })
+
+  it('leaves a comfortably visible now alone', () => {
+    // Reposition on every tick and the user could never read anything else.
+    expect(scrollTopToRevealNow(500, 400, CONTENT, 400)).toBeNull()
+  })
+
+  it('centres now when it has fallen off the bottom', () => {
+    expect(scrollTopToRevealNow(800, 200, CONTENT, 0)).toBe(700)
+  })
+
+  it('centres now when it is above the visible slice', () => {
+    expect(scrollTopToRevealNow(100, 200, CONTENT, 600)).toBe(0)
+  })
+
+  it('treats now pressed against an edge as hidden', () => {
+    // Flush against the top edge technically counts as visible, and hides
+    // everything about to happen — which is the part that matters.
+    const target = scrollTopToRevealNow(405, 200, CONTENT, 400)
+
+    expect(target).toBe(305)
+  })
+
+  it('never scrolls past the end of the timeline', () => {
+    const target = scrollTopToRevealNow(995, 200, CONTENT, 0)
+
+    expect(target).toBe(CONTENT - 200)
+  })
+
+  it('shrinks the margin rather than fighting itself in a tiny window', () => {
+    // A fixed 24px margin against a 40px viewport would exceed half of it, so
+    // every position would read as too close to an edge and it would scroll
+    // on every tick.
+    expect(scrollTopToRevealNow(420, 40, CONTENT, 400)).toBeNull()
+  })
+
+  it('reports no change rather than the offset it is already at', () => {
+    // 900 is both the centred position and the clamped maximum.
+    expect(scrollTopToRevealNow(1000, 200, CONTENT, 800)).toBeNull()
   })
 })

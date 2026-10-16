@@ -326,13 +326,13 @@ Professional here means **quiet**. This window sits in your peripheral vision fo
 ### Palette (CSS variables, Tailwind consumes them)
 
 ```css
-/* theme.css */
+/* theme.css — the neutral base, then the accent, then everything derived */
 :root {
-  --bg: #ffffff;
-  --bg-subtle: #f8fafc; /* slate-50  */
-  --border: #e2e8f0; /* slate-200 */
+  --neutral-bg: #ffffff;
+  --neutral-bg-subtle: #f8fafc; /* slate-50  */
+  --neutral-border: #e2e8f0; /* slate-200 */
+  --neutral-text-muted: #64748b; /* slate-500 */
   --text: #0f172a; /* slate-900 */
-  --text-muted: #64748b; /* slate-500 */
   --accent: #0ea5e9; /* sky-500   */
   --urgent: #ef4444; /* red-500   */
   --live: #10b981; /* emerald-500 */
@@ -340,15 +340,27 @@ Professional here means **quiet**. This window sits in your peripheral vision fo
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f172a;
-    --bg-subtle: #1e293b;
-    --border: #334155;
+    --neutral-bg: #0f172a;
+    --neutral-bg-subtle: #1e293b;
+    --neutral-border: #334155;
+    --neutral-text-muted: #94a3b8;
     --text: #f1f5f9;
-    --text-muted: #94a3b8;
     --accent: #38bdf8;
     --urgent: #f87171;
     --live: #34d399;
   }
+}
+
+/* A scheme overrides one variable; the rest of the panel follows. */
+[data-scheme='pink'] {
+  --accent: #ec4899;
+}
+
+:root {
+  --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
+  --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
+  --border: color-mix(in oklab, var(--accent) 45%, var(--neutral-border));
+  --text-muted: color-mix(in oklab, var(--accent) 30%, var(--neutral-text-muted));
 }
 ```
 
@@ -372,6 +384,9 @@ Professional here means **quiet**. This window sits in your peripheral vision fo
 - **Dark mode follows macOS.** v2's `:root:not([data-theme="light"])` wasn't inside a media query, so it applied the dark palette unconditionally and light mode never rendered. The media query fixes that.
 - **Manual override without a second palette.** A Light / Dark / System preference sets Electron's `nativeTheme.themeSource` in main, which drives `prefers-color-scheme` in every window. No `data-theme` attribute, no duplicated values.
 - **Tailwind 4 is configured in CSS.** `@theme inline` turns the variables into utilities (`bg-bg`, `text-text-muted`, `border-border`), so there's no `tailwind.config.ts`.
+- **Colour schemes are a second, independent axis.** Light and dark stay macOS's; the accent is ours, chosen in settings and written to `data-scheme` on the root element. A scheme declares exactly one thing — its accent, in each mode — and `--bg`, `--bg-subtle`, `--border` and `--text-muted` are all `color-mix`ed from it against a neutral base, so adding a scheme is two lines and cannot produce a palette that half-changed. The rules are **not bound to `:root`**, which lets the settings window put the attribute on a swatch and have it paint itself rather than repeating all six colours somewhere a seventh could be forgotten.
+- **The tint is strong on purpose.** The first version mixed single-digit percentages, reasoning that something floating over the user's work should be discreet. The result was six schemes nobody could tell apart. Discretion is what the panel's size and opacity are for; the colour should look chosen. Body text is the one thing left neutral — everything tinted sits behind it, so there is no legibility to spend.
+- **`--urgent` and `--live` belong to no scheme.** Red means a meeting is about to start and green means one is running. Recolouring them to match a palette would trade the only two colours carrying meaning for a tidier picture.
 
 Account colours come from a fixed rotation (sky → violet → amber → emerald → rose) assigned at connect time and stored on the account. In split view they tint the column header; in merged view they're a 3px left bar on each row.
 
@@ -394,6 +409,12 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 | Past               | 45% opacity, no bar                                                         |
 | Nothing left today | Centred muted line, generous whitespace                                     |
 | Needs re-auth      | Muted "Reconnect" line under that account; its last-known events stay       |
+
+### Timeline grid
+
+- **Hours and half hours have to look different, not just differ.** Both were solid lines a few shades of grey apart, which at a glance is one line: a half-hour slot read as a whole hour and every gap looked twice as long as it was. Hours are now a solid line in a stronger tone with a bold label; half hours are a **dotted** line with a smaller, faded one. The half hours are demoted rather than dropped, because without them nothing shows that a 30-minute block is half an hour.
+- **Both labels stay full clock times.** Showing half hours as a bare `:30` would be tidier and wrong in the second gutter column: zones like `Asia/Kolkata` are offset by half an hour, so a tick on the hour locally is not on the hour there.
+- **"Now" is kept in view, whatever the height.** Dragging the widget shorter keeps the scroll offset, so the visible slice stays put and the current time quietly leaves through the bottom — on a laptop-sized widget, permanently. A `ResizeObserver` on the scroll container rather than the window's resize event, because the timeline also changes height when the TODO list grows or the all-day strip appears, neither of which resizes anything. `scrollTopToRevealNow` returns an offset or `null` rather than scrolling, so the rule is testable without a DOM and so "already fine" is distinguishable from "scroll to the top". It corrects only once now has left a margin near the edges, so scrolling down to read the afternoon is not undone by the next tick, and that margin shrinks with the viewport — fixed at 24px it would exceed half a short window and scroll on every tick.
 
 ### Join button
 

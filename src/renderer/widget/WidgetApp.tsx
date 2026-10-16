@@ -8,6 +8,7 @@ import { TitleBar } from '../common/components/chrome/TitleBar.tsx'
 import { TodoPanel } from '../common/components/todos/TodoPanel.tsx'
 import { Spinner } from '../common/components/ui/Spinner.tsx'
 import { useAgenda } from '../common/hooks/useAgenda.ts'
+import { useColourScheme } from '../common/hooks/useColourScheme.ts'
 import { useTodos } from '../common/hooks/useTodos.ts'
 import { widgetApi } from '../common/lib/ipcClient.ts'
 import { MergedView } from './views/MergedView.tsx'
@@ -20,6 +21,7 @@ export function WidgetApp(): JSX.Element {
   const [pinned, setPinned] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
   useFitToContent(snapshot?.showTimeline === false, contentRef)
+  useColourScheme(snapshot?.colourScheme ?? null)
 
   const join = useCallback((eventId: string) => {
     void widgetApi().join(eventId)
@@ -168,7 +170,10 @@ function useFitToContent(enabled: boolean, ref: RefObject<HTMLDivElement | null>
 
     let height = 0
     for (const child of element.children) {
-      height += (child as HTMLElement).offsetHeight
+      if (!(child instanceof HTMLElement)) {
+        continue
+      }
+      height += child.offsetHeight
     }
 
     const target = Math.ceil(height)
