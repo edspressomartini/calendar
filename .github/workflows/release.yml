@@ -17,6 +17,9 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
+    # The signing certificate and the notarisation key live here rather than in
+    # repository secrets, and the environment only accepts deployments from a
+    # `v*` tag. A workflow on a branch cannot read them even if it asks.
     environment: release
     permissions:
       contents: write # create the GitHub Release

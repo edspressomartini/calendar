@@ -192,8 +192,10 @@ nested binary shares one Team ID. See `docs/spec.md` §8.8.
       a stranger's would be — so this is a real test of the notarised build.
 
 - [ ] **Check `brew uninstall --cask up-next` leaves nothing behind**, then
-      `brew uninstall --zap --cask up-next` and confirm the support directory
-      and the Keychain item are gone.
+      `brew uninstall --zap --cask up-next` and confirm the support directory,
+      the logs and the preferences plist are gone. The Keychain item is not
+      removed and cannot be: `zap trash:` takes file paths only. Clear it by
+      hand with `security delete-generic-password -s "Up Next Safe Storage"`.
 
 - [ ] **If colleagues on managed Macs are involved**, the tap has to be allowed
       by whatever manages them. Since Homebrew 6, packages from an untrusted

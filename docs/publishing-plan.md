@@ -168,7 +168,9 @@ null`, `hardenedRuntime: true`, `notarize: true`. A Developer ID gives
 
 18. **Write `Casks/up-next.rb`**, with a `zap` stanza that removes
     `~/Library/Application Support/Up Next` — settings, `todos.json`
-    and the encrypted tokens — and the Keychain item.
+    and the encrypted tokens — plus the logs and the preferences plist.
+    Not the Keychain item: `zap trash:` takes file paths only. The key it
+    holds is useless once the ciphertext is gone.
 
 19. **Install it on a clean machine** with
     `brew install --cask edspressomartini/tap/up-next`, and confirm

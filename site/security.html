@@ -268,10 +268,11 @@
           reaches <code>main</code> except through a pull request that passed the checks, and the
           branch cannot be force-pushed or deleted, with no bypass for anyone including the owner.
           Releases are built only by a tagged run on a GitHub-hosted runner; the signing certificate
-          and the notarisation key are held in a separate deployment environment and are not
-          readable by ordinary CI. Every release asserts its own signature, hardened runtime and
-          stapled notarisation ticket before it publishes, because electron-builder&rsquo;s
-          notarisation step warns and continues when credentials are missing rather than failing.
+          and the notarisation key are held in a separate deployment environment that only a
+          <code>v*</code> tag can deploy to, so ordinary CI cannot read them even if a workflow
+          asked. Every release asserts its own signature, hardened runtime and stapled notarisation
+          ticket before it publishes, because electron-builder&rsquo;s notarisation step warns and
+          continues when credentials are missing rather than failing.
         </li>
         <li>
           <strong>No auto-updater and no update server.</strong> Updates arrive through Homebrew,

@@ -128,8 +128,14 @@ launched, drew its UI and reached Google, which it could not have done with the
       with the cached download deleted first, so the DMG was fetched fresh and carried
       the quarantine attribute. It opened with no Gatekeeper dialog.
 - [ ] Confirm `brew uninstall --zap --cask up-next` really does clear
-      `~/Library/Application Support/Up Next` and the Keychain item. Still only
-      asserted.
+      `~/Library/Application Support/Up Next`, `~/Library/Logs/Up Next` and
+      `~/Library/Preferences/com.upnext.app.plist`. All three exist and are listed in
+      the stanza, but `brew uninstall` has no `--dry-run`, so this has to be an actual
+      uninstall-and-reinstall. **It will not clear the Keychain item**, and no cask can:
+      `zap trash:` takes file paths only. That is harmless — the ciphertext it decrypts
+      goes with `userData` — but the item does stay behind, so say so rather than
+      claiming otherwise. To remove it:
+      `security delete-generic-password -s "Up Next Safe Storage"`.
 - [ ] If colleagues are involved, get the tap allowed by whatever manages their Macs.
       Since Homebrew 6, packages from an untrusted third-party tap are ignored, and a
       standard user cannot grant that trust. **`brew trust` is Homebrew's own gate and
@@ -146,7 +152,7 @@ launched, drew its UI and reached Google, which it could not have done with the
       reconnecting", but nothing prompts; a user could stare at a stale agenda for days.
 - [ ] **Uninstall story.** Confirm the `zap` stanza actually clears
       `~/Library/Application Support/Up Next`, which now holds the TODO list as
-      well as the settings, and the Keychain item.
+      well as the settings. The Keychain item is out of scope — see section 4.
 - [ ] **A real app icon.** There is a generated tray glyph but no `build/icon.icns`.
 - [x] **A README.** Written, Homebrew-first, with the tap marked as not yet live.
 

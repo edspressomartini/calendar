@@ -213,6 +213,13 @@
           >myaccount.google.com/permissions</a
         >. Uninstalling the app removes its stored settings, TODO list and token.
       </p>
+      <p>
+        One thing an uninstall leaves behind: the Keychain entry holding the encryption key, which
+        macOS does not let an uninstaller delete. It is harmless on its own, because the encrypted
+        file it unlocks has gone with everything else, but you can remove it yourself by running
+        <code>security delete-generic-password -s &quot;Up Next Safe Storage&quot;</code> in
+        Terminal, or by deleting <em>Up Next Safe Storage</em> in Keychain Access.
+      </p>
 
       <h2>Children</h2>
       <p>The app is not directed at children under 13.</p>
