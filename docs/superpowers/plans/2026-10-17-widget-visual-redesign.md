@@ -4,7 +4,7 @@
 
 **Goal:** Make the widget look like something you would choose to keep on your desktop — frosted glass over the wallpaper, soft cards instead of dividing rules, a real type scale, and feedback that only responds to you.
 
-**Architecture:** The window becomes transparent with a native macOS vibrancy material, so the blur is done by the OS rather than by CSS. `theme.css` keeps its existing structure — one accent per scheme, every other token mixed from it — but its neutral base goes transparent and each scheme becomes a translucent wash over the material. On top of that glass, the TODO panel and timeline become bordered cards, which lets most of the `border-t` / `border-b` dividers go.
+**Architecture:** The window becomes transparent so the renderer's own alpha reaches the window server. (Originally this used a macOS vibrancy material; see the superseded constraint below for why it was dropped.) `theme.css` keeps its existing structure — one accent per scheme, every other token mixed from it — but its neutral base goes transparent and each scheme becomes a translucent wash over the material. On top of that glass, the TODO panel and timeline become bordered cards, which lets most of the `border-t` / `border-b` dividers go.
 
 **Tech Stack:** Electron 44 (`BrowserWindow` `vibrancy` and `transparent`), React 19, Tailwind 4 configured in CSS via `@theme inline`, Vitest.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Restyle only. Same layout, same information, same density. Do not move what sits where.
-- Vibrancy material is `under-window`. Not `hud`, not `sidebar`, not a CSS `backdrop-filter`.
+- ~~Vibrancy material is `under-window`.~~ **Superseded during Task 2 verification.** `under-window` composites the desktop wallpaper only, so the panel read as opaque wherever it covered another app's window, which is the common case. The window is now plainly transparent with no vibrancy material: no OS blur, but the alpha reveals whatever is actually behind. Do not reintroduce `vibrancy`, and do not reach for a CSS `backdrop-filter` instead — web content cannot blur the OS backdrop.
 - Card radius is 10px.
 - Motion is reactive only: hover, press, expand/collapse, new items entering. Nothing animates unprompted. No pulsing live dot.
 - Every transition must be wrapped in `prefers-reduced-motion`.
