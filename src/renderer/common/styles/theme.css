@@ -52,14 +52,14 @@
    block would silently beat it. Only the two neutral fills are overridden;
    the mixes below pick them up, so schemes stay two lines each. */
 :root[data-surface='glass'] {
-  --neutral-bg: rgb(255 255 255 / 0.55);
-  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
+  --neutral-bg: rgb(255 255 255 / 0.28);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-surface='glass'] {
-    --neutral-bg: rgb(15 23 42 / 0.5);
-    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
+    --neutral-bg: rgb(15 23 42 / 0.26);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.42);
   }
 }
 
