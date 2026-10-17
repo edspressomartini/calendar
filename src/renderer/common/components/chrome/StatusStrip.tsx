@@ -52,7 +52,7 @@ export function StatusStrip({ accounts, nowIso, onSync }: StatusStripProps): JSX
         onClick={onSync}
         disabled={syncing}
         title="Check for changes now"
-        className="no-drag shrink-0 rounded px-1.5 py-0.5 text-body text-text-muted hover:bg-bg-subtle hover:text-accent disabled:opacity-40"
+        className="no-drag shrink-0 rounded-full px-1.5 py-0.5 text-body text-text-muted hover:bg-bg-subtle hover:text-accent disabled:opacity-40"
       >
         {syncing ? '…' : 'Sync'}
       </button>

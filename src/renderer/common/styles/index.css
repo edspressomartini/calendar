@@ -22,7 +22,7 @@
   --text-micro: 9px;
   --text-small: 10px;
   --text-body: 11px;
-  --text-display: 13px;
+  --text-display: 15px;
 }
 
 @layer base {
