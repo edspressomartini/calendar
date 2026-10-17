@@ -1,11 +1,32 @@
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { EventKitHelperProcess } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
+import {
+  defaultHelperSpawn,
+  EventKitHelperProcess,
+} from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import type { HelperChild } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import { silentLogger } from '../mocks/logger.ts'
 
-function fakeChild(): HelperChild & { exit(): void; emitLine(line: string): void } {
+interface FakeChild extends HelperChild {
+  exit(): void
+  emitLine(line: string): void
+  emitChunk(text: string): void
+}
+
+/** Hands out the given children in order, then refuses. */
+function spawnQueue(children: readonly FakeChild[]) {
+  const queue = [...children]
+  return vi.fn((): HelperChild => {
+    const next = queue.shift()
+    if (!next) {
+      throw new Error('spawned more helpers than this test provides')
+    }
+    return next
+  })
+}
+
+function fakeChild(): FakeChild {
   const stdout = new PassThrough()
   const stdin = new PassThrough()
   const exitListeners: (() => void)[] = []
@@ -20,7 +41,15 @@ function fakeChild(): HelperChild & { exit(): void; emitLine(line: string): void
       })
     },
     emitLine: (line: string) => stdout.write(`${line}\n`),
+    emitChunk: (text: string) => stdout.write(text),
   }
+}
+
+/** Lets the streams deliver everything written so far. */
+function flushStreams(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve)
+  })
 }
 
 function written(child: HelperChild): Promise<string> {
@@ -39,7 +68,7 @@ describe('EventKitHelperProcess', () => {
     const pending = helper.request('sources', {}, z.array(z.string()))
     const line = await written(child)
     const sent: unknown = JSON.parse(line)
-    expect(sent).toMatchObject({ op: 'sources' })
+    expect(sent).toMatchObject({ id: 1, op: 'sources' })
 
     child.emitLine(JSON.stringify({ id: 1, ok: true, result: ['icloud'] }))
     await expect(pending).resolves.toEqual(['icloud'])
@@ -123,26 +152,109 @@ describe('EventKitHelperProcess', () => {
   })
 
   it('fails pending requests when the helper exits, and respawns on the next one', async () => {
+    vi.useFakeTimers()
     const firstChild = fakeChild()
     const secondChild = fakeChild()
-    const queue = [firstChild, secondChild]
-    const spawn = vi.fn((): HelperChild => {
-      const next = queue.shift()
-      if (!next) {
-        throw new Error('spawned more helpers than this test provides')
-      }
-      return next
-    })
+    const spawn = spawnQueue([firstChild, secondChild])
     const helper = new EventKitHelperProcess('/bin/helper', spawn, silentLogger())
 
     const pending = helper.request('sources', {}, z.array(z.string()))
     firstChild.exit()
     await expect(pending).rejects.toMatchObject({ kind: 'helper_unavailable' })
 
+    // Past the restart backoff, so this request is allowed to respawn.
+    await vi.advanceTimersByTimeAsync(1_000)
     const second = helper.request('sources', {}, z.array(z.string()))
     secondChild.emitLine(JSON.stringify({ id: 2, ok: true, result: [] }))
     await expect(second).resolves.toEqual([])
     expect(spawn).toHaveBeenCalledTimes(2)
+
+    helper.stop()
+    vi.useRealTimers()
+  })
+
+  it('refuses to respawn until the restart backoff has elapsed', async () => {
+    vi.useFakeTimers()
+    const firstChild = fakeChild()
+    const secondChild = fakeChild()
+    const spawn = spawnQueue([firstChild, secondChild])
+    const helper = new EventKitHelperProcess('/bin/helper', spawn, silentLogger())
+
+    const pending = helper.request('sources', {}, z.array(z.string()))
+    firstChild.exit()
+    await expect(pending).rejects.toMatchObject({ kind: 'helper_unavailable' })
+
+    // A helper that dies on startup must not be respawned once per request.
+    await vi.advanceTimersByTimeAsync(999)
+    const tooSoon = helper.request('sources', {}, z.array(z.string()))
+    await expect(tooSoon).rejects.toMatchObject({ kind: 'helper_unavailable' })
+    expect(spawn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(2)
+    const allowed = helper.request('sources', {}, z.array(z.string()))
+    // A refused request consumes no id, so this is still the second one.
+    secondChild.emitLine(JSON.stringify({ id: 2, ok: true, result: ['icloud'] }))
+    await expect(allowed).resolves.toEqual(['icloud'])
+    expect(spawn).toHaveBeenCalledTimes(2)
+
+    helper.stop()
+    vi.useRealTimers()
+  })
+
+  it('ignores an exit from a child it has already replaced', async () => {
+    const firstChild = fakeChild()
+    const secondChild = fakeChild()
+    const spawn = spawnQueue([firstChild, secondChild])
+    const helper = new EventKitHelperProcess('/bin/helper', spawn, silentLogger())
+
+    const abandoned = helper.request('sources', {}, z.array(z.string()))
+    const stopped = expect(abandoned).rejects.toMatchObject({ kind: 'helper_unavailable' })
+    helper.stop()
+    await stopped
+
+    const pending = helper.request('sources', {}, z.array(z.string()))
+    // The killed child's exit arrives late; it must not orphan its successor.
+    firstChild.exit()
+    secondChild.emitLine(JSON.stringify({ id: 2, ok: true, result: ['icloud'] }))
+    await expect(pending).resolves.toEqual(['icloud'])
+    expect(spawn).toHaveBeenCalledTimes(2)
+
+    helper.stop()
+  })
+
+  it('does not splice a dead child\u2019s late bytes into its successor\u2019s frames', async () => {
+    const firstChild = fakeChild()
+    const secondChild = fakeChild()
+    const spawn = spawnQueue([firstChild, secondChild])
+    const helper = new EventKitHelperProcess('/bin/helper', spawn, silentLogger(), 1_000)
+
+    const abandoned = helper.request('sources', {}, z.array(z.string()))
+    const stopped = expect(abandoned).rejects.toMatchObject({ kind: 'helper_unavailable' })
+    helper.stop()
+    await stopped
+
+    const second = helper.request('sources', {}, z.array(z.string()))
+    // Two halves of a reply for the id the *successor* is waiting on.
+    firstChild.emitChunk('{"id":2,"ok":true,"res')
+    firstChild.emitLine('ult":[]}')
+    await flushStreams()
+
+    secondChild.emitLine(JSON.stringify({ id: 2, ok: true, result: ['icloud'] }))
+    await expect(second).resolves.toEqual(['icloud'])
+
+    helper.stop()
+  })
+
+  it('keeps the framing fields authoritative over the payload', async () => {
+    const child = fakeChild()
+    const helper = new EventKitHelperProcess('/bin/helper', () => child, silentLogger())
+
+    const pending = helper.request('sources', { id: 99, op: 'overwritten' }, z.array(z.string()))
+    const sent: unknown = JSON.parse(await written(child))
+    expect(sent).toMatchObject({ id: 1, op: 'sources' })
+
+    child.emitLine(JSON.stringify({ id: 1, ok: true, result: [] }))
+    await expect(pending).resolves.toEqual([])
     helper.stop()
   })
 
@@ -150,6 +262,26 @@ describe('EventKitHelperProcess', () => {
     const spawn = vi.fn(() => fakeChild())
     const helper = new EventKitHelperProcess('/bin/helper', spawn, silentLogger())
     expect(spawn).not.toHaveBeenCalled()
+    helper.stop()
+  })
+})
+
+describe('defaultHelperSpawn', () => {
+  /**
+   * A missing binary is the normal state of a dev tree. Unhandled, the
+   * ChildProcess 'error' event is rethrown as an uncaught exception and takes
+   * the main process with it.
+   */
+  it('reports a binary that cannot be spawned instead of throwing uncaught', async () => {
+    const helper = new EventKitHelperProcess(
+      '/nonexistent/up-next-eventkit',
+      defaultHelperSpawn,
+      silentLogger(),
+      2_000,
+    )
+
+    const pending = helper.request('sources', {}, z.array(z.string()))
+    await expect(pending).rejects.toMatchObject({ kind: 'helper_unavailable' })
     helper.stop()
   })
 })

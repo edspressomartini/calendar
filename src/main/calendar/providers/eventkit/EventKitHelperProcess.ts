@@ -40,9 +40,9 @@ export class EventKitHelperProcess implements EventKitRequester {
   readonly changed = new Signal<void>()
 
   private child: HelperChild | null = null
-  private buffer = ''
   private nextId = 1
   private restartDelayMs = 0
+  private lastExitAt: number | null = null
   private readonly pending = new Map<number, Pending>()
 
   constructor(
@@ -63,7 +63,8 @@ export class EventKitHelperProcess implements EventKitRequester {
       }, this.timeoutMs)
 
       this.pending.set(id, { settle: resolve, fail: reject, timer })
-      child.stdin.write(`${JSON.stringify({ id, op, ...payload })}\n`)
+      // Framing last: a payload carrying `id` must not take over correlation.
+      child.stdin.write(`${JSON.stringify({ ...payload, id, op })}\n`)
     })
 
     const parsed = schema.safeParse(raw)
@@ -85,17 +86,35 @@ export class EventKitHelperProcess implements EventKitRequester {
       return this.child
     }
 
+    if (this.lastExitAt !== null && Date.now() - this.lastExitAt < this.restartDelayMs) {
+      // A helper that dies on startup would otherwise be respawned once per
+      // request, forever. Fail fast until the backoff has elapsed.
+      throw new EventKitError('helper_unavailable')
+    }
+
     const child = this.spawn(this.binaryPath)
     this.child = child
-    this.buffer = ''
+
+    // Per child, so bytes a dying one flushes late cannot splice into its
+    // successor's frames and complete a line for an id it never served.
+    let buffer = ''
 
     child.stdout.on('data', (chunk: Buffer | string) => {
-      this.consume(String(chunk))
+      if (this.child !== child) {
+        return
+      }
+      buffer = this.consume(buffer + String(chunk))
     })
     child.on('exit', () => {
+      if (this.child !== child) {
+        // A child we already replaced. Its exit says nothing about the one
+        // now serving requests.
+        return
+      }
       // Dropped rather than restarted here: the next request respawns, so a
       // helper nobody is using does not loop forever.
       this.child = null
+      this.lastExitAt = Date.now()
       this.restartDelayMs = Math.min(
         this.restartDelayMs === 0 ? RESTART_FLOOR_MS : this.restartDelayMs * 2,
         RESTART_CAP_MS,
@@ -107,10 +126,10 @@ export class EventKitHelperProcess implements EventKitRequester {
     return child
   }
 
-  private consume(chunk: string): void {
-    this.buffer += chunk
-    const lines = this.buffer.split('\n')
-    this.buffer = lines.pop() ?? ''
+  /** Handles every whole line in `text` and returns the trailing partial one. */
+  private consume(text: string): string {
+    const lines = text.split('\n')
+    const rest = lines.pop() ?? ''
 
     for (const line of lines) {
       if (line.trim().length === 0) {
@@ -118,6 +137,7 @@ export class EventKitHelperProcess implements EventKitRequester {
       }
       this.handleLine(line)
     }
+    return rest
   }
 
   private handleLine(line: string): void {
@@ -174,7 +194,20 @@ export function defaultHelperSpawn(binaryPath: string): HelperChild {
     stdout: child.stdout,
     stdin: child.stdin,
     on: (event, listener) => {
-      child.on(event, listener)
+      // A spawn that fails — a missing binary, one that is not executable —
+      // emits 'error' and never 'exit'. Left unhandled, EventEmitter rethrows
+      // it as an uncaught exception and takes the main process with it. It is
+      // the same outcome for us as an exit, so it travels the same path.
+      let gone = false
+      const fire = (): void => {
+        if (gone) {
+          return
+        }
+        gone = true
+        listener()
+      }
+      child.on(event, fire)
+      child.on('error', fire)
     },
     kill: () => {
       child.kill()
