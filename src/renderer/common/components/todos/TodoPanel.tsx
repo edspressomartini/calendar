@@ -1,14 +1,12 @@
 import { useState, type JSX } from 'react'
 import { formatAccelerator } from '../../../../shared/shortcuts.ts'
 import { daysBetweenDayKeys } from '../../../../shared/time.ts'
-import type { TodoPlacement } from '../../../../shared/types/settings.ts'
 import type { Todo, TodoHistoryDay, TodoSnapshot } from '../../../../shared/types/todo.ts'
 import { formatDayKeyLabel } from '../../lib/formatTime.ts'
 import { TodoRow } from './TodoRow.tsx'
 
 interface TodoPanelProps {
   readonly snapshot: TodoSnapshot | null
-  readonly placement: TodoPlacement
   readonly shortcut: string
   /** Set when the timeline is hidden; see the call site for why it matters. */
   readonly compact: boolean
@@ -31,7 +29,6 @@ interface TodoPanelProps {
  */
 export function TodoPanel({
   snapshot,
-  placement,
   shortcut,
   compact,
   onToggle,
@@ -52,10 +49,13 @@ export function TodoPanel({
     snapshot.overdue.length + snapshot.current.filter((todo) => todo.completedAt === null).length
   const isEmpty = snapshot.overdue.length + snapshot.current.length + snapshot.upcoming.length === 0
 
+  // The card sits on this element rather than on a wrapper around it:
+  // max-h-[45%] needs a parent with a definite height, and a wrapper sized to
+  // its own content gives the percentage nothing to resolve against.
   return (
     <section
-      className={`flex shrink-0 flex-col border-border ${compact ? 'max-h-60' : 'max-h-[45%]'} ${
-        placement === 'above' ? 'border-b' : 'border-t'
+      className={`card mx-3 mb-2 flex shrink-0 flex-col overflow-hidden ${
+        compact ? 'max-h-60' : 'max-h-[45%]'
       }`}
     >
       <header className="flex items-center gap-2 px-3 py-1">

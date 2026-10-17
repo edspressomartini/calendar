@@ -86,21 +86,18 @@ export function WidgetApp(): JSX.Element {
   const useSplit = snapshot.viewMode === 'split' && width >= SPLIT_VIEW_MIN_WIDTH && hasAccounts
 
   const todoPanel = snapshot.showTodos ? (
-    <div className="card mx-3 mb-2 overflow-hidden">
-      <TodoPanel
-        snapshot={todos}
-        placement={snapshot.todoPlacement}
-        shortcut={snapshot.quickAddShortcut}
-        // Without the timeline there is no tall thing to take a share of, so a
-        // percentage cap would be measured against a height this panel is
-        // itself about to determine. A fixed ceiling cannot feed back.
-        compact={!snapshot.showTimeline}
-        onToggle={toggleTodo}
-        onRoll={rollTodo}
-        onRollAllOverdue={rollAllOverdueTodos}
-        onRemove={removeTodo}
-      />
-    </div>
+    <TodoPanel
+      snapshot={todos}
+      shortcut={snapshot.quickAddShortcut}
+      // Without the timeline there is no tall thing to take a share of, so a
+      // percentage cap would be measured against a height this panel is
+      // itself about to determine. A fixed ceiling cannot feed back.
+      compact={!snapshot.showTimeline}
+      onToggle={toggleTodo}
+      onRoll={rollTodo}
+      onRollAllOverdue={rollAllOverdueTodos}
+      onRemove={removeTodo}
+    />
   ) : null
 
   return (
@@ -178,7 +175,7 @@ function useFitToContent(enabled: boolean, ref: RefObject<HTMLDivElement | null>
       if (!(child instanceof HTMLElement)) {
         continue
       }
-      height += child.offsetHeight
+      height += child.offsetHeight + verticalMargin(child)
     }
 
     const target = Math.ceil(height)
@@ -189,6 +186,19 @@ function useFitToContent(enabled: boolean, ref: RefObject<HTMLDivElement | null>
     lastSent.current = target
     void widgetApi().fitHeight(target)
   })
+}
+
+/**
+ * `offsetHeight` is border-box: it counts padding and border but not margin,
+ * so the gaps between the section cards would be measured as nothing and the
+ * window would come up short by the sum of them.
+ */
+function verticalMargin(element: HTMLElement): number {
+  const style = getComputedStyle(element)
+  const top = Number.parseFloat(style.marginTop)
+  const bottom = Number.parseFloat(style.marginBottom)
+
+  return (Number.isNaN(top) ? 0 : top) + (Number.isNaN(bottom) ? 0 : bottom)
 }
 
 function useWindowWidth(): number {
