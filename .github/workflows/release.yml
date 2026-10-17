@@ -126,9 +126,25 @@ jobs:
             exit 1
           }
 
-          # Reads the stapled ticket out of the bundle, so it proves stapling
-          # happened rather than that Apple would approve it if asked.
-          xcrun stapler validate "$app"
+          # Proves the ticket is in the bundle rather than that Apple would
+          # issue one if asked. It does reach Apple to check the ticket is still
+          # valid, though, which failed a 0.6.0 build outright on a dropped
+          # connection after notarisation had already succeeded — so a network
+          # error is retried and only a real verdict is allowed to fail the job.
+          for attempt in 1 2 3; do
+            xcrun stapler validate "$app" 2>&1 | tee /tmp/staple.txt && break
+
+            grep -qi 'network\|CloudKit' /tmp/staple.txt || {
+              echo "::error::the notarisation ticket is not stapled into the bundle"
+              exit 1
+            }
+            echo "::warning::stapler could not reach Apple (attempt $attempt), retrying"
+            sleep $((attempt * 20))
+          done
+          grep -q 'The validate action worked!' /tmp/staple.txt || {
+            echo "::error::stapler never got a verdict from Apple"
+            exit 1
+          }
 
           # Trustworthy here and nowhere else. On macOS 15+ spctl reports
           # against a policy engine the system no longer consults when
@@ -180,3 +196,54 @@ jobs:
             echo "  sha256 \"$sha\""
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The cask was bumped by hand until 0.6.0, and twice the release went out
+      # with the tap still pinned to the previous version — so `brew upgrade`
+      # reported everything up to date while a newer DMG sat on the Releases
+      # page. A published release nobody can install is not a release.
+      #
+      # Separate repository, so `github.token` does not reach it. TAP_TOKEN is a
+      # fine-grained PAT scoped to homebrew-tap alone with contents:write and
+      # nothing else; it lives in the `release` environment, which only accepts
+      # deployments from a `v*` tag, so a workflow on a branch cannot read it.
+      #
+      # Contents API rather than a clone: one authenticated call, the token
+      # never touches the git config or the disk, and passing the blob sha
+      # means a concurrent change to the tap rejects the write instead of
+      # silently overwriting it.
+      - name: Update the Homebrew cask
+        env:
+          GH_TOKEN: ${{ secrets.TAP_TOKEN }}
+          TAP: edspressomartini/homebrew-tap
+          CASK: Casks/up-next.rb
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          dmg="dist/up-next-$version-arm64.dmg"
+          sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
+
+          gh api "/repos/$TAP/contents/$CASK" -q .sha > /tmp/blob.sha
+          gh api "/repos/$TAP/contents/$CASK" -q .content | base64 --decode > /tmp/cask.rb
+
+          # Anchored to the line start so the url template, which also contains
+          # the word version, is left alone.
+          sed -i '' \
+            -e "s|^  version \".*\"|  version \"$version\"|" \
+            -e "s|^  sha256 \".*\"|  sha256 \"$sha\"|" \
+            /tmp/cask.rb
+
+          # A sed that matched nothing exits 0 and leaves the old pin in place,
+          # which is the failure this step exists to prevent.
+          grep -q "^  version \"$version\"$" /tmp/cask.rb || {
+            echo "::error::the cask version line did not update — has the file changed shape?"
+            exit 1
+          }
+          grep -q "^  sha256 \"$sha\"$" /tmp/cask.rb || {
+            echo "::error::the cask sha256 line did not update"
+            exit 1
+          }
+
+          gh api --method PUT "/repos/$TAP/contents/$CASK" \
+            -f message="chore: up-next $version" \
+            -f content="$(base64 -i /tmp/cask.rb)" \
+            -f sha="$(cat /tmp/blob.sha)" \
+            --silent

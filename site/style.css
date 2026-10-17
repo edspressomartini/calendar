@@ -49,7 +49,13 @@
   --app-neutral: rgb(255 255 255 / 72%);
   --app-neutral-subtle: rgb(248 250 252 / 82%);
   --app-text: #0f172a;
-  --app-accent: #0ea5e9;
+  /* Graphite, not the default sky. The recreation sits on a page that is
+     already saturated blue, and in sky it read as one more blue rectangle on
+     a blue page — the card borders turned into grout lines between tiles.
+     Graphite is the app's quietest scheme and lets the panel look like a
+     window rather than a diagram. The accents of the other five are shown off
+     further down the page instead. */
+  --app-accent: #475569; /* slate-600 */
   --app-urgent: #ef4444;
   --app-live: #10b981;
 }
@@ -69,7 +75,7 @@
     --app-neutral: rgb(15 23 42 / 70%);
     --app-neutral-subtle: rgb(30 41 59 / 80%);
     --app-text: #f1f5f9;
-    --app-accent: #38bdf8;
+    --app-accent: #cbd5e1; /* slate-300, graphite in dark */
     --app-urgent: #f87171;
     --app-live: #34d399;
   }
@@ -147,7 +153,12 @@ a {
 
 @media (width >= 56rem) {
   .hero {
-    grid-template-columns: 1fr 23rem;
+    /* The width of a real widget, near enough. Narrower than this and the
+       recreation has to shrink the day to fit, which is the one thing it must
+       not do: the app draws an hour at a fixed height, and a mockup that
+       squeezes six hours into the space of two misrepresents the only feature
+       the timeline has. */
+    grid-template-columns: 1fr 25rem;
     gap: 4rem;
   }
 }
@@ -237,7 +248,14 @@ a {
   border-radius: 0.9rem;
   overflow: hidden;
   padding: 3.1rem 1.2rem 0;
-  background: linear-gradient(155deg, #14314d, #071220 55%, #0d2135);
+  /* Mid grey, not near-black. The panel is a dark translucent sheet, and over
+     an almost-black backdrop every card border became a bright line against a
+     near-black fill — the whole recreation read as tiles with grout between
+     them. The real thing is normally over an ordinary app window at ordinary
+     brightness, where the same border is barely there. What is behind the
+     glass decides how the glass looks, so the backdrop is part of the
+     drawing, not scenery. */
+  background: linear-gradient(155deg, #585857, #454544 55%, #4f4f4e);
   box-shadow: var(--shadow);
 }
 
@@ -245,7 +263,7 @@ a {
   height: 0.45rem;
   border-radius: 0.225rem;
   margin: 0 0 0.62rem;
-  background: #7b9bba;
+  background: #8a8a89;
 }
 
 .desk-line--accent {
@@ -294,13 +312,17 @@ a {
   background: rgb(255 255 255 / 12%);
 }
 
+/* Everything inside the widget is in px, not rem, because the app's own sizes
+   are: the four type sizes in index.css, the 12px card margins, the 38px
+   gutter columns and the 80px hour. Drawing the recreation in rem let the
+   page's root size rescale it, and a timeline at two thirds scale is a
+   different widget. */
 .widget {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding-bottom: 0.1rem;
+  padding-bottom: 2px;
   background: var(--app-bg);
   color: var(--app-text);
   border: 1px solid var(--app-border);
@@ -313,10 +335,12 @@ a {
 /* Each section is a card on the glass, as in the app: a border, a subtle
    fill, and a shadow faint enough to read as a lifted edge. The borders do
    the separating that a row of divider rules used to. */
+.widget-title,
 .widget-next,
+.allday,
 .timeline,
 .todos {
-  margin: 0 0.4rem;
+  margin: 0 12px 8px;
   border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   background: var(--app-subtle);
@@ -326,45 +350,57 @@ a {
 .widget-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem 0;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
 }
 
 .widget-clock {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 13px;
-  font-weight: 500;
+  /* --text-display. The clock is the biggest thing in the widget and anchors
+     the timeline under it. */
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
 .widget-day {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
   color: var(--app-muted);
 }
 
+/* Text, not outlined pills. The app's title bar buttons carry their state in
+   the colour of the word and nothing else, and drawing borders round them here
+   made the strip look like a toolbar the app does not have. */
 .widget-chip {
-  border: 1px solid var(--app-border);
   border-radius: 999px;
-  padding: 0 0.4rem;
-  font-size: 9px;
+  padding: 2px 6px;
+  font-size: 11px;
+  white-space: nowrap;
   color: var(--app-muted);
 }
 
 .widget-chip--on {
   color: var(--app-accent);
-  border-color: var(--app-accent);
 }
 
 .widget-next {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.6rem;
+  gap: 8px;
+  padding: 6px 12px;
 }
 
 .widget-next .dot {
-  width: 0.35rem;
-  height: 0.35rem;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--app-accent);
   flex: none;
@@ -372,11 +408,16 @@ a {
 
 .widget-next .label {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
 }
 
 .widget-next .time {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--app-urgent);
 }
@@ -384,33 +425,156 @@ a {
 .widget-next .join {
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  padding: 0 0.4rem;
+  padding: 0 6px;
   font-size: 10px;
   color: var(--app-accent);
 }
 
+/* A meeting you are already in. The app tints the whole card and swaps the
+   colour dot for a badge, because this is the one state where a dot a few
+   pixels across is not enough. */
+.widget-next--live {
+  border-color: color-mix(in oklab, var(--app-live) 40%, transparent);
+  background: color-mix(in oklab, var(--app-live) 12%, var(--app-subtle));
+}
+
+.widget-next .now {
+  flex: none;
+  border-radius: 999px;
+  padding: 1px 6px;
+  background: var(--app-live);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.widget-next--live .time {
+  color: var(--app-live);
+}
+
+/* out of office, above the day */
+
+.allday {
+  display: flex;
+  flex-wrap: wrap;
+  /* Equal both ways, as in the app: a wider gap across than down regroups the
+     lines into a block of text that happens to have dots in it. */
+  gap: 10px;
+  padding: 6px 10px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.allday span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.allday .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.allday .dot--sky {
+  background: #38bdf8;
+}
+
+.allday .dot--violet {
+  background: #a78bfa;
+}
+
 /* the hour grid */
 
+/* The app draws a minute as 1/0.75 of a pixel, which is 80px to the hour, and
+   scrolls whatever does not fit. That number is the whole point of the
+   timeline — it is what makes a free hour look like a free hour — so it is
+   reproduced rather than approximated, and the card clips the rest of the day
+   the way the scroller does. */
 .timeline {
+  --hour: 80px;
+  --hours: 4;
+
   position: relative;
   display: flex;
-  height: 13.5rem;
-  padding: 0.4rem 0.5rem 0.4rem 0;
+  flex-direction: column;
+  padding: 6px 10px 6px 0;
+}
+
+/* Names the two gutter columns. Without a header, two times stacked beside
+   each other are just ambiguous. */
+.zones {
+  display: flex;
+  flex: none;
+  margin-right: -10px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.zones span {
+  width: 38px;
+  flex: none;
+  padding-right: 6px;
+  text-align: right;
+}
+
+/* The fold. The day carries on below it, as it does in the app, where this is
+   a scroller keeping the now line in view rather than a crop. */
+.grid {
+  position: relative;
+  display: flex;
+  height: calc(var(--hour) * 3.8);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.gutter,
+.tracks {
+  height: calc(var(--hour) * var(--hours));
+  /* Half of the first label sits above the hour it marks, so the day starts a
+     few pixels down rather than with a row of sliced numerals. */
+  margin-top: 6px;
 }
 
 .gutter {
-  width: 2.6rem;
+  display: flex;
   flex: none;
+}
+
+/* Two columns, local first. The second is the same clock in somebody else's
+   timezone, so it is dimmed: it is there to be checked, not read. */
+.gutter .col {
   position: relative;
+  width: 38px;
+}
+
+.gutter .col--second {
+  opacity: 0.7;
 }
 
 .gutter span {
   position: absolute;
-  right: 0.45rem;
+  right: 6px;
   transform: translateY(-50%);
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Half hours are demoted rather than dropped, as in the app. Without them a
+     half-hour row reads as a whole hour and every gap looks twice as long as
+     it is. */
+  font-size: 9px;
+  color: color-mix(in oklab, var(--app-muted) 45%, transparent);
+}
+
+.gutter span.major {
   font-size: 10px;
-  color: var(--app-muted);
+  font-weight: 600;
+  color: var(--app-text);
 }
 
 .tracks {
@@ -423,47 +587,91 @@ a {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--app-border);
-  opacity: 0.55;
+  background: color-mix(in oklab, var(--app-muted) 40%, transparent);
 }
 
+/* Dotted, not a fainter solid line — the app's reasoning exactly: two solid
+   lines a few shades apart are the same line at a glance, and a half-hour
+   slot then reads as an hour. */
+.tracks .rule--half {
+  background: none;
+  background-image: linear-gradient(to right, var(--app-border) 0 2px, transparent 2px 100%);
+  background-size: 4px 1px;
+  background-repeat: repeat-x;
+}
+
+/* Quiet by default. The fill is the same subtle one the card uses, lifted
+   only by its border and the account's colour bar, because a timeline where
+   every block is a solid slab hides the thing it is drawn to show: the gaps.
+   Only live and imminent are allowed to shout. */
 .event {
   position: absolute;
   left: 0;
-  right: 0;
-  padding: 0.1rem 0.35rem;
+  right: 2px;
+  min-height: 18px;
+  padding: 2px 6px;
+  /* One edge, as in the app. A box round every meeting turns the day into a
+     stack of tiles and the gridlines stop being readable through it. */
   border-left: 2px solid var(--app-border);
-  border-radius: 0.2rem;
-  /* A block has to read against the card it sits on, which is itself the
-     subtle fill, so it takes a heavier dose of the same accent. */
-  background: color-mix(in oklab, var(--app-accent) 26%, var(--app-subtle));
+  border-radius: 2px;
+  background: var(--app-subtle);
   overflow: hidden;
   display: flex;
   align-items: baseline;
-  gap: 0.3rem;
+  gap: 4px;
+}
+
+/* The account's colour, as a hairline down the left edge. */
+.event .bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+}
+
+.event .bar--sky {
+  background: #0ea5e9;
+}
+
+.event .bar--violet {
+  background: #8b5cf6;
 }
 
 .event time {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
   color: var(--app-muted);
   flex: none;
 }
 
 .event span {
+  min-width: 0;
+  flex: 1;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.event .join {
+  flex: none;
+  border: 1px solid var(--app-border);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--app-accent);
+}
+
 .event--past {
   opacity: 0.45;
 }
 
-.event--now {
-  background: color-mix(in oklab, var(--app-urgent) 26%, var(--app-subtle));
-  border-left-color: var(--app-urgent);
+/* Green, matching the app: urgent is the colour of the clock running out, and
+   a meeting you are already in is not running out. */
+.event--live {
+  background: color-mix(in oklab, var(--app-live) 15%, transparent);
+  border-left-color: var(--app-live);
 }
 
 .nowline {
@@ -477,11 +685,11 @@ a {
 }
 
 .nowline .bead {
-  width: 0.35rem;
-  height: 0.35rem;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--app-urgent);
-  margin-left: -0.15rem;
+  margin-left: -4px;
   flex: none;
 }
 
@@ -494,29 +702,36 @@ a {
 .nowline .stamp {
   background: var(--app-urgent);
   color: #ffffff;
-  border-radius: 0.2rem;
-  padding: 0 0.25rem;
-  margin-left: 0.25rem;
+  border-radius: 2px;
+  padding: 0 4px;
+  margin-left: 4px;
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 9px;
 }
 
 /* the TODO half */
 
 .todos {
-  padding: 0.35rem 0 0.45rem;
+  padding: 0 0 6px;
 }
 
 .todos header {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0 0.6rem 0.15rem;
+  gap: 6px;
+  padding: 4px 12px;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--app-muted);
+}
+
+/* The section collapses from here, so the caret is part of the heading rather
+   than a control beside it. */
+.todos header .caret {
+  letter-spacing: 0;
 }
 
 .todos header .count {
@@ -537,15 +752,19 @@ a {
 .todo {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.1rem 0.6rem;
+  gap: 6px;
+  padding: 2px 12px;
 }
 
 .todo .box {
-  width: 0.7rem;
-  height: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
   border: 1px solid var(--app-border);
-  border-radius: 0.15rem;
+  border-radius: 2px;
+  font-size: 9px;
   flex: none;
 }
 
@@ -557,11 +776,6 @@ a {
   text-decoration: line-through;
 }
 
-.todo--done .box {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-}
-
 .todo .late {
   margin-left: auto;
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -569,11 +783,50 @@ a {
   color: var(--app-urgent);
 }
 
+/* One row drawn as though the pointer were over it. The arrows that rank a
+   TODO and the arrow that rolls it only appear on hover in the app, so a
+   mockup of the resting state shows none of it. */
+.todo--hover {
+  background: color-mix(in oklab, var(--app-accent) 10%, transparent);
+}
+
+.todo .rank,
+.todo .roll {
+  font-size: 9px;
+  line-height: 1;
+  padding: 0 2px;
+  color: var(--app-muted);
+}
+
+.todo .rank:first-of-type {
+  margin-left: auto;
+}
+
+.todo .roll {
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.todo-note {
+  margin: 4px 0 0;
+  padding: 0 12px;
+  font-size: 10px;
+  color: var(--app-muted);
+}
+
+/* Ticked, not filled in. The app keeps the accent at a fifth strength behind
+   a tick in the same colour; a solid block reads as a disabled control. */
+.todo .box--on {
+  background: color-mix(in oklab, var(--app-accent) 20%, transparent);
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+
 .widget-status {
   display: flex;
   align-items: center;
-  padding: 0.1rem 0.75rem 0.3rem;
-  font-size: 10px;
+  padding: 2px 12px 8px;
+  font-size: 11px;
   color: var(--app-muted);
 }
 

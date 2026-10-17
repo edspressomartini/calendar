@@ -101,73 +101,114 @@
 
             <div class="widget" aria-hidden="true">
               <div class="widget-title">
-                <span class="widget-clock">10:48</span>
-                <span class="widget-day">Thursday 8 October</span>
-                <span class="widget-chip widget-chip--on">Pin</span>
+                <span class="widget-clock">11:02</span>
+                <!-- Short, because that is what the app's formatter produces:
+                     weekday, day and month all abbreviated. Spelling the date
+                     out ate the row and crushed the buttons together. -->
+                <span class="widget-day">Thu 8 Oct</span>
+                <span class="widget-chip widget-chip--on">Cal</span>
+                <span class="widget-chip widget-chip--on">Todo</span>
+                <span class="widget-chip widget-chip--on">Unpin</span>
+                <span class="widget-chip">Settings</span>
                 <span class="widget-chip">Hide</span>
               </div>
 
-              <div class="widget-next">
-                <span class="dot"></span>
+              <!-- Live, not upcoming. The green NOW badge is the one state the
+                   widget shouts about, and a mockup without it undersells the
+                   whole point of the thing. -->
+              <div class="widget-next widget-next--live">
+                <span class="now">Now</span>
                 <span class="label">Design review</span>
-                <span class="time">in 12m</span>
+                <span class="time">28m left</span>
                 <span class="join">Join</span>
               </div>
 
+              <div class="allday">
+                <span><i class="dot dot--sky"></i>Priya Raman — Annual leave</span>
+                <span><i class="dot dot--violet"></i>Tom Okafor — Away</span>
+                <span><i class="dot dot--sky"></i>Office closed (Hamburg)</span>
+              </div>
+
+              <!-- Four hours of it. The app draws the day at 80px an hour and
+                   scrolls the rest, so the window shows about this much and the
+                   afternoon runs off the bottom edge — which is why the last
+                   meeting here is cut, rather than the day conveniently ending
+                   where the card does. -->
               <div class="timeline">
-                <div class="gutter">
-                  <span style="top: 0%">09:00</span>
-                  <span style="top: 12.5%">10:00</span>
-                  <span style="top: 25%">11:00</span>
-                  <span style="top: 37.5%">12:00</span>
-                  <span style="top: 50%">13:00</span>
-                  <span style="top: 62.5%">14:00</span>
-                  <span style="top: 75%">15:00</span>
-                  <span style="top: 87.5%">16:00</span>
-                  <span style="top: 100%">17:00</span>
-                </div>
+                <div class="zones"><span>BST</span><span>CEST</span></div>
 
-                <div class="tracks">
-                  <i class="rule" style="top: 0%"></i>
-                  <i class="rule" style="top: 12.5%"></i>
-                  <i class="rule" style="top: 25%"></i>
-                  <i class="rule" style="top: 37.5%"></i>
-                  <i class="rule" style="top: 50%"></i>
-                  <i class="rule" style="top: 62.5%"></i>
-                  <i class="rule" style="top: 75%"></i>
-                  <i class="rule" style="top: 87.5%"></i>
-                  <i class="rule" style="top: 100%"></i>
-
-                  <div class="event event--past" style="top: 6.25%; height: 6.25%">
-                    <time>09:30</time><span>Standup</span>
-                  </div>
-                  <div class="event event--now" style="top: 25%; height: 12.5%">
-                    <time>11:00</time><span>Design review</span>
-                  </div>
-                  <div class="event" style="top: 62.5%; height: 6.25%">
-                    <time>14:00</time><span>1:1 with Priya</span>
-                  </div>
-                  <div class="event" style="top: 87.5%; height: 9.3%">
-                    <time>16:00</time><span>Release retro</span>
+                <div class="grid">
+                  <div class="gutter">
+                    <div class="col">
+                      <span class="major" style="top: 0%">09:00</span>
+                      <span style="top: 12.5%">09:30</span>
+                      <span class="major" style="top: 25%">10:00</span>
+                      <span style="top: 37.5%">10:30</span>
+                      <span class="major" style="top: 50%">11:00</span>
+                      <span style="top: 62.5%">11:30</span>
+                      <span class="major" style="top: 75%">12:00</span>
+                      <span style="top: 87.5%">12:30</span>
+                      <span class="major" style="top: 100%">13:00</span>
+                    </div>
+                    <div class="col col--second">
+                      <span class="major" style="top: 0%">10:00</span>
+                      <span style="top: 12.5%">10:30</span>
+                      <span class="major" style="top: 25%">11:00</span>
+                      <span style="top: 37.5%">11:30</span>
+                      <span class="major" style="top: 50%">12:00</span>
+                      <span style="top: 62.5%">12:30</span>
+                      <span class="major" style="top: 75%">13:00</span>
+                      <span style="top: 87.5%">13:30</span>
+                      <span class="major" style="top: 100%">14:00</span>
+                    </div>
                   </div>
 
-                  <div class="nowline" style="top: 22.5%">
-                    <span class="bead"></span><span class="wire"></span
-                    ><span class="stamp">10:48</span>
+                  <div class="tracks">
+                    <i class="rule" style="top: 0%"></i>
+                    <i class="rule rule--half" style="top: 12.5%"></i>
+                    <i class="rule" style="top: 25%"></i>
+                    <i class="rule rule--half" style="top: 37.5%"></i>
+                    <i class="rule" style="top: 50%"></i>
+                    <i class="rule rule--half" style="top: 62.5%"></i>
+                    <i class="rule" style="top: 75%"></i>
+                    <i class="rule rule--half" style="top: 87.5%"></i>
+                    <i class="rule" style="top: 100%"></i>
+
+                    <div class="event event--past" style="top: 12.5%; height: 12.5%">
+                      <i class="bar bar--sky"></i><time>09:30</time><span>Standup</span>
+                    </div>
+                    <div class="event event--live" style="top: 37.5%; height: 25%">
+                      <i class="bar bar--sky"></i><time>10:30</time><span>Design review</span>
+                      <span class="join">Join</span>
+                    </div>
+                    <div class="event" style="top: 75%; height: 12.5%">
+                      <i class="bar bar--violet"></i><time>12:00</time><span>1:1 with Priya</span>
+                    </div>
+                    <div class="event" style="top: 87.5%; height: 18.75%">
+                      <i class="bar bar--sky"></i><time>12:30</time><span>Release retro</span>
+                    </div>
+
+                    <div class="nowline" style="top: 50.8%">
+                      <span class="bead"></span><span class="wire"></span
+                      ><span class="stamp">11:02</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div class="todos">
                 <header>
-                  Todo <span class="count">3</span><span class="spacer"></span>
-                  <span class="hint">⌃⌥Space</span>
+                  <span class="caret">▾</span> Todo <span class="count">4</span
+                  ><span class="spacer"></span>
+                  <span class="hint">History ⌃⌥⌘C</span>
                 </header>
-                <p class="todo todo--done">
-                  <span class="box"></span><span class="text">Reply to the audit</span>
-                </p>
-                <p class="todo">
+                <!-- Hovered, to show the arrows that rank it. They are only
+                     there on hover in the app, so a flat mockup would hide the
+                     feature entirely. -->
+                <p class="todo todo--hover">
                   <span class="box"></span><span class="text">Write up the migration plan</span>
+                  <span class="rank">▲</span><span class="rank">▼</span> <span class="roll">→</span
+                  ><span class="roll">×</span>
                 </p>
                 <p class="todo">
                   <span class="box"></span><span class="text">Chase the invoice</span>
@@ -176,10 +217,14 @@
                 <p class="todo">
                   <span class="box"></span><span class="text">Book the venue</span>
                 </p>
+                <p class="todo todo--done">
+                  <span class="box box--on">✓</span><span class="text">Reply to the audit</span>
+                </p>
+                <p class="todo-note">1 rolled to a later day</p>
               </div>
 
               <div class="widget-status">
-                <span>synced just now</span><span class="spacer"></span><span>Refresh</span>
+                <span>synced just now</span><span class="spacer"></span><span>Sync</span>
               </div>
             </div>
           </div>
@@ -210,8 +255,9 @@
             <h3>Your TODO list lives beside it</h3>
             <p>
               Tasks sit under the day, added from anywhere with a keyboard shortcut, and roll
-              forward to tomorrow when you do not get to them. One glance covers both halves of
-              being on top of your day.
+              forward to tomorrow when you do not get to them. Two arrows appear as you hover a
+              task, so the one that actually matters can sit at the top. One glance covers both
+              halves of being on top of your day.
             </p>
           </div>
           <div class="card">
