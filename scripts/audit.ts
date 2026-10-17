@@ -24,19 +24,6 @@ interface AcceptedAdvisory {
 
 const ACCEPTED: readonly AcceptedAdvisory[] = [
   {
-    id: 'GHSA-ch52-4w7c-c8xp',
-    package: 'http-cache-semantics',
-    reason:
-      'Cache poisoning via max-stale, reachable only through electron-builder ' +
-      '-> @electron/get -> got, which runs on a build machine to download the ' +
-      'Electron binary over HTTPS from a single known host. No published fix ' +
-      'exists: the advisory covers every release up to and including the ' +
-      'current 4.2.0, and electron-builder is already on its latest version. ' +
-      'Nothing in this chain is a runtime dependency, so none of it ships in ' +
-      'the app. The downloaded binary is checked against SHASUMS regardless.',
-    reviewBy: '2027-01-31',
-  },
-  {
     id: 'GHSA-hp3w-g68c-fv3c',
     package: 'sprintf-js',
     reason:
