@@ -5,6 +5,7 @@ import type { AccountAuthenticator, AuthenticationResult } from '../../CalendarP
 import type { EventKitRequester } from './EventKitHelperProcess.ts'
 import {
   EVENTKIT_AUTHORIZE_TIMEOUT_MS,
+  EVENTKIT_MAX_SOURCES,
   eventKitAuthorizationSchema,
   eventKitSourceListSchema,
 } from './EventKitProtocol.ts'
@@ -42,6 +43,14 @@ export class EventKitAuthorizer implements AccountAuthenticator {
 
     const sources = await this.helper.request('sources', {}, eventKitSourceListSchema)
     this.logger.info('calendar access granted', { sources: sources.length })
+
+    if (sources.length >= EVENTKIT_MAX_SOURCES) {
+      // The helper trims to the cap so the frame still parses; at the cap we
+      // cannot tell a trimmed list from an exact one, so both are reported.
+      this.logger.warn('source list reached its cap and may have been trimmed', {
+        sources: sources.length,
+      })
+    }
 
     return sources.map((source) => ({
       identity: { providerAccountId: eventKitAccountId(source.id), label: source.title },

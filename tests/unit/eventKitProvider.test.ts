@@ -11,6 +11,7 @@ import {
   EVENTKIT_AUTHORIZE_TIMEOUT_MS,
   EVENTKIT_MAX_CALENDARS,
   EVENTKIT_MAX_EVENTS,
+  EVENTKIT_MAX_SOURCES,
   EVENTKIT_REQUEST_TIMEOUT_MS,
   eventKitAuthorizationSchema,
   eventKitCalendarListSchema,
@@ -285,5 +286,34 @@ describe('EventKitAuthorizer', () => {
     const authorizer = new EventKitAuthorizer(helper, silentLogger())
 
     await expect(authorizer.authenticate()).resolves.toEqual([])
+  })
+
+  it('logs a count when the source list arrives at its cap', async () => {
+    const atTheCap = Array.from({ length: EVENTKIT_MAX_SOURCES }, (_unused, index) => ({
+      id: `src-${index}`,
+      title: `Source ${index}`,
+      defaultCalendarId: null,
+    }))
+    const { helper } = helperReturning({ status: 'granted' }, atTheCap)
+    const entries: LogEntry[] = []
+    const authorizer = new EventKitAuthorizer(helper, recordingLogger(entries))
+
+    await authorizer.authenticate()
+
+    expect(entries).toContainEqual(
+      expect.objectContaining({ level: 'warn', context: { sources: EVENTKIT_MAX_SOURCES } }),
+    )
+  })
+
+  it('does not warn about an ordinary source list', async () => {
+    const { helper } = helperReturning({ status: 'granted' }, [
+      { id: 'icloud', title: 'iCloud', defaultCalendarId: 'cal-1' },
+    ])
+    const entries: LogEntry[] = []
+    const authorizer = new EventKitAuthorizer(helper, recordingLogger(entries))
+
+    await authorizer.authenticate()
+
+    expect(entries.filter((entry) => entry.level === 'warn')).toEqual([])
   })
 })
