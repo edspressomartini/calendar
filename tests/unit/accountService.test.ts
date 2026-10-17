@@ -53,9 +53,23 @@ function buildService(options: HarnessOptions): Harness {
   vi.spyOn(settings, 'findAccount').mockImplementation(
     (accountId) => accounts.find((account) => account.id === accountId) ?? null,
   )
+  // Mirrors the real store, overwrite included: an id that is already there
+  // keeps its colour and takes the incoming label and calendars. The guard
+  // against a re-authentication wiping a selection lives above this, so a
+  // mock that merely appended would assert nothing.
   vi.spyOn(settings, 'addAccount').mockImplementation((account) => {
     if (unwritable.has(account.id)) {
       throw new Error('could not write settings')
+    }
+    const index = accounts.findIndex((candidate) => candidate.id === account.id)
+    const existing = accounts[index]
+    if (existing) {
+      accounts[index] = {
+        ...existing,
+        label: account.label,
+        calendarIds: account.calendarIds,
+      }
+      return currentSettings()
     }
     accounts.push({
       id: account.id,
@@ -64,6 +78,15 @@ function buildService(options: HarnessOptions): Harness {
       colour: 'sky',
       calendarIds: account.calendarIds,
     })
+    return currentSettings()
+  })
+
+  vi.spyOn(settings, 'setSelectedCalendars').mockImplementation((accountId, calendarIds) => {
+    const index = accounts.findIndex((candidate) => candidate.id === accountId)
+    const existing = accounts[index]
+    if (existing) {
+      accounts[index] = { ...existing, calendarIds: [...calendarIds] }
+    }
     return currentSettings()
   })
 
@@ -222,6 +245,80 @@ describe('AccountService.connect', () => {
       accounts: [],
       refusal: 'denied',
     })
+  })
+
+  /**
+   * "Use Apple Calendar" is always enabled, and it is the only way to pick up
+   * a source newly added in Calendar.app, so it has to be safe to press. One
+   * press used to reset every Apple account to its source's default calendar,
+   * because `defaultCalendarIds` was written over the saved selection.
+   */
+  it('keeps an existing account\u2019s calendar selection when it authenticates again', async () => {
+    const results = [
+      {
+        identity: { providerAccountId: 'eventkit:icloud', label: 'iCloud' },
+        grantedScopes: ['eventkit.read'],
+        defaultCalendarIds: ['cal-default'],
+      },
+    ]
+    const { service, settings } = buildService({
+      authenticate: vi.fn().mockResolvedValue(results),
+    })
+    await service.connect('eventkit')
+    await service.setCalendars('eventkit:icloud', ['cal-home', 'cal-work'])
+
+    await service.connect('eventkit')
+
+    expect(settings.findAccount('eventkit:icloud')?.calendarIds).toEqual(['cal-home', 'cal-work'])
+  })
+
+  /** Including the empty one: unticking every box is a choice, not an absence. */
+  it('keeps an existing account\u2019s empty selection rather than restoring defaults', async () => {
+    const results = [
+      {
+        identity: { providerAccountId: 'eventkit:icloud', label: 'iCloud' },
+        grantedScopes: ['eventkit.read'],
+        defaultCalendarIds: ['cal-default'],
+      },
+    ]
+    const { service, settings } = buildService({
+      authenticate: vi.fn().mockResolvedValue(results),
+    })
+    await service.connect('eventkit')
+    await service.setCalendars('eventkit:icloud', [])
+
+    await service.connect('eventkit')
+
+    expect(settings.findAccount('eventkit:icloud')?.calendarIds).toEqual([])
+  })
+
+  /** The other half: a source the user has not seen before still gets defaults. */
+  it('gives a newly discovered account the defaults from the grant', async () => {
+    const first = [
+      {
+        identity: { providerAccountId: 'eventkit:icloud', label: 'iCloud' },
+        grantedScopes: ['eventkit.read'],
+        defaultCalendarIds: ['cal-icloud'],
+      },
+    ]
+    const authenticate = vi.fn().mockResolvedValue(first)
+    const { service, settings } = buildService({ authenticate })
+    await service.connect('eventkit')
+    await service.setCalendars('eventkit:icloud', ['cal-home'])
+
+    // A second source added in Calendar.app since the first grant.
+    authenticate.mockResolvedValue([
+      ...first,
+      {
+        identity: { providerAccountId: 'eventkit:work', label: 'Work' },
+        grantedScopes: ['eventkit.read'],
+        defaultCalendarIds: ['cal-work'],
+      },
+    ])
+    await service.connect('eventkit')
+
+    expect(settings.findAccount('eventkit:work')?.calendarIds).toEqual(['cal-work'])
+    expect(settings.findAccount('eventkit:icloud')?.calendarIds).toEqual(['cal-home'])
   })
 
   it('reconnects an account using its own provider kind', async () => {

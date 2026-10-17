@@ -192,12 +192,25 @@ export class AccountService {
 
   private async register(kind: ProviderKind, result: AuthenticationResult): Promise<void> {
     const accountId = result.identity.providerAccountId
+    const existing = this.settings.findAccount(accountId)
 
     this.settings.addAccount({
       id: accountId,
       provider: kind,
       label: result.identity.label,
-      calendarIds: result.defaultCalendarIds,
+      // Defaults are for an account the user has not chosen for yet. One
+      // grant covers every source, so writing them over a saved selection
+      // would reset all of a user's Apple accounts to one calendar each on
+      // every press of a button that is always enabled — and pressing it is
+      // the only way to pick up a source newly added in Calendar.app.
+      //
+      // Guarded here rather than in SettingsStore.addAccount, whose overwrite
+      // semantics are pre-existing and shared with addMockAccount. This is
+      // the one place that knows the ids are defaults, and it is on the path
+      // every provider's connect takes, so Google is covered too.
+      //
+      // `??`, not `||`: an empty selection is a choice the user made.
+      calendarIds: existing?.calendarIds ?? result.defaultCalendarIds,
     })
 
     const account = this.settings.findAccount(accountId)

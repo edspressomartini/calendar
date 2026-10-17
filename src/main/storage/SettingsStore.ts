@@ -67,7 +67,13 @@ export class SettingsStore {
     return this.commit({ ...this.getSettings(), placement })
   }
 
-  /** Adding an account that already exists refreshes its calendars and keeps its colour. */
+  /**
+   * Adding an account that already exists refreshes its calendars and keeps
+   * its colour. Overwriting is the contract, so deciding what an existing
+   * account's calendars should be is the caller's job: see
+   * `AccountService.register`, which keeps a saved selection rather than
+   * writing the provider's defaults over it.
+   */
   addAccount(account: NewAccount): AppSettings {
     const settings = this.getSettings()
     const existing = settings.accounts.find((candidate) => candidate.id === account.id)
