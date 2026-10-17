@@ -11,6 +11,7 @@ export const CHANNELS = {
   widgetSetSections: 'widget:setSections',
   widgetFitHeight: 'widget:fitHeight',
   settingsOpen: 'settings:open',
+  settingsShowTab: 'settings:showTab',
   accountsList: 'accounts:list',
   accountsConnect: 'accounts:connect',
   accountsReconnect: 'accounts:reconnect',
@@ -58,6 +59,7 @@ export const CHANNEL_CALLERS: Record<ChannelName, readonly WindowRole[]> = {
   [CHANNELS.widgetSetSections]: ['widget'],
   [CHANNELS.widgetFitHeight]: ['widget'],
   [CHANNELS.settingsOpen]: ['widget'],
+  [CHANNELS.settingsShowTab]: ['settings'],
   [CHANNELS.accountsList]: ['settings'],
   [CHANNELS.accountsConnect]: ['settings'],
   [CHANNELS.accountsReconnect]: ['settings'],
@@ -93,6 +95,7 @@ export const PUSH_CHANNELS: readonly ChannelName[] = [
   CHANNELS.agendaSnapshot,
   CHANNELS.alertShow,
   CHANNELS.todosSnapshot,
+  CHANNELS.settingsShowTab,
 ]
 
 /** Channels whose side effects are rate-limited in main (§8.5). */

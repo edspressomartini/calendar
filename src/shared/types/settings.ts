@@ -13,6 +13,15 @@ export type TodoPlacement = 'above' | 'below'
 export type WidgetCorner = 'topRight' | 'topLeft' | 'bottomRight' | 'bottomLeft' | 'remembered'
 
 /**
+ * The settings window's tabs. Declared here rather than beside the component
+ * because the widget names one when it asks for the window to be opened, and
+ * both ends have to agree on the spelling.
+ */
+export const SETTINGS_TABS = ['accounts', 'calendars', 'display', 'preferences'] as const
+
+export type SettingsTab = (typeof SETTINGS_TABS)[number]
+
+/**
  * Displays are matched by label and size first, because macOS display ids change
  * across reconnects (§10).
  */

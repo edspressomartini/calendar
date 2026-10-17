@@ -17,7 +17,7 @@ import { CHANNELS } from './channels.ts'
 import { isValidAccelerator } from '../shortcuts.ts'
 import { isLocalDayKey } from '../time.ts'
 import { isValidTimeZone } from '../timezone.ts'
-import { COLOUR_SCHEMES } from '../types/settings.ts'
+import { COLOUR_SCHEMES, SETTINGS_TABS } from '../types/settings.ts'
 
 /**
  * One schema per channel. Types vanish at runtime, so main validates every
@@ -102,6 +102,10 @@ export const updateSettingsSchema = z
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'no settings supplied' })
 
+export const openSettingsSchema = z.strictObject({
+  tab: z.enum(SETTINGS_TABS).optional(),
+})
+
 export const setPinnedSchema = z.strictObject({ pinned: z.boolean() })
 
 /** Both sent together, so the widget cannot end up half-applied. */
@@ -132,7 +136,7 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.widgetSetPinned]: setPinnedSchema,
   [CHANNELS.widgetSetSections]: setSectionsSchema,
   [CHANNELS.widgetFitHeight]: fitHeightSchema,
-  [CHANNELS.settingsOpen]: noPayload,
+  [CHANNELS.settingsOpen]: openSettingsSchema,
   [CHANNELS.accountsList]: noPayload,
   [CHANNELS.accountsConnect]: connectAccountSchema,
   [CHANNELS.accountsReconnect]: accountIdPayloadSchema,
@@ -315,6 +319,7 @@ export type AccountIdRequest = z.infer<typeof accountIdPayloadSchema>
 export type UpdateAccountRequest = z.infer<typeof updateAccountSchema>
 export type SetSelectedCalendarsRequest = z.infer<typeof setSelectedCalendarsSchema>
 export type MoveToDisplayRequest = z.infer<typeof moveToDisplaySchema>
+export type OpenSettingsRequest = z.infer<typeof openSettingsSchema>
 export type UpdateSettingsRequest = z.infer<typeof updateSettingsSchema>
 export type SetPinnedRequest = z.infer<typeof setPinnedSchema>
 export type SetSectionsRequest = z.infer<typeof setSectionsSchema>

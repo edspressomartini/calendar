@@ -30,8 +30,8 @@ export function registerWindowHandlers(router: IpcRouter, deps: WindowHandlerDep
     deps.widget.fitHeight(height)
   })
 
-  router.handle(CHANNELS.settingsOpen, async () => {
-    await deps.settingsWindow.open()
+  router.handle(CHANNELS.settingsOpen, async ({ tab }) => {
+    await deps.settingsWindow.open(tab)
   })
 
   router.handle(CHANNELS.displaysList, () => {
