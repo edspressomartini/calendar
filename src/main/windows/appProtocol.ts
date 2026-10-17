@@ -34,6 +34,9 @@ const MIME_TYPES: ReadonlyMap<string, string> = new Map([
   ['.svg', 'image/svg+xml'],
   ['.png', 'image/png'],
   ['.woff2', 'font/woff2'],
+  // Never requested in practice — Chromium takes the woff2 — but the stylesheet
+  // names it as a fallback, so serving it unknown would fail silently.
+  ['.woff', 'font/woff'],
 ])
 
 /** Must run before the app is ready. */

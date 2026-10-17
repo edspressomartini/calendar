@@ -130,6 +130,7 @@ export class AgendaService {
       todoPlacement: settings.todoPlacement,
       showTimeline: settings.showTimeline,
       showTodos: settings.showTodos,
+      alwaysOnTop: settings.alwaysOnTop,
       colourScheme: settings.colourScheme,
       quickAddShortcut: settings.quickAddShortcut,
       privacyMode: settings.privacyMode,

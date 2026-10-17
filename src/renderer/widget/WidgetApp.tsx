@@ -18,7 +18,6 @@ export function WidgetApp(): JSX.Element {
   const snapshot = useAgenda()
   const todos = useTodos()
   const width = useWindowWidth()
-  const [pinned, setPinned] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
   useFitToContent(snapshot?.showTimeline === false, contentRef)
   useColourScheme(snapshot?.colourScheme ?? null)
@@ -43,13 +42,15 @@ export function WidgetApp(): JSX.Element {
     void widgetApi().removeTodo(todoId)
   }, [])
 
+  // Like every other toggle here, the state lives in main and comes back on
+  // the snapshot. Local state would start as a guess and drift the moment the
+  // same setting was changed in the Settings window.
   const togglePin = useCallback(() => {
-    setPinned((current) => {
-      const next = !current
-      void widgetApi().setPinned(next)
-      return next
-    })
-  }, [])
+    if (!snapshot) {
+      return
+    }
+    void widgetApi().setPinned(!snapshot.alwaysOnTop)
+  }, [snapshot])
 
   // Both are sent every time: the channel takes the pair, so there is no state
   // in which main has one of them and not the other.
@@ -104,7 +105,7 @@ export function WidgetApp(): JSX.Element {
   return (
     <div ref={contentRef} className="flex h-full flex-col bg-bg">
       <TitleBar
-        pinned={pinned}
+        pinned={snapshot.alwaysOnTop}
         privacyMode={snapshot.privacyMode}
         nowIso={snapshot.now}
         showTimeline={snapshot.showTimeline}
