@@ -134,4 +134,49 @@ final class StoreTests: XCTestCase {
     func testTruncationStaysUnderTheSchemaCap() {
         XCTAssertLessThan(maxWireTextLength, 4_000)
     }
+
+    // MARK: - urlForWire
+
+    func testOrdinaryUrlsSurviveIntact() {
+        let url = "https://example.com/meet/abc-defg-hij?pwd=1234"
+        XCTAssertEqual(urlForWire(url), url)
+        XCTAssertNil(urlForWire(nil))
+    }
+
+    /// The cap is inclusive in the schema, so a URL of exactly the cap is
+    /// still valid and must not be thrown away.
+    func testUrlAtTheCapSurvivesIntact() {
+        let padding = String(repeating: "a", count: maxWireUrlLength - "https://example.com/".utf16.count)
+        let url = "https://example.com/\(padding)"
+
+        XCTAssertEqual(url.utf16.count, maxWireUrlLength)
+        XCTAssertEqual(urlForWire(url), url)
+    }
+
+    func testUrlJustUnderTheCapSurvivesIntact() {
+        let padding = String(repeating: "a", count: maxWireUrlLength - "https://example.com/".utf16.count - 1)
+        let url = "https://example.com/\(padding)"
+
+        XCTAssertEqual(url.utf16.count, maxWireUrlLength - 1)
+        XCTAssertEqual(urlForWire(url), url)
+    }
+
+    /// Dropped, not trimmed: a trimmed URL is a broken link that fails the
+    /// allowlist check silently, where null lets the mapper look elsewhere.
+    func testOverLongUrlBecomesNull() {
+        let url = "https://example.com/\(String(repeating: "a", count: maxWireUrlLength))"
+
+        XCTAssertGreaterThan(url.utf16.count, maxWireUrlLength)
+        XCTAssertNil(urlForWire(url))
+    }
+
+    /// Under the cap by character count, over it by the UTF-16 count the
+    /// schema actually applies. Measuring characters would let this through.
+    func testUrlLengthIsMeasuredInUtf16() {
+        let url = "https://example.com/\(String(repeating: "𝄞", count: maxWireUrlLength / 2))"
+
+        XCTAssertLessThan(url.count, maxWireUrlLength)
+        XCTAssertGreaterThan(url.utf16.count, maxWireUrlLength)
+        XCTAssertNil(urlForWire(url))
+    }
 }

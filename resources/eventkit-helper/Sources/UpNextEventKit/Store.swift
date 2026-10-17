@@ -10,6 +10,10 @@ import Foundation
 /// units as JavaScript does — hence the trim below rather than `prefix`.
 let maxWireTextLength = 2_000
 
+/// `eventKitEventSchema`'s own cap, matched exactly rather than undercut:
+/// there is nothing to gain by rejecting a URL the schema would accept.
+let maxWireUrlLength = 2_048
+
 func isoString(from date: Date, timeZone: TimeZone) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
@@ -36,6 +40,18 @@ func truncatedForWire(_ value: String?) -> String? {
         trimmed.removeLast()
     }
     return trimmed
+}
+
+/// Drops an over-long URL rather than trimming it. A trimmed URL is a broken
+/// link that would reach the allowlist check and fail there silently; null is
+/// honest, and leaves the mapper free to find a usable link in the location
+/// or the notes instead. Measured in UTF-16 units for the same reason as
+/// `truncatedForWire`: that is what the schema counts.
+func urlForWire(_ value: String?) -> String? {
+    guard let value, value.utf16.count <= maxWireUrlLength else {
+        return nil
+    }
+    return value
 }
 
 /// `calendars(for:)` hands back a `Set`, whose order differs run to run.
@@ -132,7 +148,7 @@ struct CalendarStore {
                 start: isoString(from: startDate, timeZone: timeZone),
                 end: isoString(from: endDate, timeZone: timeZone),
                 isAllDay: event.isAllDay,
-                url: event.url?.absoluteString,
+                url: urlForWire(event.url?.absoluteString),
                 location: truncatedForWire(event.location),
                 notes: truncatedForWire(event.notes),
                 status: statusName(event.status),
