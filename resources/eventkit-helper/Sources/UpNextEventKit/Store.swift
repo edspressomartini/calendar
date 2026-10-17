@@ -6,13 +6,41 @@ import Foundation
  * reach it without an `EKEventStore` and without the calendar permission.
  */
 
-/// Well under `eventKitEventSchema`'s 4,000, which it counts in UTF-16 code
-/// units as JavaScript does — hence the trim below rather than `prefix`.
-let maxWireTextLength = 2_000
+/*
+ * Every bound below is the cap its own schema in `EventKitProtocol.ts`
+ * applies to that exact field, matched rather than undercut. An earlier
+ * version carried 50% headroom under the event cap, which was indefensible
+ * on two counts. `truncatedForWire` trims downwards until the count fits, so
+ * it cannot overshoot and has no need of a margin; and the smaller window
+ * worked against us, because the mapper falls back to scanning `notes` for a
+ * link when an over-long `url` has been dropped, so halving `notes` narrowed
+ * the very fallback that decision depends on. A bound that is not the
+ * schema's own number is a second, undocumented contract.
+ *
+ * All of them are counted in UTF-16 code units, because that is what
+ * JavaScript's `String.length` counts and therefore what Zod's `.max()`
+ * applies. Swift's `String.count` counts grapheme clusters, and a cluster can
+ * be worth many units.
+ */
 
-/// `eventKitEventSchema`'s own cap, matched exactly rather than undercut:
-/// there is nothing to gain by rejecting a URL the schema would accept.
-let maxWireUrlLength = 2_048
+/// `eventKitEventSchema`: `title`, `location` and `notes`.
+let maxEventTextLength = 4_000
+
+/// `eventKitEventSchema.url`.
+let maxEventUrlLength = 2_048
+
+/// `eventKitSourceSchema.title`. Far tighter than the rest, and the only one
+/// with a `min(1)` to satisfy as well.
+let maxSourceTitleLength = 120
+
+/// `eventKitCalendarSchema.title`.
+let maxCalendarTitleLength = 4_000
+
+/// Stands in for a source whose title is empty or blank, which
+/// `eventKitSourceSchema.title`'s `min(1)` would otherwise reject, taking
+/// every other account down with it. Named for what the user is looking at
+/// in the settings list: one of their calendar accounts.
+let untitledSourceLabel = "Untitled account"
 
 func isoString(from date: Date, timeZone: TimeZone) -> String {
     let formatter = ISO8601DateFormatter()
@@ -21,34 +49,43 @@ func isoString(from date: Date, timeZone: TimeZone) -> String {
     return formatter.string(from: date)
 }
 
-/// Bounds a free-text field so one over-long event cannot fail the parse of
+/// Bounds a free-text field so one over-long value cannot fail the parse of
 /// the whole array and cost the user their agenda. This is about keeping the
 /// frame parseable; the 200-character display truncation stays in the
 /// TypeScript mapper, as it does on the Google path.
-func truncatedForWire(_ value: String?) -> String? {
+func truncatedForWire(_ value: String?, to limit: Int) -> String? {
     guard let value else {
         return nil
     }
-    guard value.utf16.count > maxWireTextLength else {
+    guard value.utf16.count > limit else {
         return value
     }
-    var trimmed = String(value.prefix(maxWireTextLength))
+    var trimmed = String(value.prefix(limit))
     // A grapheme can be worth more than one UTF-16 unit, so dropping to
-    // `maxWireTextLength` characters is not yet a guarantee about the count
-    // the schema will apply.
-    while trimmed.utf16.count > maxWireTextLength, !trimmed.isEmpty {
+    // `limit` characters is not yet a guarantee about the count the schema
+    // will apply. Trimming downwards is also why no headroom is needed.
+    while trimmed.utf16.count > limit, !trimmed.isEmpty {
         trimmed.removeLast()
     }
     return trimmed
 }
 
+/// Satisfies both halves of `min(1).max(120)`. Blank counts as untitled, not
+/// just empty: a title of spaces would pass `min(1)`, which measures length,
+/// and still show the user nothing.
+func sourceTitleForWire(_ title: String) -> String {
+    guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        return untitledSourceLabel
+    }
+    return truncatedForWire(title, to: maxSourceTitleLength) ?? untitledSourceLabel
+}
+
 /// Drops an over-long URL rather than trimming it. A trimmed URL is a broken
 /// link that would reach the allowlist check and fail there silently; null is
 /// honest, and leaves the mapper free to find a usable link in the location
-/// or the notes instead. Measured in UTF-16 units for the same reason as
-/// `truncatedForWire`: that is what the schema counts.
+/// or the notes instead.
 func urlForWire(_ value: String?) -> String? {
-    guard let value, value.utf16.count <= maxWireUrlLength else {
+    guard let value, value.utf16.count <= maxEventUrlLength else {
         return nil
     }
     return value
@@ -56,10 +93,16 @@ func urlForWire(_ value: String?) -> String? {
 
 /// `calendars(for:)` hands back a `Set`, whose order differs run to run.
 /// Sorted so the list the user picks from, and the default this falls back
-/// to, stay put between calls.
+/// to, stay put between calls. `localizedStandardCompare` is the Finder's
+/// ordering: case- and diacritic-insensitive, and numeric-aware, so a
+/// lowercase calendar name does not sort below every capitalised one.
 func sortedForDisplay(_ calendars: Set<EKCalendar>) -> [EKCalendar] {
     return calendars.sorted {
-        ($0.title, $0.calendarIdentifier) < ($1.title, $1.calendarIdentifier)
+        let byTitle = $0.title.localizedStandardCompare($1.title)
+        guard byTitle == .orderedSame else {
+            return byTitle == .orderedAscending
+        }
+        return $0.calendarIdentifier < $1.calendarIdentifier
     }
 }
 
@@ -94,7 +137,7 @@ struct CalendarStore {
                 let preferred = calendars.first { $0.calendarIdentifier == fallback?.calendarIdentifier }
                 return SourcePayload(
                     id: source.sourceIdentifier,
-                    title: source.title,
+                    title: sourceTitleForWire(source.title),
                     defaultCalendarId: (preferred ?? calendars.first)?.calendarIdentifier
                 )
             }
@@ -108,7 +151,7 @@ struct CalendarStore {
         return eventCalendars(of: source).map { calendar in
             CalendarPayload(
                 id: calendar.calendarIdentifier,
-                title: calendar.title,
+                title: truncatedForWire(calendar.title, to: maxCalendarTitleLength) ?? "",
                 isDefault: calendar.calendarIdentifier == defaultId
             )
         }
@@ -144,13 +187,13 @@ struct CalendarStore {
                 id: event.eventIdentifier ?? UUID().uuidString,
                 calendarId: calendar.calendarIdentifier,
                 externalId: event.calendarItemExternalIdentifier ?? "",
-                title: truncatedForWire(event.title) ?? "",
+                title: truncatedForWire(event.title, to: maxEventTextLength) ?? "",
                 start: isoString(from: startDate, timeZone: timeZone),
                 end: isoString(from: endDate, timeZone: timeZone),
                 isAllDay: event.isAllDay,
                 url: urlForWire(event.url?.absoluteString),
-                location: truncatedForWire(event.location),
-                notes: truncatedForWire(event.notes),
+                location: truncatedForWire(event.location, to: maxEventTextLength),
+                notes: truncatedForWire(event.notes, to: maxEventTextLength),
                 status: statusName(event.status),
                 selfDeclined: isDeclinedBySelf(attendees: attendees)
             )
