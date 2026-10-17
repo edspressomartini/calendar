@@ -650,8 +650,10 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 
 - Structured JSON lines through `electron-log`, levels `error` / `warn` / `info` / `debug`; `debug` is off in production builds.
 - **Redact by exact key,** recursively, before anything is written: `access_token`, `refresh_token`, `id_token`, `code`, `code_verifier`, `client_secret`, `authorization`, plus `credentials` and `headers`. Our typed errors log Node's error codes under `errorCode`, so redacting `code` loses nothing. v2's regex `/token|secret|authorization|code/i` also redacted `statusCode` — the one thing we want to log.
-- **Never log raw HTTP errors.** Google client errors carry the request config, including the `Authorization: Bearer …` header. Map them to typed errors (status code, Google's reason, account ID) at the provider boundary, and log those.
-- **Never log event content:** no titles, descriptions, attendees, locations or meeting links. Log counts, durations, status codes and IDs.
+- **Never log raw HTTP errors.** Google client errors carry the request config, including the `Authorization: Bearer …` header, and when the response body is not JSON, Gaxios uses that body verbatim as the message — so an intercepting proxy or a captive portal chooses the text. Map them to typed errors (status code, Google's reason) at the provider boundary, and log those. Google's reason is checked against a known set; anything else collapses to `request failed`.
+- **Only our own error messages are logged.** `describeError` returns the full message for an `AppError`, because we wrote those messages, and the class name alone for anything else. Key-based redaction cannot help once free text has been flattened into one string, so the defence has to be at the point the string is made.
+- **The account id is an email address,** so it never appears in an error message. Typed errors carry it as a property for callers that need it; `TokenVault` stores a SHA-256 fingerprint of it.
+- **Never log event content:** no titles, descriptions, attendees, locations or meeting links. Log counts, durations and status codes.
 - **Size-based rotation:** two files of 5 MB each, in `~/Library/Logs/<App>/`. This replaces v2's weekly rotation and 30-day purge; a bounded size bounds retention on its own.
 - **Crash reporter off.** `crashReporter.start()` is never called; nothing leaves the machine.
 

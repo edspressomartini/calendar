@@ -207,6 +207,7 @@ export const agendaSnapshotSchema = z.strictObject({
   todoPlacement: todoPlacement,
   showTimeline: z.boolean(),
   showTodos: z.boolean(),
+  alwaysOnTop: z.boolean(),
   colourScheme: colourScheme,
   quickAddShortcut: quickAddShortcut,
   privacyMode: z.boolean(),

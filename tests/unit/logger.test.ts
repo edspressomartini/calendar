@@ -55,11 +55,13 @@ describe('log redaction', () => {
     expect(JSON.stringify(redacted)).not.toContain('secret')
   })
 
-  it('walks arrays and flattens errors', () => {
+  it('walks arrays and flattens errors to their class name', () => {
     const redacted = redactValue([{ access_token: 'secret' }, new Error('boom')])
 
     expect(JSON.stringify(redacted)).not.toContain('secret')
-    expect(JSON.stringify(redacted)).toContain('boom')
+    // The message of a foreign error is attacker-influenced free text.
+    expect(JSON.stringify(redacted)).not.toContain('boom')
+    expect(JSON.stringify(redacted)).toContain('Error')
   })
 
   it('truncates deeply nested structures instead of recursing forever', () => {

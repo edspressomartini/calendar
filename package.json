@@ -29,6 +29,7 @@
     "audit": "npm run check-node && node scripts/audit.ts"
   },
   "dependencies": {
+    "@fontsource/poppins": "5.3.0",
     "@googleapis/calendar": "20.0.1",
     "electron-log": "5.4.4",
     "electron-store": "11.0.2",
@@ -57,6 +58,7 @@
     "vitest": "5.0.1"
   },
   "overrides": {
-    "source-map-js": "1.2.2"
+    "source-map-js": "1.2.2",
+    "http-cache-semantics": "4.3.0"
   }
 }

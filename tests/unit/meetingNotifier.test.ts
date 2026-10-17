@@ -66,6 +66,7 @@ function snapshot(items: AgendaItem[], privacyMode = false): AgendaSnapshot {
     todoPlacement: 'below',
     showTimeline: true,
     showTodos: true,
+    alwaysOnTop: true,
     colourScheme: 'default',
     quickAddShortcut: DEFAULT_QUICK_ADD_SHORTCUT,
     privacyMode,

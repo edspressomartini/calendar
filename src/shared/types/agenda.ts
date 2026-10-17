@@ -52,6 +52,8 @@ export interface AgendaSnapshot {
   /** Which of the two tall sections the widget draws at all (§6). */
   readonly showTimeline: boolean
   readonly showTodos: boolean
+  /** Whether the panel floats above other windows, so Pin shows its real state. */
+  readonly alwaysOnTop: boolean
   /** The accent the widget tints itself with (§6). */
   readonly colourScheme: ColourScheme
   /** Shown in the TODO panel's header, so the hint matches the real binding. */

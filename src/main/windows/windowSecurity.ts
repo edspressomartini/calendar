@@ -38,6 +38,12 @@ export function applyWindowSecurity(window: BrowserWindow, logger: AppLogger): v
     logger.warn('blocked navigation attempt from a renderer')
   })
 
+  // `will-navigate` is main-frame only; a subframe needs its own handler.
+  contents.on('will-frame-navigate', (event) => {
+    event.preventDefault()
+    logger.warn('blocked subframe navigation attempt from a renderer')
+  })
+
   contents.on('will-redirect', (event) => {
     event.preventDefault()
     logger.warn('blocked redirect attempt from a renderer')
