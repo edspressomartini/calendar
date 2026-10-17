@@ -309,6 +309,23 @@ git commit -m "feat(eventkit): a typed error for calendar-store failures"
 
 ### Task 3: The helper process wrapper
 
+> **Amended after review (17 October 2026).** The Step 3 code below is the
+> original draft and is kept for the record; the implementation differs in five
+> ways, each a defect found in review:
+>
+> 1. `defaultHelperSpawn` attaches an `'error'` listener and translates spawn
+>    failure (ENOENT, EACCES) into the exit path. Without it an unhandled
+>    `'error'` crashes the main process, and nothing in `src/` guards it.
+> 2. The `'exit'` handler acts only when the exiting child is still the current
+>    one, so a late exit cannot null out its successor.
+> 3. Each child owns its line buffer, so a dead child's trailing bytes cannot
+>    splice into the next child's frame.
+> 4. The request frame is `{ ...payload, id, op }`, so a payload key cannot
+>    overwrite the correlation id.
+> 5. `ensureChild` applies `restartDelayMs` instead of only logging it: within
+>    the backoff window it throws `EventKitError('helper_unavailable')` rather
+>    than respawning a binary that is failing on startup.
+
 **Files:**
 
 - Create: `src/main/calendar/providers/eventkit/EventKitHelperProcess.ts`
