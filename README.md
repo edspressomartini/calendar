@@ -175,5 +175,10 @@ ordinary Google flow with no "unverified app" warning and no 100-user cap.
 
 ## Licence
 
-[MIT](LICENSE). Vulnerability reports go to the address in [`SECURITY.md`](SECURITY.md)
-rather than the issue tracker.
+Source-available, not open source: read it, audit it, build it and run it on your own
+machines, but redistribution and resale are reserved. The terms are in [`LICENSE`](LICENSE),
+and they apply to every release after `v0.6.1`. Up to and including `v0.6.1` the app was
+MIT, and that grant stands for those tags however long they stay downloadable.
+
+Vulnerability reports go to the address in [`SECURITY.md`](SECURITY.md) rather than the
+issue tracker.
