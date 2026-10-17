@@ -99,6 +99,11 @@ describe('eventKitEventSchema', () => {
     const absurd = { ...event, title: 'x'.repeat(4_001) }
     expect(eventKitEventSchema.safeParse(absurd).success).toBe(false)
   })
+
+  it('accepts a calendar title longer than the display cap', () => {
+    const calendar = { id: 'cal-1', title: 'x'.repeat(201), isDefault: false }
+    expect(eventKitCalendarSchema.safeParse(calendar).success).toBe(true)
+  })
 })
 
 describe('eventKitMessageSchema', () => {
@@ -132,8 +137,6 @@ Expected: FAIL, "Failed to resolve import ... EventKitProtocol.ts".
 ```typescript
 // src/main/calendar/providers/eventkit/EventKitProtocol.ts
 import { z } from 'zod'
-import { MAX_EVENT_TITLE_LENGTH } from '../../../../shared/constants.ts'
-
 /**
  * The helper is a separate process and therefore a trust boundary: nothing it
  * sends is used before it is parsed, for the same reason nothing from the
@@ -154,7 +157,9 @@ export const eventKitSourceSchema = z.strictObject({
 
 export const eventKitCalendarSchema = z.strictObject({
   id: identifier,
-  title: z.string().max(MAX_EVENT_TITLE_LENGTH),
+  // Same reasoning as the event title below: bounded generously so one long
+  // calendar name cannot fail the whole list.
+  title: z.string().max(MAX_TEXT_LENGTH),
   isDefault: z.boolean(),
 })
 
@@ -217,7 +222,7 @@ export type EventKitErrorKind = z.infer<typeof errorKindSchema>
 - [ ] **Step 4: Run the test and watch it pass**
 
 Run: `npx vitest run tests/unit/eventKitProtocol.test.ts`
-Expected: PASS, 8 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -695,7 +700,7 @@ export function resolveHelperPath(location: HelperLocation): string {
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `npx vitest run tests/unit/eventKitHelperProcess.test.ts`
-Expected: PASS, 8 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Commit**
 
