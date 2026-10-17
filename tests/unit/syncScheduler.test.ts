@@ -100,6 +100,63 @@ describe('SyncScheduler.syncProviderNow', () => {
     scheduler.stop()
   })
 
+  /**
+   * The leading change arms the timer and later ones join it; they do not push
+   * it back. A reset-on-each-event debounce would still be waiting at 2_100ms.
+   */
+  it('fires 2s after the leading change, not 2s after the last one', async () => {
+    vi.useFakeTimers()
+    const { scheduler, syncAccount } = buildScheduler({ accounts: BOTH_PROVIDERS })
+    scheduler.start()
+    syncAccount.mockClear()
+
+    scheduler.syncProviderNow('eventkit', 'calendar store changed')
+    await vi.advanceTimersByTimeAsync(1_500)
+    expect(syncAccount).not.toHaveBeenCalled()
+
+    scheduler.syncProviderNow('eventkit', 'calendar store changed')
+    await vi.advanceTimersByTimeAsync(600)
+
+    expect(syncAccount).toHaveBeenCalledOnce()
+    expect(syncAccount).toHaveBeenCalledWith('eventkit:icloud')
+
+    scheduler.stop()
+  })
+
+  /** Each kind gets its own timer: a burst of one must not swallow another. */
+  it('debounces each provider kind independently', async () => {
+    vi.useFakeTimers()
+    const { scheduler, syncAccount } = buildScheduler({ accounts: BOTH_PROVIDERS })
+    scheduler.start()
+    syncAccount.mockClear()
+
+    scheduler.syncProviderNow('eventkit', 'calendar store changed')
+    await vi.advanceTimersByTimeAsync(500)
+    scheduler.syncProviderNow('google', 'calendar store changed')
+    await vi.advanceTimersByTimeAsync(2_100)
+
+    expect(syncAccount).toHaveBeenCalledTimes(2)
+    expect(syncAccount).toHaveBeenCalledWith('eventkit:icloud')
+    expect(syncAccount).toHaveBeenCalledWith('work@example.com')
+
+    scheduler.stop()
+  })
+
+  /** stop() must clear every kind's timer, not just the first one armed. */
+  it('drops pending bursts for every kind when the scheduler stops', async () => {
+    vi.useFakeTimers()
+    const { scheduler, syncAccount } = buildScheduler({ accounts: BOTH_PROVIDERS })
+    scheduler.start()
+    syncAccount.mockClear()
+
+    scheduler.syncProviderNow('eventkit', 'calendar store changed')
+    scheduler.syncProviderNow('google', 'calendar store changed')
+    scheduler.stop()
+    await vi.advanceTimersByTimeAsync(2_100)
+
+    expect(syncAccount).not.toHaveBeenCalled()
+  })
+
   it('ignores a change that arrives after stop', async () => {
     vi.useFakeTimers()
     const { scheduler, syncAccount } = buildScheduler({ accounts: BOTH_PROVIDERS })

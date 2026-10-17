@@ -2050,6 +2050,16 @@ describe('syncProviderNow', () => {
     scheduler.stop()
     vi.useRealTimers()
   })
+
+  it('fires 2s after the leading change, not 2s after the last one', async () => {
+    // t=0 arms the timer, t=1500 joins it, so it fires at t=2000.
+    // A reset-on-each-event debounce would still be waiting at t=2100.
+  })
+
+  it('debounces each provider kind independently', async () => {
+    // 'eventkit' at t=0 and 'google' at t=500 must both fire,
+    // each syncing only its own accounts.
+  })
 })
 ```
 
@@ -2070,39 +2080,53 @@ import type { AccountId, ProviderKind } from '../../shared/types/calendar.ts'
 const STORE_CHANGE_DEBOUNCE_MS = 2_000
 ```
 
+The timer is keyed by `ProviderKind`, not a single field. A single field would
+mean a change from one provider silently dropping a change from another: the
+second call hits the pending-timer guard and returns, and the kind that closed
+over the `setTimeout` is the only one that ever syncs. Per-kind keying makes the
+method do what its signature promises — each kind coalesces on its own window.
+
 ```typescript
-  private storeChangeTimer: NodeJS.Timeout | null = null
+  private readonly storeChangeTimers = new Map<ProviderKind, NodeJS.Timeout>()
 
   /**
    * The macOS calendar store announces changes in bursts — one per calendar
    * touched — so the first one starts a short timer and the rest join it.
+   *
+   * The timer is keyed by kind: a burst from one provider must not swallow a
+   * change from another, and each kind coalesces on its own window.
    */
   syncProviderNow(kind: ProviderKind, reason: string): void {
-    if (!this.running || this.storeChangeTimer) {
+    if (!this.running || this.storeChangeTimers.has(kind)) {
       return
     }
 
-    this.storeChangeTimer = setTimeout(() => {
-      this.storeChangeTimer = null
-      this.logger.info('sync triggered', { reason })
+    const timer = setTimeout(() => {
+      this.storeChangeTimers.delete(kind)
+      this.logger.info('sync triggered', { reason, provider: kind })
       for (const account of this.settings.getAccounts()) {
         if (account.provider === kind) {
           void this.syncNow(account.id)
         }
       }
     }, STORE_CHANGE_DEBOUNCE_MS)
+    this.storeChangeTimers.set(kind, timer)
   }
 ```
 
-Clear it in `stop()`:
+Note the debounce is leading-arm/trailing-fire: the first change arms the timer
+and later ones join it rather than pushing it back, so a steady trickle of
+changes still syncs every 2s instead of starving.
+
+Clear **every** pending timer in `stop()`, not just one:
 
 ```typescript
   stop(): void {
     this.running = false
-    if (this.storeChangeTimer) {
-      clearTimeout(this.storeChangeTimer)
-      this.storeChangeTimer = null
+    for (const timer of this.storeChangeTimers.values()) {
+      clearTimeout(timer)
     }
+    this.storeChangeTimers.clear()
     for (const timer of this.timers.values()) {
       clearTimeout(timer)
     }
