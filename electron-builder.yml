@@ -16,7 +16,7 @@ files:
   # runtime reads it, and `build:helper` leaves a ~190MB `.build/` tree beside
   # it. electron-builder does not read .gitignore, so without this the sources
   # and the whole build tree go into the asar. The compiled binary is shipped
-  # separately, from build/helper/.
+  # separately, from build/helper/, by the `extraResources` entry under `mac:`.
   - '!resources/eventkit-helper/**'
   - package.json
 
@@ -47,9 +47,26 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # The compiled EventKit helper, from build/helper/ via `build:helper`. This is
+  # the entry the exclusion in `files` above refers to: the binary ships here
+  # instead of being swept into the asar along with its SwiftPM sources.
+  extraResources:
+    - from: build/helper/up-next-eventkit
+      to: up-next-eventkit
+  # Signed explicitly: a nested executable outside the standard layout is not
+  # picked up automatically, and an unsigned one fails library validation.
+  binaries:
+    - Contents/Resources/up-next-eventkit
   extendInfo:
     # Menu-bar app: no Dock icon (§10).
     LSUIElement: true
+    # EventKit's requestFullAccessToEvents is Sonoma and later. Supporting
+    # Ventura too would mean a second, deprecated code path in the helper.
+    LSMinimumSystemVersion: '14.0'
+    # User-facing: this is the wording in the macOS calendar prompt.
+    NSCalendarsFullAccessUsageDescription: >-
+      Up Next reads the calendars already set up on this Mac so it can show
+      today's meetings. It only reads, and nothing leaves your Mac.
   # Submitted to Apple during packaging, authenticated with the App Store
   # Connect API key in APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER.
   # The resulting ticket is stapled into the bundle, so Gatekeeper accepts the

@@ -45,7 +45,8 @@ rather build it themselves, see [distribution routes](docs/distribution-routes.m
 Updating is `brew upgrade`. There is deliberately no auto-updater: Homebrew verifies a
 pinned hash for each release, so there is no update server to trust.
 
-Requirements: **Apple silicon, macOS Ventura or newer**, and a Google account.
+Requirements: **Apple silicon, macOS Sonoma or newer**, and either a Google account or
+calendars already set up in Calendar.app.
 
 Releases are signed with an Apple Developer ID and notarised by Apple, so macOS opens
 them normally. The [security overview](https://upnextapp.co.uk/security.html) covers what
@@ -154,6 +155,11 @@ Found a vulnerability? Please report it privately rather than opening an issue.
 | `npm run icons`         | Redraw the tray glyph and the app icon                               |
 
 Node 24 is required and enforced; `npm run dev` fails fast on anything else.
+
+A dev run is not the installed app as far as macOS is concerned: connecting Apple Calendar
+under `npm run dev` prompts for calendar access as **Electron**, and that grant is held
+against Electron rather than Up Next. The installed app asks for its own, so allowing one
+says nothing about the other, and revoking either leaves the other alone.
 
 The app is Electron 44, React 19, TypeScript 6 and Tailwind 4. The privileged process
 owns all state and the clock, and pushes finished view models to the UI, which derives
