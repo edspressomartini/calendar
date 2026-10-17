@@ -26,9 +26,7 @@
 
   body {
     margin: 0;
-    /* The window is transparent and macOS draws the material behind it, so
-       anything opaque here paints over the blur. */
-    background-color: transparent;
+    background-color: var(--bg);
     color: var(--text);
     font-family:
       system-ui,
@@ -41,7 +39,14 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  #root {
+  /* Only the widget window sets data-surface (renderer/widget/main.tsx). Its
+     window is transparent and macOS draws the material behind it, so anything
+     opaque here paints over the blur. */
+  [data-surface='glass'] body {
+    background-color: transparent;
+  }
+
+  [data-surface='glass'] #root {
     overflow: hidden;
     border-radius: 12px;
   }
