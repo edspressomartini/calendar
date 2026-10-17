@@ -69,16 +69,24 @@ are untouched.
 
 Two cases, with different wording because they need different things done:
 
-| Condition                         | Message                     | Action             | Opens       |
-| --------------------------------- | --------------------------- | ------------------ | ----------- |
-| No account connected              | No calendars connected yet. | Connect a calendar | `accounts`  |
-| Account connected, nothing ticked | No calendars are selected.  | Choose calendars   | `calendars` |
+| Condition                        | Message                         | Action             | Opens      |
+| -------------------------------- | ------------------------------- | ------------------ | ---------- |
+| No account connected             | No calendars connected yet.     | Connect a calendar | `accounts` |
+| Every account needs reconnecting | Reconnect to see your calendar. | Reconnect          | `accounts` |
 
-The second case needs the widget to know whether any calendar is selected anywhere. The widget
-does not receive calendar lists and should not start: that would mean shipping every calendar's
-id and name to a window that has no use for them. Instead the agenda snapshot gains a boolean
-saying whether any calendar is selected. One field, computed in main where the answer is already
-known.
+The second case was originally specified as "an account is connected but no calendars are
+ticked". That state does not exist. An empty calendar selection means the primary calendar only
+— `GoogleCalendarProvider.ts:100` falls back to `['primary']` — so unticking everything in the
+picker still syncs. The branch would never have rendered.
+
+An account in `needsReauth` is the real equivalent and a worse problem than the one originally
+specified: the refresh token is dead, nothing will sync until the user acts, and today the widget
+shows a status dot and offers no way to act on it. The snapshot already carries
+`accounts[].status`, so this case needs no new data at all.
+
+The condition is _every_ account, not _any_. With two accounts where one is healthy the widget
+still has a day to draw, and replacing it with a reconnect prompt would be a regression; the
+per-account status dot already covers that.
 
 ### 4. The empty TODO list says how to add one
 
@@ -93,8 +101,8 @@ by someone who already suspected something was there.
 
 - The channel schema: a valid tab is accepted, an unknown string is rejected, and omitting it is
   still valid.
-- The snapshot's new field: true when a calendar is selected, false when an account is connected
-  with none ticked, false with no accounts at all.
+- Which prompt the widget shows, as a pure function of the snapshot's accounts: none connected,
+  all `needsReauth`, one `needsReauth` and one `ready` (no prompt), all `ready` (no prompt).
 - `EmptyState` with and without an action.
 
 The layout work has no meaningful unit test. Asserting on class names would pin the
