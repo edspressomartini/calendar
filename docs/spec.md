@@ -50,7 +50,7 @@ Versions checked against the npm registry on 25 Sep 2026. The spec pins major ve
 
 Four things drive every decision below:
 
-1. **Providers are swappable.** Google today; EventKit or Microsoft 365 are possible later. The app never knows which one it's talking to.
+1. **Providers are swappable.** Google and EventKit today; Microsoft 365 is possible later. The app never knows which one it's talking to.
 2. **Multiple calendar sources on screen at once.** Work and personal side by side, or merged into one stream. This is a config change, not a refactor.
 3. **The renderer is untrusted.** It never sees a token, never gets a URL it could open, never touches a Node API. Everything privileged lives in main.
 4. **Peripheral, never intrusive.** The widget never steals focus from the app you're typing in, never blocks input, and has a one-click privacy mode for screen shares.
@@ -125,7 +125,7 @@ Each account gets its own token entry, its own sync cycle, its own colour. The a
 
 **Consequence:** the second Google account (Phase 3) is a registry entry, not new code.
 
-**Another vendor is not "one new folder".** v2 claimed Apple Calendar would touch nothing else. It would. EventKit needs native code (a bundled Swift helper or a Node addon), an Info.plist usage string, the hardened-runtime calendars entitlement, a macOS permission prompt and a signed build. iCloud over CalDAV needs an app-specific password typed into our UI and a new network host. The interface absorbs the data shape, not any of that. Apple and Microsoft 365 are "later, optional" (§9).
+**Another vendor is not "one new folder".** v2 claimed Apple Calendar would touch nothing else. It would. EventKit needs native code (a bundled Swift helper or a Node addon), an Info.plist usage string, the hardened-runtime calendars entitlement, a macOS permission prompt and a signed build. iCloud over CalDAV needs an app-specific password typed into our UI and a new network host. The interface absorbs the data shape, not any of that. Apple cost exactly that much when it shipped in Phase 6 (§9); Microsoft 365 is still "later, optional".
 
 ---
 
@@ -798,7 +798,7 @@ Everything the build needs and where it comes from.
 
 - macOS on Apple silicon (arm64)
 - Homebrew
-- Xcode: `codesign`, `xcrun notarytool`, `xcrun stapler` and `swift` — enough for signing, notarisation and a future EventKit helper
+- Xcode: `codesign`, `xcrun notarytool`, `xcrun stapler` and `swift` — enough for signing, notarisation and building the EventKit helper
 - git
 
 ### Replace
@@ -863,7 +863,7 @@ Since Homebrew 6, packages from an untrusted third-party tap are ignored, and on
 
 Enrolled 4 October 2026, Team ID `LRHKHKMD3J`. Needed because giving the app to anyone else requires a Developer ID certificate and notarisation: since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper, and `--no-quarantine` is deprecated. Local builds for yourself need neither.
 
-The release job's protected environment holds a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`. Full procedure, including renewal, in `docs/apple-signing-plan.md`. The future EventKit integration needs a signed build too.
+The release job's protected environment holds a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`. Full procedure, including renewal, in `docs/apple-signing-plan.md`. The EventKit helper is signed by the same job, as a nested executable (§8.8).
 
 Two things that will eventually need attention: the certificate expires five years from issue, and because this is an individual rather than an organisation enrolment, the certificate's common name is a personal legal name and is readable in every shipped build.
 

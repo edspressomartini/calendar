@@ -2596,11 +2596,18 @@ git commit -m "chore(package): bundle and sign the EventKit helper, require macO
 
 - Modify: `Casks/up-next.rb` in `edspressomartini/homebrew-tap` (a separate repository)
 
-- [ ] **Step 1: Add the OS floor**
+- [ ] **Step 1: Raise the OS floor**
+
+The cask already has a `depends_on macos:` line pinned to Ventura. Change the
+symbol, do not add a second line:
 
 ```ruby
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 ```
+
+A bare symbol already means "that version or newer". The `">= :sonoma"` form
+is deprecated and `brew audit` warns three times per install — `docs/homebrew-plan.md`
+records that lesson from the 0.1.0 cask.
 
 - [ ] **Step 2: Verify on a clean install**
 
