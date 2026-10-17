@@ -112,7 +112,11 @@ export class AccountService {
 
   async connect(): Promise<AccountView[]> {
     const authenticator = this.factory.createAuthenticator('google')
-    const result = await authenticator.authenticate()
+    // Google signs in one account at a time, so its list holds exactly one.
+    const [result] = await authenticator.authenticate()
+    if (!result) {
+      return this.list()
+    }
     const accountId = result.identity.providerAccountId
     // Sign-in spans a browser round trip, so each step is traced: a stall
     // anywhere in here shows up as a spinner that never stops.

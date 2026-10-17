@@ -1,6 +1,6 @@
 /** The normalised calendar domain. No provider's vocabulary leaks in here (§3). */
 
-export type ProviderKind = 'google' | 'mock'
+export type ProviderKind = 'google' | 'eventkit' | 'mock'
 
 export type AccountId = string
 export type CalendarId = string

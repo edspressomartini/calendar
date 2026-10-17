@@ -9,6 +9,11 @@ import { AccountService } from './calendar/AccountService.ts'
 import { MeetingJoiner } from './calendar/MeetingJoiner.ts'
 import { ProviderFactory } from './calendar/ProviderFactory.ts'
 import { ProviderRegistry } from './calendar/ProviderRegistry.ts'
+import {
+  defaultHelperSpawn,
+  EventKitHelperProcess,
+} from './calendar/providers/eventkit/EventKitHelperProcess.ts'
+import { resolveHelperPath } from './calendar/providers/eventkit/helperPath.ts'
 import { loadConfig } from './infra/config.ts'
 import { describeError } from './infra/errors.ts'
 import { createLogger, initialiseLogging, type AppLogger } from './infra/logger.ts'
@@ -93,10 +98,21 @@ class Application {
     await vault.initialise()
 
     const registry = new ProviderRegistry(this.logger.child('registry'))
+    // Spawning is lazy, so a Google-only user never starts the helper.
+    const helper = new EventKitHelperProcess(
+      resolveHelperPath({
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        appPath: app.getAppPath(),
+      }),
+      defaultHelperSpawn(this.logger.child('eventkit-spawn')),
+      this.logger.child('eventkit-helper'),
+    )
     const factory = new ProviderFactory(
       this.config,
       vault,
       new SystemBrowser(),
+      helper,
       this.logger.child('factory'),
     )
 
