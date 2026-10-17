@@ -323,6 +323,12 @@ flowchart LR
 
 Professional here means **quiet**. This window sits in your peripheral vision for eight hours; anything loud becomes something you learn to ignore.
 
+### Window material
+
+- **The widget is a plain transparent window, not a vibrancy material.** `transparent: true` with no `backgroundColor`, so the renderer's own alpha reaches the window server and composites against whatever is behind — another app's window as readily as the desktop.
+- **macOS vibrancy was tried first and cannot do this.** `under-window` composites the _wallpaper_ only. Over an editor or a browser it renders a flat material, indistinguishable from an opaque panel, and `visualEffectState: 'active'` does not change that. A widget whose whole point is sitting over your work cannot use a material that only works where there is no work. Web content cannot blur the OS backdrop either, so `backdrop-filter` is not a substitute: the trade is blur for actually being see-through, and being see-through wins.
+- **Setting `backgroundColor` defeats it.** An opaque colour in the constructor paints over the alpha and the panel is solid again, whatever the CSS says.
+
 ### Palette (CSS variables, Tailwind consumes them)
 
 ```css
@@ -356,9 +362,15 @@ Professional here means **quiet**. This window sits in your peripheral vision fo
   --accent: #ec4899;
 }
 
+/* The widget alone is translucent; it sets data-surface='glass' on <html>. */
+:root[data-surface='glass'] {
+  --neutral-bg: rgb(255 255 255 / 0.72);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.82);
+}
+
 :root {
-  --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
-  --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
+  --bg: color-mix(in oklab, var(--accent) 24%, var(--neutral-bg));
+  --bg-subtle: color-mix(in oklab, var(--accent) 34%, var(--neutral-bg-subtle));
   --border: color-mix(in oklab, var(--accent) 45%, var(--neutral-border));
   --text-muted: color-mix(in oklab, var(--accent) 30%, var(--neutral-text-muted));
 }
@@ -385,18 +397,30 @@ Professional here means **quiet**. This window sits in your peripheral vision fo
 - **Manual override without a second palette.** A Light / Dark / System preference sets Electron's `nativeTheme.themeSource` in main, which drives `prefers-color-scheme` in every window. No `data-theme` attribute, no duplicated values.
 - **Tailwind 4 is configured in CSS.** `@theme inline` turns the variables into utilities (`bg-bg`, `text-text-muted`, `border-border`), so there's no `tailwind.config.ts`.
 - **Colour schemes are a second, independent axis.** Light and dark stay macOS's; the accent is ours, chosen in settings and written to `data-scheme` on the root element. A scheme declares exactly one thing — its accent, in each mode — and `--bg`, `--bg-subtle`, `--border` and `--text-muted` are all `color-mix`ed from it against a neutral base, so adding a scheme is two lines and cannot produce a palette that half-changed. The rules are **not bound to `:root`**, which lets the settings window put the attribute on a swatch and have it paint itself rather than repeating all six colours somewhere a seventh could be forgotten.
-- **The tint is strong on purpose.** The first version mixed single-digit percentages, reasoning that something floating over the user's work should be discreet. The result was six schemes nobody could tell apart. Discretion is what the panel's size and opacity are for; the colour should look chosen. Body text is the one thing left neutral — everything tinted sits behind it, so there is no legibility to spend.
+- **The tint is strong on purpose.** The first version mixed single-digit percentages, reasoning that something floating over the user's work should be discreet. The result was six schemes nobody could tell apart. Discretion is what the panel's size and opacity are for; the colour should look chosen. Body text is the one thing left neutral — everything tinted sits behind it, so there is no legibility to spend. The percentages went up a second time when the base became translucent: a tint that was faint against solid white disappeared against a half-visible one.
+- **The alpha lives in the neutral base, not in each mix.** One declaration decides how much of the desktop comes through, every mix inherits it, and a scheme is still two lines. Putting it in the mixes would mean six schemes × four variables × two appearances of alpha to keep in step.
+- **Only the widget is translucent.** The stylesheet is shared with three opaque windows — settings, alert and quick-add — which sit on Electron's default white rather than over the desktop. A half-transparent base there blends with that white: washed-out tints in light mode, a mid grey behind light text in dark. The widget sets `data-surface='glass'` on `<html>` to opt in.
 - **`--urgent` and `--live` belong to no scheme.** Red means a meeting is about to start and green means one is running. Recolouring them to match a palette would trade the only two colours carrying meaning for a tidier picture.
 
 Account colours come from a fixed rotation (sky → violet → amber → emerald → rose) assigned at connect time and stored on the account. In split view they tint the column header; in merged view they're a 3px left bar on each row.
 
 ### Type & rhythm
 
-- Times: system monospace stack (`ui-monospace, "SF Mono", Menlo, monospace`), 12px, `font-variant-numeric: tabular-nums` so columns align. If you want JetBrains Mono, bundle the font file with the app — the CSP blocks font CDNs and the renderer has no network (§8.4)
-- Titles: system UI stack, 13px, medium weight
+- **Four named sizes, chosen from rather than picked per component.** `--text-micro` 9px, `--text-small` 10px, `--text-body` 11px, `--text-display` 15px, exposed as Tailwind utilities. The widget previously had 9, 10, 11 and 13px scattered across a dozen files, which is not a scale anybody decided on.
+- Times: system monospace stack (`ui-monospace, "SF Mono", Menlo, monospace`), `font-variant-numeric: tabular-nums` so columns align. If you want JetBrains Mono, bundle the font file with the app — the CSP blocks font CDNs and the renderer has no network (§8.4)
+- Titles: system UI stack, medium weight
 - Row padding 8px vertical, 12px horizontal; 4px gap between rows
-- Corner radius 6px, borders 1px, shadows essentially none — this is a panel, not a card
 - The "now" marker is a 1px accent line with a small dot, spanning the column
+
+### Cards
+
+- **Each section is a card on the glass**: 1px `--border`, 10px radius, `--bg-subtle` fill, and a shadow faint enough to read as a lifted edge rather than a drop shadow. The border does the separating that a row of divider rules used to, so those came out as the cards went in.
+- **The card class goes on the section, not a wrapper around it.** The TODO panel is capped at 45% of the widget height, and a percentage needs a parent with a definite height; a wrapper sized to its own content gives it nothing to resolve against and the panel collapses to two rows.
+- **Measuring for the compact fit has to include margins.** `offsetHeight` is border-box — padding and border, but not margin — so the gaps between cards measure as nothing and the window comes up short by the sum of them.
+
+### Motion
+
+- **Reactive only.** Transitions fire on hover, press and focus, never on their own, and are wrapped in `prefers-reduced-motion: no-preference`. Something that moves unprompted in peripheral vision competes with whatever the user is actually doing, which is the one thing this widget must not do.
 
 ### State treatment
 
