@@ -11,13 +11,18 @@ export abstract class AppError extends Error {
   }
 }
 
-/** The refresh token is dead or a required scope is missing. Stop syncing. */
+/**
+ * The refresh token is dead or a required scope is missing. Stop syncing.
+ *
+ * The account id is an email address, so it is a property rather than part of
+ * the message: messages are logged, properties are not (§8.7).
+ */
 export class ReauthRequiredError extends AppError {
   constructor(
     readonly accountId: string,
     readonly reason: 'invalid_grant' | 'missing_scope' | 'revoked',
   ) {
-    super(`account ${accountId} needs re-authentication (${reason})`)
+    super(`account needs re-authentication (${reason})`)
   }
 }
 
@@ -28,7 +33,7 @@ export class TransientProviderError extends AppError {
     readonly statusCode: number | null,
     detail: string,
   ) {
-    super(`temporary provider failure for ${accountId}: ${detail}`)
+    super(`temporary provider failure (${statusCode ?? 'no status'}): ${detail}`)
   }
 }
 
@@ -67,10 +72,21 @@ export function isTransient(error: unknown): error is TransientProviderError {
   return error instanceof TransientProviderError
 }
 
-/** Message without vendor payloads, safe to log. */
+/**
+ * Safe to log (§8.7).
+ *
+ * Our own errors carry messages we wrote, so they travel whole. Anything else
+ * contributes its class name and nothing more: a `GaxiosError` message is the
+ * response body verbatim when the body is not JSON, which a captive portal or
+ * an intercepting proxy can choose. Key-based redaction cannot catch that,
+ * because by then it is one free-text string.
+ */
 export function describeError(error: unknown): string {
-  if (error instanceof Error) {
+  if (error instanceof AppError) {
     return `${error.name}: ${error.message}`
+  }
+  if (error instanceof Error) {
+    return error.name
   }
   return 'unknown error'
 }
