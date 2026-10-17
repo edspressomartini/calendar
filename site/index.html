@@ -129,6 +129,11 @@
                 <span><i class="dot dot--sky"></i>Office closed (Hamburg)</span>
               </div>
 
+              <!-- Four hours of it. The app draws the day at 80px an hour and
+                   scrolls the rest, so the window shows about this much and the
+                   afternoon runs off the bottom edge — which is why the last
+                   meeting here is cut, rather than the day conveniently ending
+                   where the card does. -->
               <div class="timeline">
                 <div class="zones"><span>BST</span><span>CEST</span></div>
 
@@ -136,65 +141,54 @@
                   <div class="gutter">
                     <div class="col">
                       <span class="major" style="top: 0%">09:00</span>
-                      <span style="top: 8.333%">09:30</span>
-                      <span class="major" style="top: 16.667%">10:00</span>
-                      <span style="top: 25%">10:30</span>
-                      <span class="major" style="top: 33.333%">11:00</span>
-                      <span style="top: 41.667%">11:30</span>
-                      <span class="major" style="top: 50%">12:00</span>
-                      <span style="top: 58.333%">12:30</span>
-                      <span class="major" style="top: 66.667%">13:00</span>
-                      <span style="top: 75%">13:30</span>
-                      <span class="major" style="top: 83.333%">14:00</span>
-                      <span style="top: 91.667%">14:30</span>
-                      <span class="major" style="top: 100%">15:00</span>
+                      <span style="top: 12.5%">09:30</span>
+                      <span class="major" style="top: 25%">10:00</span>
+                      <span style="top: 37.5%">10:30</span>
+                      <span class="major" style="top: 50%">11:00</span>
+                      <span style="top: 62.5%">11:30</span>
+                      <span class="major" style="top: 75%">12:00</span>
+                      <span style="top: 87.5%">12:30</span>
+                      <span class="major" style="top: 100%">13:00</span>
                     </div>
                     <div class="col col--second">
                       <span class="major" style="top: 0%">10:00</span>
-                      <span style="top: 8.333%">10:30</span>
-                      <span class="major" style="top: 16.667%">11:00</span>
-                      <span style="top: 25%">11:30</span>
-                      <span class="major" style="top: 33.333%">12:00</span>
-                      <span style="top: 41.667%">12:30</span>
-                      <span class="major" style="top: 50%">13:00</span>
-                      <span style="top: 58.333%">13:30</span>
-                      <span class="major" style="top: 66.667%">14:00</span>
-                      <span style="top: 75%">14:30</span>
-                      <span class="major" style="top: 83.333%">15:00</span>
-                      <span style="top: 91.667%">15:30</span>
-                      <span class="major" style="top: 100%">16:00</span>
+                      <span style="top: 12.5%">10:30</span>
+                      <span class="major" style="top: 25%">11:00</span>
+                      <span style="top: 37.5%">11:30</span>
+                      <span class="major" style="top: 50%">12:00</span>
+                      <span style="top: 62.5%">12:30</span>
+                      <span class="major" style="top: 75%">13:00</span>
+                      <span style="top: 87.5%">13:30</span>
+                      <span class="major" style="top: 100%">14:00</span>
                     </div>
                   </div>
 
                   <div class="tracks">
                     <i class="rule" style="top: 0%"></i>
-                    <i class="rule rule--half" style="top: 8.333%"></i>
-                    <i class="rule" style="top: 16.667%"></i>
-                    <i class="rule rule--half" style="top: 25%"></i>
-                    <i class="rule" style="top: 33.333%"></i>
-                    <i class="rule rule--half" style="top: 41.667%"></i>
+                    <i class="rule rule--half" style="top: 12.5%"></i>
+                    <i class="rule" style="top: 25%"></i>
+                    <i class="rule rule--half" style="top: 37.5%"></i>
                     <i class="rule" style="top: 50%"></i>
-                    <i class="rule rule--half" style="top: 58.333%"></i>
-                    <i class="rule" style="top: 66.667%"></i>
-                    <i class="rule rule--half" style="top: 75%"></i>
-                    <i class="rule" style="top: 83.333%"></i>
-                    <i class="rule rule--half" style="top: 91.667%"></i>
+                    <i class="rule rule--half" style="top: 62.5%"></i>
+                    <i class="rule" style="top: 75%"></i>
+                    <i class="rule rule--half" style="top: 87.5%"></i>
                     <i class="rule" style="top: 100%"></i>
 
-                    <div class="event event--past" style="top: 8.333%; height: 8.333%">
-                      <time>09:30</time><span>Standup</span>
+                    <div class="event event--past" style="top: 12.5%; height: 12.5%">
+                      <i class="bar bar--sky"></i><time>09:30</time><span>Standup</span>
                     </div>
-                    <div class="event event--live" style="top: 25%; height: 16.667%">
-                      <time>10:30</time><span>Design review</span>
+                    <div class="event event--live" style="top: 37.5%; height: 25%">
+                      <i class="bar bar--sky"></i><time>10:30</time><span>Design review</span>
+                      <span class="join">Join</span>
                     </div>
-                    <div class="event" style="top: 66.667%; height: 8.333%">
-                      <time>13:00</time><span>1:1 with Priya</span>
+                    <div class="event" style="top: 75%; height: 12.5%">
+                      <i class="bar bar--violet"></i><time>12:00</time><span>1:1 with Priya</span>
                     </div>
-                    <div class="event" style="top: 83.333%; height: 12.5%">
-                      <time>14:00</time><span>Release retro</span>
+                    <div class="event" style="top: 87.5%; height: 18.75%">
+                      <i class="bar bar--sky"></i><time>12:30</time><span>Release retro</span>
                     </div>
 
-                    <div class="nowline" style="top: 33.9%">
+                    <div class="nowline" style="top: 50.8%">
                       <span class="bead"></span><span class="wire"></span
                       ><span class="stamp">11:02</span>
                     </div>
@@ -204,7 +198,8 @@
 
               <div class="todos">
                 <header>
-                  Todo <span class="count">4</span><span class="spacer"></span>
+                  <span class="caret">▾</span> Todo <span class="count">4</span
+                  ><span class="spacer"></span>
                   <span class="hint">History ⌃⌥⌘C</span>
                 </header>
                 <!-- Hovered, to show the arrows that rank it. They are only
@@ -212,8 +207,8 @@
                      feature entirely. -->
                 <p class="todo todo--hover">
                   <span class="box"></span><span class="text">Write up the migration plan</span>
-                  <span class="rank">▲</span><span class="rank">▼</span>
-                  <span class="roll">→</span>
+                  <span class="rank">▲</span><span class="rank">▼</span> <span class="roll">→</span
+                  ><span class="roll">×</span>
                 </p>
                 <p class="todo">
                   <span class="box"></span><span class="text">Chase the invoice</span>
@@ -223,13 +218,13 @@
                   <span class="box"></span><span class="text">Book the venue</span>
                 </p>
                 <p class="todo todo--done">
-                  <span class="box box--on"></span><span class="text">Reply to the audit</span>
+                  <span class="box box--on">✓</span><span class="text">Reply to the audit</span>
                 </p>
                 <p class="todo-note">1 rolled to a later day</p>
               </div>
 
               <div class="widget-status">
-                <span>synced just now</span><span class="spacer"></span><span>Refresh</span>
+                <span>synced just now</span><span class="spacer"></span><span>Sync</span>
               </div>
             </div>
           </div>
