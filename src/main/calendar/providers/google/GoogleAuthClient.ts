@@ -50,15 +50,35 @@ export class GoogleAuthClient implements AccountAuthenticator {
 
       await this.browser.openConsentPage(authUrl)
       const code = await server.waitForCode()
-      const exchange = await client.getToken({
+      const tokens = await this.exchangeCode(
+        client,
         code,
-        codeVerifier: verifier.codeVerifier,
-        redirect_uri: server.redirectUri,
-      })
+        verifier.codeVerifier,
+        server.redirectUri,
+      )
 
-      return await this.completeSignIn(client, exchange.tokens)
+      return await this.completeSignIn(client, tokens)
     } finally {
       await server.close()
+    }
+  }
+
+  /**
+   * The vendor error stops here. A `GaxiosError` carries the request config,
+   * including the `Authorization` header, and its message is the raw response
+   * body when that body is not JSON (§8.7).
+   */
+  private async exchangeCode(
+    client: OAuth2Client,
+    code: string,
+    codeVerifier: string,
+    redirectUri: string,
+  ): Promise<Credentials> {
+    try {
+      const exchange = await client.getToken({ code, codeVerifier, redirect_uri: redirectUri })
+      return exchange.tokens
+    } catch {
+      throw new AuthFlowError('exchange_failed')
     }
   }
 

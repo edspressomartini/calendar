@@ -3,10 +3,11 @@
 What is left before this app is something other people can install and rely on.
 Ordered by what blocks what, not by effort.
 
-Status as of 30 September 2026: the app runs in development, reads a real personal
-Google Calendar, and has 220 passing tests. The public site now carries a homepage, a
-privacy policy and a security overview, and the repository has a README. Nothing has
-been signed, packaged for distribution, or shown to anyone else.
+Status as of 16 October 2026: `v0.4.0` is released, signed with a Developer ID,
+notarised, and installable with `brew install --cask edspressomartini/tap/up-next`.
+272 tests pass. The site is live on its own domain at <https://upnextapp.co.uk/> with a
+homepage, privacy policy and security overview, and Google verification has passed.
+What is left is mostly first-run experience and the company conversation, not plumbing.
 
 ---
 
@@ -26,7 +27,9 @@ been signed, packaged for distribution, or shown to anyone else.
       The consent screen now shows the Up Next name and logo.
 - [ ] **Move to In production.** Testing expires refresh tokens after 7 days, so the
       app stops working weekly. This does not need verification and should not wait
-      for it.
+      for it. **Probably already done** — the same account has stayed connected for
+      roughly three weeks, which Testing would not allow — but it has not been read
+      back off the console, so confirm it there rather than inferring it from here.
 - [x] **Understand the 100-user cap.** An unverified production app is limited to 100
       users _for the lifetime of the project_, and the cap cannot be reset. Moot now
       verification has passed, but it is why verification was worth doing before sharing
@@ -60,34 +63,32 @@ been signed, packaged for distribution, or shown to anyone else.
 
 - [x] **`edspressomartini.github.io` is in Authorized domains** on the Branding page,
       and always was. The entry was never the missing piece.
-- [ ] **Verify `upnextapp.co.uk` as a Domain property**, once the 123reg DNS records
-      resolve and GitHub Pages serves the site there. A Domain property is DNS-based,
-      which is the proof branding actually wants.
-- [ ] **Repoint the Branding page** at the new domain, and change the app name to
-      `Up Next` while there. Then retry, no earlier than 24 hours after the Search
-      Console verification; an early retry fails with the identical message. The
-      Search Console property and the Cloud project must stay on the same Google
-      account, which is what the check compares.
+- [x] **Verify `upnextapp.co.uk` as a Domain property** and **repoint the Branding
+      page** at it. Done — the site serves from the custom domain (`site/CNAME`), and
+      verification passed against it on 6 October 2026. A Domain property is DNS-based,
+      which is the proof branding actually wanted; the `github.io` URL-prefix properties
+      never could be, because `github.io` is on the Public Suffix List.
 
 ## 2. Blocking: signing and packaging
 
 Procedure and reasoning: `docs/apple-signing-plan.md`.
 
 - [x] **Join the Apple Developer Program** (£79/yr). Enrolled 4 October 2026.
-- [ ] **Create a Developer ID Application certificate** and an App Store Connect API key
-      for `notarytool`.
+- [x] **Create a Developer ID Application certificate** and an App Store Connect API key
+      for `notarytool`. Both exist and are in use: the installed build is signed
+      `Developer ID Application: Edward Martin (LRHKHKMD3J)` with the hardened runtime
+      on (`flags=0x10000(runtime)`).
 - [x] **Add the Google secrets** to the GitHub `release` environment:
       `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-- [ ] **Add the Apple secrets** to the same environment: `CSC_LINK`,
+- [x] **Add the Apple secrets** to the same environment: `CSC_LINK`,
       `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`.
       Note `APPLE_API_KEY_BASE64`: the workflow decodes it to a file, because
       `@electron/notarize` wants a path rather than the key itself.
-- [ ] **Confirm the entitlements are sufficient.** Now `allow-jit` only, since a
-      Developer ID makes `disable-library-validation` unnecessary. If the signed build
-      fails to launch, that assumption is wrong — add the minimum needed and record why
-      in the spec rather than reaching for the ad-hoc plist.
-- [ ] **Verify the Electron fuses actually applied** to the packaged app, with
-      `npx @electron/fuses read --app dist/mac-arm64/*.app`.
+- [x] **Confirm the entitlements are sufficient.** `allow-jit` only, since a Developer
+      ID makes `disable-library-validation` unnecessary. Confirmed by the signed build
+      launching and running; the assumption held.
+- [x] **Verify the Electron fuses actually applied** to the packaged app. Done on the
+      installed bundle rather than the build directory — see section 3.
 - [x] **Run the release workflow end to end.** First succeeded for `v0.1.0`.
 - [x] **Run it again with signing and notarisation on.** `v0.2.0`, 4 October 2026. The
       keychain import and the notary service both worked first time; the `Package` step
@@ -153,10 +154,17 @@ launched, drew its UI and reached Google, which it could not have done with the
 - [ ] **Uninstall story.** Confirm the `zap` stanza actually clears
       `~/Library/Application Support/Up Next`, which now holds the TODO list as
       well as the settings. The Keychain item is out of scope — see section 4.
-- [ ] **A real app icon.** There is a generated tray glyph but no `build/icon.icns`.
+- [x] **A real app icon.** `build/icon.icns` exists, added 2 October 2026.
 - [x] **A README.** Written, Homebrew-first, with the tap marked as not yet live.
 
-## 6. Known gaps, deliberately deferred
+## 6. Security
+
+A full review of `v0.4.0` is in `docs/security-review.md`, with the outstanding items
+as a checklist. Four findings were fixed on the spot; none of what remains blocks a
+release, and the one that matters most is reading the fuses off the shipped DMG rather
+than off a local build.
+
+## 7. Known gaps, deliberately deferred
 
 - **No push notifications from Google.** Google's push requires a public HTTPS webhook,
   which would mean running a server. Polling every 3 minutes is the alternative, and the
