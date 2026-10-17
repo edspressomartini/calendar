@@ -17,3 +17,7 @@ build/icon.iconset/
 
 # Subagent-driven development scratch
 .superpowers/
+
+# Compiled EventKit helper; rebuild with `npm run build:helper`.
+build/helper/
+resources/eventkit-helper/.build/
