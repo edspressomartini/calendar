@@ -13,8 +13,8 @@
    scheme is two lines and cannot produce a palette that half-changed. */
 
 :root {
-  --neutral-bg: rgb(255 255 255 / 0.55);
-  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
+  --neutral-bg: #ffffff;
+  --neutral-bg-subtle: #f8fafc; /* slate-50  */
   --neutral-border: #e2e8f0; /* slate-200 */
 
   --text: #0f172a; /* slate-900 */
@@ -26,8 +26,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --neutral-bg: rgb(15 23 42 / 0.5);
-    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
+    --neutral-bg: #0f172a;
+    --neutral-bg-subtle: #1e293b;
     --neutral-border: #334155;
 
     --text: #f1f5f9;
@@ -35,6 +35,31 @@
     --accent: #38bdf8;
     --urgent: #f87171;
     --live: #34d399;
+  }
+}
+
+/* Only the widget is translucent. This stylesheet is shared with three opaque
+   windows (settings, alert, quick-add), which sit on Electron's default white
+   rather than on a material. Giving them a half-transparent base would blend
+   it with that white: washed-out tints in light mode and a mid grey behind
+   light text in dark mode. The widget alone has macOS vibrancy behind it for
+   the alpha to reveal, and sets data-surface='glass' on <html> to say so
+   (renderer/widget/main.tsx).
+
+   :root[data-surface='glass'] is deliberately more specific than the plain
+   :root rules above. A bare [data-surface='glass'] ties with them on
+   specificity, so it would win or lose by source order alone, and the dark
+   block would silently beat it. Only the two neutral fills are overridden;
+   the mixes below pick them up, so schemes stay two lines each. */
+:root[data-surface='glass'] {
+  --neutral-bg: rgb(255 255 255 / 0.55);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='glass'] {
+    --neutral-bg: rgb(15 23 42 / 0.5);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
   }
 }
 
@@ -99,10 +124,11 @@
    Text is the one thing left alone. Everything else here sits behind it, and
    a tinted panel that costs you legibility is a worse panel.
 
-   The base is translucent now, so these mixes land on top of whatever macOS
-   has blurred behind the window rather than on a known colour. That is why
-   the alpha lives in the neutral rather than in each mix: one place decides
-   how much wallpaper comes through, and the schemes stay two lines each. */
+   In the widget the base is translucent, so these mixes land on top of
+   whatever macOS has blurred behind the window rather than on a known colour.
+   That is why the alpha lives in the neutral rather than in each mix: one
+   place decides how much wallpaper comes through, and the schemes stay two
+   lines each. */
 :root {
   --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
   --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
