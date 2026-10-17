@@ -377,43 +377,66 @@ describe('defaultHelperSpawn', () => {
   })
 
   /**
+   * Answers one request, closes fd 0, and stays alive. The reply is the
+   * signal: it is written strictly after the close, so a test that has seen
+   * it knows the next write goes to a dead pipe. Closing without answering
+   * would leave the close racing the test's own timers, which is what made
+   * the two tests below intermittent.
+   */
+  const CLOSES_STDIN_AFTER_ONE_REQUEST =
+    '#!/bin/sh\nread line\nexec 0<&-\necho \'{"id":1,"ok":true,"result":[]}\'\nsleep 5\n'
+
+  /**
+   * Long enough that a timeout cannot stand in for the rejection under test,
+   * and short enough that a broken EPIPE path fails the suite rather than
+   * hanging it.
+   */
+  const NO_TIMEOUT_IN_PRACTICE = 5_000
+
+  /**
    * The gap this class exists to survive: the OS closes the pipe the moment
    * the helper lets go of it, but `this.child` stays set until 'exit' is
    * delivered. A request in that window writes to a dead pipe, and the EPIPE
    * is emitted on the socket.
    */
   it('fails a request when the helper has closed its stdin', async () => {
-    const binary = await helperFixture('#!/bin/sh\nexec 0<&-\nsleep 5\n')
-    const helper = new EventKitHelperProcess(
-      binary,
-      defaultHelperSpawn(silentLogger()),
-      silentLogger(),
-      500,
-    )
-
-    // Nothing answers this, and it gives the helper time to close fd 0.
-    const unanswered = helper.request('sources', {}, z.array(z.string()))
-    await expect(unanswered).rejects.toMatchObject({ kind: 'timeout' })
-
-    // The helper is still running, so this writes to the closed pipe.
-    const broken = helper.request('sources', {}, z.array(z.string()))
-    await expect(broken).rejects.toMatchObject({ kind: 'helper_unavailable' })
-    helper.stop()
-  })
-
-  it('logs a broken pipe with its code', async () => {
-    const binary = await helperFixture('#!/bin/sh\nexec 0<&-\nsleep 5\n')
+    const binary = await helperFixture(CLOSES_STDIN_AFTER_ONE_REQUEST)
     const entries: LogEntry[] = []
     const helper = new EventKitHelperProcess(
       binary,
       defaultHelperSpawn(recordingLogger(entries)),
       silentLogger(),
-      500,
+      NO_TIMEOUT_IN_PRACTICE,
     )
 
-    await expect(helper.request('sources', {}, z.array(z.string()))).rejects.toMatchObject({
-      kind: 'timeout',
+    // Answered, so the helper is demonstrably alive and fd 0 is now closed.
+    const answered = helper.request('sources', {}, z.array(z.string()))
+    await expect(answered).resolves.toEqual([])
+
+    // The helper is still running, so this writes to the closed pipe.
+    const broken = helper.request('sources', {}, z.array(z.string()))
+    await expect(broken).rejects.toMatchObject({ kind: 'helper_unavailable' })
+
+    // And from a real EPIPE, not from the restart backoff: nothing has exited.
+    await vi.waitFor(() => {
+      expect(entries).toContainEqual(
+        expect.objectContaining({ level: 'warn', context: { source: 'stdin', code: 'EPIPE' } }),
+      )
     })
+    helper.stop()
+  })
+
+  it('logs a broken pipe with its code', async () => {
+    const binary = await helperFixture(CLOSES_STDIN_AFTER_ONE_REQUEST)
+    const entries: LogEntry[] = []
+    const helper = new EventKitHelperProcess(
+      binary,
+      defaultHelperSpawn(recordingLogger(entries)),
+      silentLogger(),
+      NO_TIMEOUT_IN_PRACTICE,
+    )
+
+    await expect(helper.request('sources', {}, z.array(z.string()))).resolves.toEqual([])
     await expect(helper.request('sources', {}, z.array(z.string()))).rejects.toMatchObject({
       kind: 'helper_unavailable',
     })
