@@ -1,7 +1,15 @@
 import EventKit
 import Foundation
 
-/// Pure date helpers, separated from EventKit so they can be tested.
+/*
+ * The pure half of the mapping, kept out of `CalendarStore` so the tests can
+ * reach it without an `EKEventStore` and without the calendar permission.
+ */
+
+/// Well under `eventKitEventSchema`'s 4,000, which it counts in UTF-16 code
+/// units as JavaScript does — hence the trim below rather than `prefix`.
+let maxWireTextLength = 2_000
+
 func isoString(from date: Date, timeZone: TimeZone) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
@@ -9,8 +17,53 @@ func isoString(from date: Date, timeZone: TimeZone) -> String {
     return formatter.string(from: date)
 }
 
-func allDayEnd(start: Date, days: Int, calendar: Calendar) -> Date {
-    return calendar.date(byAdding: .day, value: days, to: start) ?? start
+/// Bounds a free-text field so one over-long event cannot fail the parse of
+/// the whole array and cost the user their agenda. This is about keeping the
+/// frame parseable; the 200-character display truncation stays in the
+/// TypeScript mapper, as it does on the Google path.
+func truncatedForWire(_ value: String?) -> String? {
+    guard let value else {
+        return nil
+    }
+    guard value.utf16.count > maxWireTextLength else {
+        return value
+    }
+    var trimmed = String(value.prefix(maxWireTextLength))
+    // A grapheme can be worth more than one UTF-16 unit, so dropping to
+    // `maxWireTextLength` characters is not yet a guarantee about the count
+    // the schema will apply.
+    while trimmed.utf16.count > maxWireTextLength, !trimmed.isEmpty {
+        trimmed.removeLast()
+    }
+    return trimmed
+}
+
+/// `calendars(for:)` hands back a `Set`, whose order differs run to run.
+/// Sorted so the list the user picks from, and the default this falls back
+/// to, stay put between calls.
+func sortedForDisplay(_ calendars: Set<EKCalendar>) -> [EKCalendar] {
+    return calendars.sorted {
+        ($0.title, $0.calendarIdentifier) < ($1.title, $1.calendarIdentifier)
+    }
+}
+
+/// `cancelled` with two Ls: the wire spelling, not `EKEventStatus.canceled`.
+func statusName(_ status: EKEventStatus) -> String {
+    switch status {
+    case .confirmed: return "confirmed"
+    case .tentative: return "tentative"
+    case .canceled: return "cancelled"
+    default: return "none"
+    }
+}
+
+/// Takes the two fields it needs rather than the `EKParticipant`, which has
+/// no public initialiser and so cannot be built in a test.
+func isDeclinedBySelf(attendees: [(isCurrentUser: Bool, status: EKParticipantStatus)]?) -> Bool {
+    guard let attendees else {
+        return false
+    }
+    return attendees.contains { $0.isCurrentUser && $0.status == .declined }
 }
 
 struct CalendarStore {
@@ -58,48 +111,38 @@ struct CalendarStore {
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: wanted)
         let timeZone = TimeZone.current
 
-        return store.events(matching: predicate).map { event in
-            EventPayload(
+        // `startDate`, `endDate` and `calendar` import as implicitly unwrapped
+        // optionals and are nil on an event the store failed to materialise.
+        // Dropped one at a time rather than force-unwrapped: one malformed
+        // event must not take the rest of the window down with it.
+        return store.events(matching: predicate).compactMap { event in
+            guard let startDate = event.startDate,
+                  let endDate = event.endDate,
+                  let calendar = event.calendar else {
+                return nil
+            }
+            let attendees = event.attendees?.map {
+                (isCurrentUser: $0.isCurrentUser, status: $0.participantStatus)
+            }
+            return EventPayload(
                 id: event.eventIdentifier ?? UUID().uuidString,
-                calendarId: event.calendar.calendarIdentifier,
+                calendarId: calendar.calendarIdentifier,
                 externalId: event.calendarItemExternalIdentifier ?? "",
-                title: event.title ?? "",
-                start: isoString(from: event.startDate, timeZone: timeZone),
-                end: isoString(from: event.endDate, timeZone: timeZone),
+                title: truncatedForWire(event.title) ?? "",
+                start: isoString(from: startDate, timeZone: timeZone),
+                end: isoString(from: endDate, timeZone: timeZone),
                 isAllDay: event.isAllDay,
                 url: event.url?.absoluteString,
-                location: event.location,
-                notes: event.notes,
+                location: truncatedForWire(event.location),
+                notes: truncatedForWire(event.notes),
                 status: statusName(event.status),
-                selfDeclined: isDeclinedBySelf(event)
+                selfDeclined: isDeclinedBySelf(attendees: attendees)
             )
         }
     }
 
-    /// `calendars(for:)` hands back a `Set`, whose order differs run to run.
-    /// Sorted so the list the user picks from, and the default this falls
-    /// back to, stay put between calls.
     private func eventCalendars(of source: EKSource) -> [EKCalendar] {
-        return source.calendars(for: .event).sorted {
-            ($0.title, $0.calendarIdentifier) < ($1.title, $1.calendarIdentifier)
-        }
-    }
-
-    /// `cancelled` with two Ls: the wire spelling, not `EKEventStatus.canceled`.
-    private func statusName(_ status: EKEventStatus) -> String {
-        switch status {
-        case .confirmed: return "confirmed"
-        case .tentative: return "tentative"
-        case .canceled: return "cancelled"
-        default: return "none"
-        }
-    }
-
-    private func isDeclinedBySelf(_ event: EKEvent) -> Bool {
-        guard let attendees = event.attendees else {
-            return false
-        }
-        return attendees.contains { $0.isCurrentUser && $0.participantStatus == .declined }
+        return sortedForDisplay(source.calendars(for: .event))
     }
 }
 

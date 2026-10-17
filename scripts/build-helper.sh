@@ -8,7 +8,11 @@ package="$root/resources/eventkit-helper"
 output="$root/build/helper"
 
 swift build --package-path "$package" -c release --arch arm64
+
+# Resolved once and reused: asking a second time means any extra line the
+# toolchain prints ends up spliced into the path we copy from.
+bin="$(swift build --package-path "$package" -c release --arch arm64 --show-bin-path)"
+
 mkdir -p "$output"
-cp "$(swift build --package-path "$package" -c release --arch arm64 --show-bin-path)/UpNextEventKit" \
-  "$output/up-next-eventkit"
+cp "$bin/UpNextEventKit" "$output/up-next-eventkit"
 echo "built $output/up-next-eventkit"
