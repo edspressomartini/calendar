@@ -15,6 +15,7 @@ import type { SettingsStore } from '../storage/SettingsStore.ts'
 import { resolveRendererUrl } from './appProtocol.ts'
 import {
   boundsForFittedHeight,
+  heightForTextScale,
   computeBounds,
   displayForBounds,
   findDisplay,
@@ -178,13 +179,19 @@ export class WidgetWindow {
    * number would be meaningless.
    */
   fitHeight(height: number): void {
-    if (!this.window || this.settings.getSettings().showTimeline) {
+    if (!this.window) {
       return
     }
 
+    const settings = this.settings.getSettings()
+    if (settings.showTimeline) {
+      return
+    }
+
+    const requested = heightForTextScale(height, settings.widgetTextScale)
     const bounds = this.window.getBounds()
     const display = displayForBounds(bounds)
-    const fitted = boundsForFittedHeight(bounds, display, height, WIDGET_COMPACT_MIN_HEIGHT)
+    const fitted = boundsForFittedHeight(bounds, display, requested, WIDGET_COMPACT_MIN_HEIGHT)
     if (fitted.height === bounds.height) {
       return
     }

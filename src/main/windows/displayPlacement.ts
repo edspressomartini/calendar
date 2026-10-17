@@ -93,6 +93,18 @@ export function displayForBounds(bounds: Rectangle): Display {
 }
 
 /**
+ * Converts a height the renderer measured into window points.
+ *
+ * The renderer measures in CSS pixels, which `setZoomFactor` has already
+ * multiplied by the time they reach the screen. Window bounds are not zoomed,
+ * so a panel measured at 125% needs a window a quarter taller than the number
+ * it reported, or the last row and the status strip fall below the fold.
+ */
+export function heightForTextScale(measured: number, textScalePercent: number): number {
+  return Math.ceil((measured * textScalePercent) / 100)
+}
+
+/**
  * The bounds for a height the renderer measured (§6).
  *
  * Pure, and separate from the window, because this is the part that can put
