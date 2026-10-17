@@ -14,7 +14,7 @@ import type {
 } from '../shared/ipc/contract.ts'
 import type { AgendaSnapshot } from '../shared/types/agenda.ts'
 import type { AccountView } from '../shared/types/account.ts'
-import type { CalendarId, CalendarSummary } from '../shared/types/calendar.ts'
+import type { CalendarId, CalendarSummary, ProviderKind } from '../shared/types/calendar.ts'
 import type { AppSettings, DisplayOption, SettingsTab } from '../shared/types/settings.ts'
 import type { TodoSnapshot } from '../shared/types/todo.ts'
 
@@ -159,10 +159,8 @@ function createSettingsBridge(): SettingsBridge {
   return {
     listAccounts: () => ipcRenderer.invoke(CHANNELS.accountsList) as Promise<AccountView[]>,
 
-    connectAccount: () =>
-      ipcRenderer.invoke(CHANNELS.accountsConnect, { provider: 'google' }) as Promise<
-        AccountView[]
-      >,
+    connectAccount: (provider: ProviderKind) =>
+      ipcRenderer.invoke(CHANNELS.accountsConnect, { provider }) as Promise<AccountView[]>,
 
     reconnectAccount: (accountId: string) =>
       ipcRenderer.invoke(CHANNELS.accountsReconnect, { accountId }) as Promise<AccountView[]>,

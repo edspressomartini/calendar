@@ -11,7 +11,10 @@ export interface AccountHandlerDeps {
 export function registerAccountHandlers(router: IpcRouter, deps: AccountHandlerDeps): void {
   router.handle(CHANNELS.accountsList, () => deps.accounts.list())
 
-  router.handle(CHANNELS.accountsConnect, async () => await deps.accounts.connect())
+  router.handle(
+    CHANNELS.accountsConnect,
+    async ({ provider }) => await deps.accounts.connect(provider),
+  )
 
   router.handle(
     CHANNELS.accountsReconnect,

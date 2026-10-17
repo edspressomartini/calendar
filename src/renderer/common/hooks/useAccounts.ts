@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AccountView } from '../../../shared/types/account.ts'
+import type { ProviderKind } from '../../../shared/types/calendar.ts'
 import { accountListSchema } from '../../../shared/ipc/contract.ts'
 import { fetchAccounts, settingsApi } from '../lib/ipcClient.ts'
 
@@ -7,7 +8,7 @@ export interface AccountsState {
   readonly accounts: readonly AccountView[]
   readonly busy: boolean
   readonly error: string | null
-  connect(): Promise<void>
+  connect(provider: ProviderKind): Promise<void>
   reconnect(accountId: string): Promise<void>
   disconnect(accountId: string): Promise<void>
   setCalendars(accountId: string, calendarIds: string[]): Promise<void>
@@ -60,9 +61,12 @@ export function useAccounts(): AccountsState {
     }
   }, [])
 
-  const connect = useCallback(async () => {
-    await run(() => settingsApi().connectAccount(), 'Could not connect that account.')
-  }, [run])
+  const connect = useCallback(
+    async (provider: ProviderKind) => {
+      await run(() => settingsApi().connectAccount(provider), 'Could not connect that account.')
+    },
+    [run],
+  )
 
   const reconnect = useCallback(
     async (accountId: string) => {

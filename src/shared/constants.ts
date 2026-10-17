@@ -2,6 +2,10 @@
 
 export const ACCOUNT_COLOURS = ['sky', 'violet', 'amber', 'emerald', 'rose'] as const
 
+/** Every provider the app knows. `ProviderKind` and the IPC schemas both come
+ * from this list, so neither can quietly fall behind the other (§8.5). */
+export const PROVIDER_KINDS = ['google', 'eventkit', 'mock'] as const
+
 /** An event is "imminent" this many minutes before it starts (§6). */
 export const IMMINENT_THRESHOLD_MINUTES = 15
 

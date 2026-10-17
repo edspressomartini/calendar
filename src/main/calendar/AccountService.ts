@@ -1,12 +1,17 @@
 import type { AccountColour, AccountConfig, AccountView } from '../../shared/types/account.ts'
-import type { AccountId, CalendarId, CalendarSummary } from '../../shared/types/calendar.ts'
+import type {
+  AccountId,
+  CalendarId,
+  CalendarSummary,
+  ProviderKind,
+} from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
 import { describeError } from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
 import type { SyncScheduler } from '../sync/SyncScheduler.ts'
-import type { CalendarProvider } from './CalendarProvider.ts'
+import type { AuthenticationResult, CalendarProvider } from './CalendarProvider.ts'
 import type { ProviderFactory } from './ProviderFactory.ts'
 import type { ProviderRegistry } from './ProviderRegistry.ts'
 
@@ -106,25 +111,43 @@ export class AccountService {
     })
   }
 
-  canConnect(): boolean {
-    return this.factory.canConnect('google')
+  canConnect(kind: ProviderKind): boolean {
+    return this.factory.canConnect(kind)
   }
 
-  async connect(): Promise<AccountView[]> {
-    const authenticator = this.factory.createAuthenticator('google')
-    // Google signs in one account at a time, so its list holds exactly one.
-    const [result] = await authenticator.authenticate()
-    if (!result) {
-      return this.list()
+  /**
+   * One grant can produce several accounts: Google signs in one at a time,
+   * while EventKit yields one account per calendar source (§3).
+   */
+  async connect(kind: ProviderKind): Promise<AccountView[]> {
+    const authenticator = this.factory.createAuthenticator(kind)
+    const results = await authenticator.authenticate()
+    // Sign-in can span a browser round trip or a permission prompt, so it is
+    // traced: a stall shows up as a spinner that never stops.
+    this.logger.info('sign-in returned', { provider: kind, accounts: results.length })
+
+    for (const result of results) {
+      await this.register(kind, result)
     }
+
+    this.scheduler.reconcile()
+    return this.list()
+  }
+
+  /** Re-running consent for an existing account; a fresh grant replaces the dead one. */
+  async reconnect(accountId: AccountId): Promise<AccountView[]> {
+    const existing = this.settings.findAccount(accountId)
+    const kind = existing?.provider ?? 'google'
+    this.registry.forget(accountId)
+    return await this.connect(kind)
+  }
+
+  private async register(kind: ProviderKind, result: AuthenticationResult): Promise<void> {
     const accountId = result.identity.providerAccountId
-    // Sign-in spans a browser round trip, so each step is traced: a stall
-    // anywhere in here shows up as a spinner that never stops.
-    this.logger.info('sign-in returned; registering account')
 
     this.settings.addAccount({
       id: accountId,
-      provider: 'google',
+      provider: kind,
       label: result.identity.label,
       calendarIds: result.defaultCalendarIds,
     })
@@ -139,18 +162,8 @@ export class AccountService {
     this.logger.info('provider ready', { registered: this.registry.has(accountId) })
 
     this.agenda.setStatus(accountId, 'ready')
-    this.scheduler.reconcile()
     // Deliberately not awaited: the first sync must not delay the UI response.
     void this.scheduler.syncNow(accountId)
-
-    this.logger.info('connect complete')
-    return this.list()
-  }
-
-  /** Re-running consent for an existing account; a fresh grant replaces the dead one. */
-  async reconnect(accountId: AccountId): Promise<AccountView[]> {
-    this.registry.forget(accountId)
-    return await this.connect()
   }
 
   async disconnect(accountId: AccountId): Promise<AccountView[]> {

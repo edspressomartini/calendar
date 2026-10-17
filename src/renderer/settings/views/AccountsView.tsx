@@ -23,7 +23,15 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
         <button
           type="button"
           disabled={state.busy}
-          onClick={() => void state.connect()}
+          onClick={() => void state.connect('eventkit')}
+          className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
+        >
+          Use Apple Calendar
+        </button>
+        <button
+          type="button"
+          disabled={state.busy}
+          onClick={() => void state.connect('google')}
           className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
         >
           Connect Google account
@@ -35,8 +43,9 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
 
       {state.accounts.length === 0 ? (
         <p className="text-sm text-text-muted">
-          No accounts yet. Connecting opens your browser to sign in with Google — the app never sees
-          your password.
+          No accounts yet. Apple Calendar reads whatever accounts this Mac already syncs — iCloud,
+          Exchange, anything in Calendar.app — and never leaves the machine. Connecting Google
+          instead opens your browser to sign in; the app never sees your password.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -82,7 +91,9 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
       )}
 
       <p className="text-xs text-text-muted">
-        Disconnecting revokes the token with Google, then deletes it from this Mac.
+        Disconnecting a Google account revokes the token, then deletes it from this Mac. Apple
+        Calendar accounts have no token to revoke; macOS keeps the permission until you remove it in
+        System Settings.
       </p>
     </section>
   )

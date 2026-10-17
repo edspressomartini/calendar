@@ -640,7 +640,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `widget:fitHeight`                           | renderer → main | `{ height }`                                   |
 | Widget            | `settings:open`                              | renderer → main | none / `{ tab }`                               |
 | Settings          | `accounts:list`                              | renderer → main | none                                           |
-| Settings          | `accounts:connect`                           | renderer → main | `{ provider: "google" }`                       |
+| Settings          | `accounts:connect`                           | renderer → main | `{ provider: 'google' \| 'eventkit' }`         |
 | Settings          | `accounts:reconnect`, `accounts:disconnect`  | renderer → main | `{ accountId }`                                |
 | Settings          | `accounts:update`                            | renderer → main | `{ accountId, label?, colour? }`               |
 | Settings          | `calendars:list`, `calendars:setSelected`    | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |

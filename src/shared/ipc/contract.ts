@@ -11,6 +11,7 @@ import {
   MAX_WIDGET_TEXT_SCALE,
   MIN_SYNC_INTERVAL_MINUTES,
   MIN_WIDGET_TEXT_SCALE,
+  PROVIDER_KINDS,
   TODO_COMPLETED_RETENTION_DAYS,
 } from '../constants.ts'
 import { CHANNELS } from './channels.ts'
@@ -39,7 +40,13 @@ const timeZoneName = z
   .refine(isValidTimeZone, { message: 'unknown time zone' })
 
 export const accountIdPayloadSchema = z.strictObject({ accountId: identifier })
-export const connectAccountSchema = z.strictObject({ provider: z.literal('google') })
+/** Derived from the same list as `ProviderKind`, so the two cannot drift. */
+const providerKind = z.enum(PROVIDER_KINDS)
+
+/** Mock accounts are created by dev bootstrap, never asked for by the UI (§9). */
+export const connectAccountSchema = z.strictObject({
+  provider: z.enum(['google', 'eventkit']),
+})
 
 export const updateAccountSchema = z.strictObject({
   accountId: identifier,
@@ -227,7 +234,7 @@ export const agendaSnapshotSchema = z.strictObject({
 
 export const accountViewSchema = z.strictObject({
   id: identifier,
-  provider: z.enum(['google', 'mock']),
+  provider: providerKind,
   label,
   colour,
   status: z.enum(['ready', 'syncing', 'offline', 'needsReauth']),
@@ -263,7 +270,7 @@ export const widgetPlacementSchema = z.strictObject({
 
 export const accountConfigSchema = z.strictObject({
   id: identifier,
-  provider: z.enum(['google', 'mock']),
+  provider: providerKind,
   label,
   colour,
   calendarIds: z.array(identifier),

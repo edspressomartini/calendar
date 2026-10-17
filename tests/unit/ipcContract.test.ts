@@ -7,7 +7,9 @@ import {
 } from '../../src/shared/ipc/channels.ts'
 import {
   REQUEST_SCHEMAS,
+  accountViewSchema,
   addTodoSchema,
+  connectAccountSchema,
   fitHeightSchema,
   joinEventSchema,
   moveToDisplaySchema,
@@ -19,6 +21,7 @@ import {
 import {
   MAX_TODO_TITLE_LENGTH,
   MAX_WIDGET_FIT_HEIGHT,
+  PROVIDER_KINDS,
   TODO_COMPLETED_RETENTION_DAYS,
 } from '../../src/shared/constants.ts'
 
@@ -42,6 +45,26 @@ describe('IPC contract', () => {
     for (const channel of Object.values(CHANNELS)) {
       expect(CHANNEL_CALLERS[channel].length).toBeGreaterThan(0)
     }
+  })
+
+  it('accepts every provider the app knows, outbound and in', () => {
+    for (const provider of PROVIDER_KINDS) {
+      const view = {
+        id: 'a',
+        provider,
+        label: 'Work',
+        colour: 'sky',
+        status: 'ready',
+        calendarIds: [],
+        lastSyncedAt: null,
+        canListCalendars: false,
+      }
+      expect(accountViewSchema.safeParse(view).success).toBe(true)
+    }
+    expect(connectAccountSchema.safeParse({ provider: 'eventkit' }).success).toBe(true)
+    expect(connectAccountSchema.safeParse({ provider: 'google' }).success).toBe(true)
+    // The dev-only mock account is bootstrap's, not something the UI can ask for.
+    expect(connectAccountSchema.safeParse({ provider: 'mock' }).success).toBe(false)
   })
 
   it('rejects unexpected properties', () => {

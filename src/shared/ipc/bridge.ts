@@ -1,6 +1,6 @@
 import type { AgendaSnapshot } from '../types/agenda.ts'
 import type { AccountView } from '../types/account.ts'
-import type { CalendarId, CalendarSummary } from '../types/calendar.ts'
+import type { CalendarId, CalendarSummary, ProviderKind } from '../types/calendar.ts'
 import type { AppSettings, DisplayOption, SettingsTab } from '../types/settings.ts'
 import type { TodoSnapshot } from '../types/todo.ts'
 import type {
@@ -53,7 +53,7 @@ export interface QuickAddBridge {
 
 export interface SettingsBridge {
   listAccounts(): Promise<AccountView[]>
-  connectAccount(): Promise<AccountView[]>
+  connectAccount(provider: ProviderKind): Promise<AccountView[]>
   reconnectAccount(accountId: string): Promise<AccountView[]>
   disconnectAccount(accountId: string): Promise<AccountView[]>
   updateAccount(request: {
