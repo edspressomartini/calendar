@@ -700,7 +700,7 @@ export function resolveHelperPath(location: HelperLocation): string {
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `npx vitest run tests/unit/eventKitHelperProcess.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 8 tests.
 
 - [ ] **Step 5: Commit**
 
