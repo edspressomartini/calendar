@@ -3,6 +3,7 @@ import { formatAccelerator } from '../../../../shared/shortcuts.ts'
 import { daysBetweenDayKeys } from '../../../../shared/time.ts'
 import type { Todo, TodoHistoryDay, TodoSnapshot } from '../../../../shared/types/todo.ts'
 import { formatDayKeyLabel } from '../../lib/formatTime.ts'
+import { widgetApi } from '../../lib/ipcClient.ts'
 import { TodoRow } from './TodoRow.tsx'
 
 interface TodoPanelProps {
@@ -102,9 +103,18 @@ export function TodoPanel({
       {!collapsed && !showingHistory && (
         <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto pb-1">
           {isEmpty && (
-            <p className="px-3 py-1 text-body text-text-muted">
-              Nothing to do. Press the shortcut to add one.
-            </p>
+            <div className="flex flex-col gap-1 px-3 py-1 text-body text-text-muted">
+              <span>
+                Nothing on the list. Press {formatAccelerator(shortcut)} anywhere to add something.
+              </span>
+              <button
+                type="button"
+                onClick={() => void widgetApi().openSettings('preferences')}
+                className="no-drag self-start text-accent hover:underline"
+              >
+                Change the shortcut
+              </button>
+            </div>
           )}
 
           {snapshot.overdue.length > 0 && (
