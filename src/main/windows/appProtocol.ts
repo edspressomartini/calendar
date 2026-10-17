@@ -54,12 +54,27 @@ export function appUrlFor(role: WindowRole): string {
   return `${appOrigin(role)}/index.html`
 }
 
-/** In dev the renderer comes from Vite; in production only from `app://`. */
-export function resolveRendererUrl(role: WindowRole, devServerUrl: string | null): string {
-  if (!devServerUrl) {
-    return appUrlFor(role)
+/**
+ * In dev the renderer comes from Vite; in production only from `app://`.
+ *
+ * `search` is for state the renderer needs before it has mounted, which it
+ * cannot be sent over IPC: a push arriving before the renderer subscribes is
+ * dropped, and the first render is exactly when nothing has subscribed yet.
+ * The protocol handler routes on the pathname, so a query string is ignored
+ * when the file is served.
+ */
+export function resolveRendererUrl(
+  role: WindowRole,
+  devServerUrl: string | null,
+  search?: URLSearchParams,
+): string {
+  const url = devServerUrl
+    ? new URL(`${role}/index.html`, `${devServerUrl}/`)
+    : new URL(appUrlFor(role))
+  if (search) {
+    url.search = search.toString()
   }
-  return new URL(`${role}/index.html`, `${devServerUrl}/`).toString()
+  return url.toString()
 }
 
 /**

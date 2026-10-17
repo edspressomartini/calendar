@@ -21,6 +21,11 @@ export const SETTINGS_TABS = ['accounts', 'calendars', 'display', 'preferences']
 
 export type SettingsTab = (typeof SETTINGS_TABS)[number]
 
+/** Narrows a tab that arrived as a string, from a URL or a payload. */
+export function isSettingsTab(value: string | null): value is SettingsTab {
+  return SETTINGS_TABS.some((tab) => tab === value)
+}
+
 /**
  * Displays are matched by label and size first, because macOS display ids change
  * across reconnects (§10).

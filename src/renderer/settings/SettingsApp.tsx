@@ -1,5 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
-import { SETTINGS_TABS, type SettingsTab } from '../../shared/types/settings.ts'
+import { SETTINGS_TABS, isSettingsTab, type SettingsTab } from '../../shared/types/settings.ts'
 import { settingsApi } from '../common/lib/ipcClient.ts'
 import { useAccounts } from '../common/hooks/useAccounts.ts'
 import { useColourScheme } from '../common/hooks/useColourScheme.ts'
@@ -16,8 +16,18 @@ const TAB_LABELS: Readonly<Record<SettingsTab, string>> = {
   preferences: 'Preferences',
 }
 
+/**
+ * Main puts the tab in the URL when it opens a new window, because a message
+ * sent before this component has mounted would be dropped. The channel below
+ * is only for a window that was already up.
+ */
+function initialTab(): SettingsTab {
+  const requested = new URLSearchParams(window.location.search).get('tab')
+  return isSettingsTab(requested) ? requested : 'accounts'
+}
+
 export function SettingsApp(): JSX.Element {
-  const [tab, setTab] = useState<SettingsTab>('accounts')
+  const [tab, setTab] = useState<SettingsTab>(initialTab)
 
   useEffect(() => {
     return settingsApi().onShowTab(setTab)

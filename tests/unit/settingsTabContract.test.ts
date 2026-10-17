@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { openSettingsSchema } from '../../src/shared/ipc/contract.ts'
 import { CHANNELS, CHANNEL_CALLERS, PUSH_CHANNELS } from '../../src/shared/ipc/channels.ts'
-import { SETTINGS_TABS } from '../../src/shared/types/settings.ts'
+import { SETTINGS_TABS, isSettingsTab } from '../../src/shared/types/settings.ts'
+import { resolveRendererUrl } from '../../src/main/windows/appProtocol.ts'
 
 /**
  * The tab arrives from a renderer, so it is untrusted input like every other
@@ -25,6 +26,47 @@ describe('openSettingsSchema', () => {
 
   it('rejects anything alongside the tab', () => {
     expect(openSettingsSchema.safeParse({ tab: 'accounts', extra: 1 }).success).toBe(false)
+  })
+})
+
+describe('isSettingsTab', () => {
+  it('accepts every real tab', () => {
+    for (const tab of SETTINGS_TABS) {
+      expect(isSettingsTab(tab)).toBe(true)
+    }
+  })
+
+  it('refuses a missing or unknown tab, so a hand-edited URL cannot pick one', () => {
+    expect(isSettingsTab(null)).toBe(false)
+    expect(isSettingsTab('tokens')).toBe(false)
+    expect(isSettingsTab('')).toBe(false)
+  })
+})
+
+describe('resolveRendererUrl', () => {
+  // A new window is told its tab through the URL rather than the channel,
+  // because a push before the renderer mounts is dropped.
+  it('carries the tab on the production scheme', () => {
+    const url = resolveRendererUrl('settings', null, new URLSearchParams({ tab: 'preferences' }))
+
+    expect(url).toBe('app://settings/index.html?tab=preferences')
+  })
+
+  it('carries the tab on the dev server', () => {
+    const url = resolveRendererUrl(
+      'settings',
+      'http://localhost:5174',
+      new URLSearchParams({ tab: 'accounts' }),
+    )
+
+    expect(url).toBe('http://localhost:5174/settings/index.html?tab=accounts')
+  })
+
+  it('is unchanged when no tab is asked for', () => {
+    expect(resolveRendererUrl('settings', null)).toBe('app://settings/index.html')
+    expect(resolveRendererUrl('widget', 'http://localhost:5174')).toBe(
+      'http://localhost:5174/widget/index.html',
+    )
   })
 })
 

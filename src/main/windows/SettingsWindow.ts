@@ -57,13 +57,18 @@ export class SettingsWindow {
       window.show()
     })
 
-    await window.loadURL(resolveRendererUrl('settings', this.options.devServerUrl))
-    this.showTab(window, tab)
+    // A fresh window takes its tab from the URL, not from the channel below:
+    // the send would be racing the renderer's subscription, and losing that
+    // race is silent.
+    const search = tab ? new URLSearchParams({ tab }) : undefined
+    await window.loadURL(resolveRendererUrl('settings', this.options.devServerUrl, search))
   }
 
   /**
    * The tab is a request, not state: the window keeps whatever the user picks
    * afterwards, so there is nothing to remember here.
+   *
+   * Only for a window that is already up. A new one is told through its URL.
    */
   private showTab(window: BrowserWindow, tab: SettingsTab | undefined): void {
     if (!tab) {
