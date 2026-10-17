@@ -90,9 +90,14 @@ describe('eventKitEventSchema', () => {
     expect(eventKitEventSchema.safeParse({ ...event, attendees: [] }).success).toBe(false)
   })
 
-  it('rejects a title longer than the cap', () => {
-    const long = { ...event, title: 'x'.repeat(5_000) }
-    expect(eventKitEventSchema.safeParse(long).success).toBe(false)
+  it('accepts a title longer than the display cap, which the mapper truncates', () => {
+    const long = { ...event, title: 'x'.repeat(201) }
+    expect(eventKitEventSchema.safeParse(long).success).toBe(true)
+  })
+
+  it('rejects a title beyond the ingest bound', () => {
+    const absurd = { ...event, title: 'x'.repeat(4_001) }
+    expect(eventKitEventSchema.safeParse(absurd).success).toBe(false)
   })
 })
 
@@ -157,7 +162,10 @@ export const eventKitEventSchema = z.strictObject({
   id: identifier,
   calendarId: identifier,
   externalId: z.string().max(512),
-  title: z.string().max(MAX_EVENT_TITLE_LENGTH),
+  // Bounded generously, not at the display cap: one over-long title must not
+  // fail the whole array and cost the user their agenda. The mapper truncates
+  // to MAX_EVENT_TITLE_LENGTH, as the Google path does.
+  title: z.string().max(MAX_TEXT_LENGTH),
   start: z.string().min(1).max(40),
   end: z.string().min(1).max(40),
   isAllDay: z.boolean(),
@@ -209,7 +217,7 @@ export type EventKitErrorKind = z.infer<typeof errorKindSchema>
 - [ ] **Step 4: Run the test and watch it pass**
 
 Run: `npx vitest run tests/unit/eventKitProtocol.test.ts`
-Expected: PASS, 7 tests.
+Expected: PASS, 8 tests.
 
 - [ ] **Step 5: Commit**
 
