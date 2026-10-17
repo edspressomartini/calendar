@@ -2178,16 +2178,20 @@ git commit -m "feat(eventkit): resync when the macOS calendar store changes"
 
 **Files:**
 
-- Modify: `src/main/sync/SyncCoordinator.ts:80-99`
+- Modify: `src/main/sync/SyncCoordinator.ts:80-99`, `src/main/infra/errors.ts`
+- Modify: `src/main/calendar/AccountService.ts`
+- Modify: `src/shared/constants.ts`, `src/shared/types/account.ts`
 - Modify: `src/shared/ipc/channels.ts`, `src/shared/ipc/contract.ts`, `src/shared/ipc/bridge.ts`, `src/preload/index.ts`
 - Modify: `src/main/ipc/handlers/accountHandlers.ts`
-- Modify: `src/renderer/settings/views/AccountsView.tsx`
+- Modify: `src/renderer/common/hooks/useAccounts.ts`, `src/renderer/settings/views/AccountsView.tsx`
 - Modify: `docs/spec.md` §8.5, §8.6
-- Test: `tests/unit/syncCoordinator.test.ts`, `tests/unit/ipcContract.test.ts`
+- Test: `tests/unit/syncCoordinator.test.ts`, `tests/unit/accountService.test.ts`, `tests/unit/ipcContract.test.ts`
 
 **Interfaces:**
 
 - Consumes: `EventKitError` and `isEventKitError` (Task 2).
+- Produces: `CALENDAR_ACCESS_REFUSALS` in `src/shared/constants.ts` and `isCalendarAccessRefusal` in `src/main/infra/errors.ts`, shared by the sync path and the sign-in path.
+- Produces: `AccountService.connect`/`reconnect` returning `ConnectAccountsResult` (`{ accounts, refusal }`) instead of `AccountView[]`, across the bridge.
 - Produces: a new no-payload channel `CHANNELS.accountsOpenCalendarPrivacy`, and `openCalendarPrivacy(): Promise<void>` on the settings bridge.
 
 Without this, a user who clicks Deny gets an account stuck on `offline` that
@@ -2195,16 +2199,31 @@ retries forever and never says what to do. `denied`, `restricted` and
 `writeOnly` are terminal until a System Settings toggle changes, which is
 exactly what `needsReauth` means.
 
+**Two journeys reach the same refusal, and both have to be served.** An
+account that was granted and later revoked refuses through `fetchEvents`,
+which lands in `SyncCoordinator.classify` and becomes a `needsReauth` status
+on an existing row. A user who clicks Deny on the _first_ prompt refuses
+through `EventKitAuthorizer.authenticate()`, before any account row exists —
+there is nothing to put a status on, and a placeholder account for a
+permission the user refused would then show up in the agenda, the tray and
+the sync schedule. So that refusal is reported in the connect response
+instead. It cannot be thrown: `IpcRouter` turns every handler error into the
+same opaque `'request rejected'`, so a thrown refusal is indistinguishable
+from a network failure by the time the renderer sees it.
+
 - [ ] **Step 1: Write the failing test**
 
 ```typescript
-// tests/unit/syncCoordinator.test.ts — add to the existing file, or create it
+// tests/unit/syncCoordinator.test.ts — the revoked account, refusing mid-sync
 import { EventKitError } from '../../src/main/infra/errors.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../src/shared/constants.ts'
 
 describe('SyncCoordinator with EventKit failures', () => {
-  it('treats refused access as needing the user, not as a transient failure', async () => {
+  // Driven by the shared list, so the sync path and the sign-in path cannot
+  // classify differently.
+  it.each(CALENDAR_ACCESS_REFUSALS)('treats %s as terminal', async (kind) => {
     const { coordinator, agenda } = buildCoordinator({
-      fetchEvents: vi.fn().mockRejectedValue(new EventKitError('denied')),
+      fetchEvents: vi.fn().mockRejectedValue(new EventKitError(kind)),
     })
 
     await expect(coordinator.syncAccount('eventkit:icloud')).resolves.toBe('reauth')
@@ -2222,36 +2241,143 @@ describe('SyncCoordinator with EventKit failures', () => {
 })
 ```
 
+```typescript
+// tests/unit/accountService.test.ts — the first-time Deny, refusing at sign-in
+it.each(CALENDAR_ACCESS_REFUSALS)(
+  'reports %s from the permission prompt as a refusal, not a failure',
+  async (kind) => {
+    const { service, settings, scheduler } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new EventKitError(kind)),
+    })
+    const reconcile = vi.spyOn(scheduler, 'reconcile')
+
+    const result = await service.connect('eventkit')
+
+    // No placeholder account: nothing was granted, so nothing may appear in
+    // the agenda, the tray or the sync schedule.
+    expect(result).toEqual({ accounts: [], refusal: kind })
+    expect(settings.getAccounts()).toEqual([])
+    expect(reconcile).not.toHaveBeenCalled()
+  },
+)
+
+it('still rejects when the helper itself could not be reached', async () => {
+  const { service } = buildService({
+    authenticate: vi.fn().mockRejectedValue(new EventKitError('helper_unavailable')),
+  })
+
+  await expect(service.connect('eventkit')).rejects.toThrow(EventKitError)
+})
+```
+
 Build `buildCoordinator` with fakes for `ProviderRegistry`, `SettingsStore`,
 `AgendaService` and `AppLogger`, matching the fake style already used in the
-suite.
+suite. `buildService` already exists in `accountService.test.ts`; its existing
+cases assert on `AccountView[]` and move to `result.accounts`.
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [ ] **Step 2: Run the tests and watch them fail**
 
-Run: `npx vitest run tests/unit/syncCoordinator.test.ts`
-Expected: FAIL, the first case resolves `transient`.
+Run: `npx vitest run tests/unit/syncCoordinator.test.ts tests/unit/accountService.test.ts`
+Expected: FAIL — the sync case resolves `transient`, and `connect` rejects with
+the `EventKitError` instead of reporting it.
 
-- [ ] **Step 3: Classify the terminal kinds**
+- [ ] **Step 3: Classify the terminal kinds, in one place**
+
+In `src/shared/constants.ts`:
+
+```typescript
+/** Terminal until a System Settings toggle changes, so retrying only spins
+ * (§7). Shared: both the sync path and the connect response classify against
+ * this one list. */
+export const CALENDAR_ACCESS_REFUSALS = ['denied', 'restricted', 'writeOnly'] as const
+```
+
+with `export type CalendarAccessRefusal = (typeof CALENDAR_ACCESS_REFUSALS)[number]` in
+`src/shared/types/account.ts`.
+
+In `src/main/infra/errors.ts`:
+
+```typescript
+/** Typed against the error's own union, so a member that is not an EventKit
+ * kind will not compile. */
+const REFUSED_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError['kind']>(
+  CALENDAR_ACCESS_REFUSALS,
+)
+
+export function isCalendarAccessRefusal(
+  error: unknown,
+): error is EventKitError & { readonly kind: CalendarAccessRefusal } {
+  return isEventKitError(error) && REFUSED_KINDS.has(error.kind)
+}
+```
 
 In `src/main/sync/SyncCoordinator.ts`, at the top of `classify`:
 
 ```typescript
 // Refused, restricted by policy, or granted write-only: all three need a
 // System Settings change, so retrying would only spin (§7).
-if (isEventKitError(error) && TERMINAL_EVENTKIT_KINDS.has(error.kind)) {
+if (isCalendarAccessRefusal(error)) {
   this.agenda.setStatus(accountId, 'needsReauth')
   this.logger.warn('calendar access refused', { kind: error.kind })
   return 'reauth'
 }
 ```
 
-with, above the class:
+- [ ] **Step 3b: Report the refusal the first prompt produces**
+
+`AccountService.connect` calls `authenticate()` before any account row
+exists, so a refusal there has nothing to flag and must not escape as a
+generic sign-in failure. Return it instead. In
+`src/shared/types/account.ts`:
 
 ```typescript
-const TERMINAL_EVENTKIT_KINDS = new Set(['denied', 'restricted', 'writeOnly'])
+export interface ConnectAccountsResult {
+  readonly accounts: readonly AccountView[]
+  readonly refusal: CalendarAccessRefusal | null
+}
 ```
 
-and `isEventKitError` added to the existing import from `../infra/errors.ts`.
+In `src/main/calendar/AccountService.ts`, `connect` and `reconnect` return
+`Promise<ConnectAccountsResult>`, and the `authenticate()` call is guarded:
+
+```typescript
+let results: readonly AuthenticationResult[]
+try {
+  results = await authenticator.authenticate()
+} catch (error) {
+  // Caught to answer the user, not to swallow. Anything that is not a
+  // refusal is a real failure and carries on to the IPC boundary.
+  if (!isCalendarAccessRefusal(error)) {
+    throw error
+  }
+  this.logger.warn('calendar access refused at sign-in', { provider: kind, kind: error.kind })
+  return { accounts: this.list(), refusal: error.kind }
+}
+```
+
+Every other `return this.list()` in `connect` becomes
+`return { accounts: this.list(), refusal: null }`. Do **not** create a
+placeholder account for the refused permission: it would be synced, shown in
+the agenda and counted in the tray, for calendars the app cannot read.
+
+In `src/shared/ipc/contract.ts`, beside `accountListSchema`:
+
+```typescript
+export const connectAccountsResultSchema = z.strictObject({
+  accounts: accountListSchema,
+  refusal: z.enum(CALENDAR_ACCESS_REFUSALS).nullable(),
+})
+```
+
+`connectAccount` and `reconnectAccount` return `Promise<ConnectAccountsResult>`
+in `src/shared/ipc/bridge.ts` and `src/preload/index.ts`. The handlers in
+`accountHandlers.ts` are unchanged — they already return whatever the service
+returns.
+
+In `src/renderer/common/hooks/useAccounts.ts`, connect and reconnect parse
+`connectAccountsResultSchema` rather than `accountListSchema`, and the hook
+exposes `calendarAccessRefusal: CalendarAccessRefusal | null` alongside the
+generic `error` string, so the pane can tell a refusal from a failure.
 
 - [ ] **Step 4: Add the channel that opens System Settings**
 
@@ -2283,20 +2409,61 @@ the other account calls.
 - [ ] **Step 5: Offer the fix next to the problem**
 
 In `src/renderer/settings/views/AccountsView.tsx`, the reconnect button is
-wrong for an EventKit account — there is nothing to reconnect. Branch on the
-provider:
+wrong for an EventKit account — there is nothing to reconnect. The same
+button is needed in two places: beside a revoked account, and beside a
+refused sign-in where no account exists. So it is one component, and the
+click goes through `useAccounts`.
+
+**The channel is rate-limited (`channel:role`, `RATE_LIMIT_WINDOW_MS`), so a
+double-click is refused and the second promise rejects.** `onClick={() => void
+settingsApi().openCalendarPrivacy()}` would make that an unhandled rejection:
+`void` satisfies the lint rule and handles nothing. The hook owns the failure,
+as it does for connect and disconnect:
+
+```typescript
+// useAccounts.ts
+const openCalendarPrivacy = useCallback(async () => {
+  try {
+    await settingsApi().openCalendarPrivacy()
+    setError(null)
+  } catch {
+    setError('Could not open System Settings. Try again in a moment.')
+  }
+}, [])
+```
+
+```tsx
+function PrivacySettingsButton({ state }: AccountsViewProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => void state.openCalendarPrivacy()}
+      className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
+    >
+      Open Calendar privacy settings
+    </button>
+  )
+}
+```
+
+Used in both places:
+
+```tsx
+{
+  state.calendarAccessRefusal && (
+    <div className="flex items-center gap-3 rounded-md border border-urgent/40 px-3 py-2">
+      <p className="flex-1 text-xs text-urgent">{REFUSAL_MESSAGE[state.calendarAccessRefusal]}</p>
+      <PrivacySettingsButton state={state} />
+    </div>
+  )
+}
+```
 
 ```tsx
 {
   account.status === 'needsReauth' &&
     (account.provider === 'eventkit' ? (
-      <button
-        type="button"
-        onClick={() => void settingsApi().openCalendarPrivacy()}
-        className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
-      >
-        Open Calendar privacy settings
-      </button>
+      <PrivacySettingsButton state={state} />
     ) : (
       <button
         type="button"
@@ -2310,11 +2477,20 @@ provider:
 }
 ```
 
+`PreferencesView.tsx` calls `settingsApi().syncNow()` and `testAlert()` the
+same way, and both channels are rate-limited too: move them onto `useSettings`
+with the same try/catch-into-`error` mechanism.
+
 - [ ] **Step 6: Record the channel in the spec**
 
 Add a row for `accounts:openCalendarPrivacy` to `docs/spec.md` §8.5 — payload
 `undefined`, sender role settings — and note in §8.6 that the URL is a
 compile-time constant, so the renderer cannot choose what gets opened.
+
+Also note under the §8.5 table that `accounts:connect` and
+`accounts:reconnect` answer with `{ accounts, refusal }`: a refusal cannot be
+thrown, because `IpcRouter` collapses every handler error into the same
+opaque message and the renderer could not tell it from a network failure.
 
 - [ ] **Step 7: Run everything**
 

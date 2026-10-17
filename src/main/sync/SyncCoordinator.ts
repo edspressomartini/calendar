@@ -2,8 +2,12 @@ import { endOfLocalDay, startOfLocalDay } from '../../shared/time.ts'
 import type { AccountId, TimeRange } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
 import type { ProviderRegistry } from '../calendar/ProviderRegistry.ts'
-import type { EventKitError } from '../infra/errors.ts'
-import { describeError, isEventKitError, isReauthRequired, isTransient } from '../infra/errors.ts'
+import {
+  describeError,
+  isCalendarAccessRefusal,
+  isReauthRequired,
+  isTransient,
+} from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 
@@ -13,13 +17,6 @@ import type { SettingsStore } from '../storage/SettingsStore.ts'
  */
 
 export type SyncOutcome = 'ok' | 'transient' | 'reauth' | 'unavailable'
-
-/** Typed against the error's own union, so a mistyped member will not compile. */
-const TERMINAL_EVENTKIT_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError['kind']>([
-  'denied',
-  'restricted',
-  'writeOnly',
-])
 
 export class SyncCoordinator {
   /** One in-flight sync per account; later triggers join it (§7). */
@@ -88,7 +85,7 @@ export class SyncCoordinator {
   private classify(accountId: AccountId, error: unknown): SyncOutcome {
     // Refused, restricted by policy, or granted write-only: all three need a
     // System Settings change, so retrying would only spin (§7).
-    if (isEventKitError(error) && TERMINAL_EVENTKIT_KINDS.has(error.kind)) {
+    if (isCalendarAccessRefusal(error)) {
       this.agenda.setStatus(accountId, 'needsReauth')
       this.logger.warn('calendar access refused', { kind: error.kind })
       return 'reauth'

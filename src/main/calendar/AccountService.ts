@@ -1,4 +1,9 @@
-import type { AccountColour, AccountConfig, AccountView } from '../../shared/types/account.ts'
+import type {
+  AccountColour,
+  AccountConfig,
+  AccountView,
+  ConnectAccountsResult,
+} from '../../shared/types/account.ts'
 import type {
   AccountId,
   CalendarId,
@@ -6,7 +11,7 @@ import type {
   ProviderKind,
 } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
-import { describeError } from '../infra/errors.ts'
+import { describeError, isCalendarAccessRefusal } from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
@@ -119,9 +124,24 @@ export class AccountService {
    * One grant can produce several accounts: Google signs in one at a time,
    * while EventKit yields one account per calendar source (§3).
    */
-  async connect(kind: ProviderKind): Promise<AccountView[]> {
+  async connect(kind: ProviderKind): Promise<ConnectAccountsResult> {
     const authenticator = this.factory.createAuthenticator(kind)
-    const results = await authenticator.authenticate()
+
+    let results: readonly AuthenticationResult[]
+    try {
+      results = await authenticator.authenticate()
+    } catch (error) {
+      // Caught to answer the user, not to swallow: a refusal has no account
+      // to hang a needsReauth status on, so it travels back in the response
+      // and the Accounts pane offers System Settings inline (§7). Anything
+      // else is a real failure and carries on to the IPC boundary.
+      if (!isCalendarAccessRefusal(error)) {
+        throw error
+      }
+      this.logger.warn('calendar access refused at sign-in', { provider: kind, kind: error.kind })
+      return { accounts: this.list(), refusal: error.kind }
+    }
+
     // Sign-in can span a browser round trip or a permission prompt, so it is
     // traced: a stall shows up as a spinner that never stops.
     this.logger.info('sign-in returned', { provider: kind, accounts: results.length })
@@ -159,11 +179,11 @@ export class AccountService {
       throw failures[0]
     }
 
-    return this.list()
+    return { accounts: this.list(), refusal: null }
   }
 
   /** Re-running consent for an existing account; a fresh grant replaces the dead one. */
-  async reconnect(accountId: AccountId): Promise<AccountView[]> {
+  async reconnect(accountId: AccountId): Promise<ConnectAccountsResult> {
     const existing = this.settings.findAccount(accountId)
     const kind = existing?.provider ?? 'google'
     this.registry.forget(accountId)

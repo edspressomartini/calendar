@@ -655,10 +655,12 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `todos:toggle`, `todos:roll`, `todos:remove` | renderer → main | `{ todoId }`                                   |
 | Widget            | `todos:rollAllOverdue`                       | renderer → main | none                                           |
 
+**Refused calendar access comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, refusal }`, where `refusal` is `denied`, `restricted`, `writeOnly` or null, validated by the same contract as the account list. The renderer uses it to show the System Settings button inline when the first-time prompt was declined and no account exists to carry a `needsReauth` status (§7).
+
 ### 8.6 External links
 
 - `shell.openExternal` is called from exactly three places: `SystemBrowser` (the Google consent URL, built in main), the join handler, and the `accounts:openCalendarPrivacy` handler. Nothing else opens URLs.
-- **Calendar privacy:** an EventKit account whose access was refused shows a button that opens the Calendars pane of Privacy & Security. The channel carries no payload and the `x-apple.systempreferences:` URL is a compile-time constant in the handler, so the renderer cannot choose what gets opened — it can only ask for that one pane.
+- **Calendar privacy:** a refused EventKit permission shows a button that opens the Calendars pane of Privacy & Security — beside the account when access was revoked after the fact, and beside the sign-in error when the first-time prompt was declined and there is no account. The channel carries no payload and the `x-apple.systempreferences:` URL is a compile-time constant in the handler, so the renderer cannot choose what gets opened — it can only ask for that one pane.
 - **Join:** the renderer sends an event ID. Main looks the event up in the current snapshot, takes the link `conferenceLinks.ts` resolved, and opens it only if it's `https:` on an allowlisted host: `meet.google.com`, `zoom.us` and its subdomains, `teams.microsoft.com`, `teams.live.com`. No other scheme (`file:`, `smb:`, `javascript:`, custom app schemes) and no other host. Each new host is a reviewed change to that allowlist.
 - **Link resolution** prefers Google's structured fields (`hangoutLink`, `conferenceData.entryPoints` of type `video`) over parsing `location` or `description` text. Parsed links go through the same allowlist.
 - Notification clicks go through the same path.

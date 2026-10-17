@@ -1,9 +1,8 @@
 import type { JSX } from 'react'
-import type { AccountView } from '../../../shared/types/account.ts'
+import type { AccountView, CalendarAccessRefusal } from '../../../shared/types/account.ts'
 import { Badge } from '../../common/components/ui/Badge.tsx'
 import { Spinner } from '../../common/components/ui/Spinner.tsx'
 import type { AccountsState } from '../../common/hooks/useAccounts.ts'
-import { settingsApi } from '../../common/lib/ipcClient.ts'
 
 interface AccountsViewProps {
   readonly state: AccountsState
@@ -14,6 +13,16 @@ const STATUS_LABEL: Record<AccountView['status'], string> = {
   syncing: 'Syncing…',
   offline: 'Offline',
   needsReauth: 'Needs reconnecting',
+}
+
+/**
+ * Said in the user's terms, since all three leave them in the same place:
+ * nothing was connected, and only System Settings can change that (§7).
+ */
+const REFUSAL_MESSAGE: Record<CalendarAccessRefusal, string> = {
+  denied: 'macOS declined calendar access, so no accounts were added.',
+  restricted: 'Calendar access is blocked on this Mac by a policy or Screen Time.',
+  writeOnly: 'macOS granted write-only calendar access, which cannot read your events.',
 }
 
 export function AccountsView({ state }: AccountsViewProps): JSX.Element {
@@ -42,6 +51,15 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
 
       {state.error && <p className="text-xs text-urgent">{state.error}</p>}
 
+      {state.calendarAccessRefusal && (
+        <div className="flex items-center gap-3 rounded-md border border-urgent/40 px-3 py-2">
+          <p className="flex-1 text-xs text-urgent">
+            {REFUSAL_MESSAGE[state.calendarAccessRefusal]}
+          </p>
+          <PrivacySettingsButton state={state} />
+        </div>
+      )}
+
       {state.accounts.length === 0 ? (
         <p className="text-sm text-text-muted">
           No accounts yet. Apple Calendar reads whatever accounts this Mac already syncs — iCloud,
@@ -69,13 +87,7 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
 
               {account.status === 'needsReauth' &&
                 (account.provider === 'eventkit' ? (
-                  <button
-                    type="button"
-                    onClick={() => void settingsApi().openCalendarPrivacy()}
-                    className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
-                  >
-                    Open Calendar privacy settings
-                  </button>
+                  <PrivacySettingsButton state={state} />
                 ) : (
                   <button
                     type="button"
@@ -106,5 +118,23 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
         System Settings.
       </p>
     </section>
+  )
+}
+
+/**
+ * The same affordance in both places it is needed: beside an account macOS
+ * stopped answering for, and beside a sign-in it refused outright. The click
+ * goes through the hook, which owns the failure (the channel is rate-limited,
+ * so a second click inside the window is refused).
+ */
+function PrivacySettingsButton({ state }: AccountsViewProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => void state.openCalendarPrivacy()}
+      className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
+    >
+      Open Calendar privacy settings
+    </button>
   )
 }

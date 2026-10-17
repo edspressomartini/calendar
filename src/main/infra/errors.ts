@@ -5,6 +5,8 @@
  */
 
 import type { EventKitErrorKind } from '../calendar/providers/eventkit/EventKitProtocol.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../shared/constants.ts'
+import type { CalendarAccessRefusal } from '../../shared/types/account.ts'
 
 export abstract class AppError extends Error {
   protected constructor(message: string) {
@@ -87,6 +89,24 @@ export function isTransient(error: unknown): error is TransientProviderError {
 
 export function isEventKitError(error: unknown): error is EventKitError {
   return error instanceof EventKitError
+}
+
+/** Typed against the error's own union, so a member that is not an EventKit
+ * kind will not compile. */
+const REFUSED_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError['kind']>(
+  CALENDAR_ACCESS_REFUSALS,
+)
+
+/**
+ * Refused, restricted by policy, or granted write-only. Both the sync path
+ * and the sign-in path ask this question, and must answer it the same way:
+ * retrying any of the three would only spin until a System Settings toggle
+ * changes (§7).
+ */
+export function isCalendarAccessRefusal(
+  error: unknown,
+): error is EventKitError & { readonly kind: CalendarAccessRefusal } {
+  return isEventKitError(error) && REFUSED_KINDS.has(error.kind)
 }
 
 /**

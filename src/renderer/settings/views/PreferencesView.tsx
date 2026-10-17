@@ -17,7 +17,6 @@ import {
   type ViewMode,
 } from '../../../shared/types/settings.ts'
 import type { SettingsState } from '../../common/hooks/useSettings.ts'
-import { settingsApi } from '../../common/lib/ipcClient.ts'
 
 interface PreferencesViewProps {
   readonly state: SettingsState
@@ -245,14 +244,14 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => void settingsApi().syncNow()}
+          onClick={() => void state.syncNow()}
           className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10"
         >
           Sync now
         </button>
         <button
           type="button"
-          onClick={() => void settingsApi().testAlert()}
+          onClick={() => void state.testAlert()}
           className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10"
         >
           Show a test alert

@@ -5,11 +5,13 @@ import type { AuthenticationResult } from '../../src/main/calendar/CalendarProvi
 import { ProviderFactory } from '../../src/main/calendar/ProviderFactory.ts'
 import { ProviderRegistry } from '../../src/main/calendar/ProviderRegistry.ts'
 import { SystemBrowser } from '../../src/main/auth/SystemBrowser.ts'
+import { EventKitError } from '../../src/main/infra/errors.ts'
 import { SettingsStore } from '../../src/main/storage/SettingsStore.ts'
 import { TokenVault } from '../../src/main/storage/TokenVault.ts'
 import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
 import { SyncCoordinator } from '../../src/main/sync/SyncCoordinator.ts'
 import { SyncScheduler } from '../../src/main/sync/SyncScheduler.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../src/shared/constants.ts'
 import type { AccountConfig } from '../../src/shared/types/account.ts'
 import type { AppSettings } from '../../src/shared/types/settings.ts'
 import { silentLogger } from '../mocks/logger.ts'
@@ -147,9 +149,10 @@ describe('AccountService.connect', () => {
     })
     const reconcile = vi.spyOn(scheduler, 'reconcile')
 
-    const views = await service.connect('eventkit')
+    const result = await service.connect('eventkit')
 
-    expect(views.map((view) => view.id)).toEqual(['eventkit:icloud', 'eventkit:local'])
+    expect(result.accounts.map((view) => view.id)).toEqual(['eventkit:icloud', 'eventkit:local'])
+    expect(result.refusal).toBeNull()
     expect(settings.getAccounts().map((account) => account.id)).toEqual([
       'eventkit:icloud',
       'eventkit:local',
@@ -176,7 +179,49 @@ describe('AccountService.connect', () => {
   it('resolves when authentication returned no results at all', async () => {
     const { service } = buildService({ authenticate: vi.fn().mockResolvedValue([]) })
 
-    await expect(service.connect('eventkit')).resolves.toEqual([])
+    await expect(service.connect('eventkit')).resolves.toEqual({ accounts: [], refusal: null })
+  })
+
+  /**
+   * The first-time Deny. Nothing was granted, so there is no account row to
+   * hang a `needsReauth` status on, and inventing one would put a calendar
+   * the user refused into the agenda, the tray and the sync schedule. The
+   * refusal travels back in the response instead (§7).
+   */
+  it.each(CALENDAR_ACCESS_REFUSALS)(
+    'reports %s from the permission prompt as a refusal, not a failure',
+    async (kind) => {
+      const { service, settings, scheduler } = buildService({
+        authenticate: vi.fn().mockRejectedValue(new EventKitError(kind)),
+      })
+      const reconcile = vi.spyOn(scheduler, 'reconcile')
+
+      const result = await service.connect('eventkit')
+
+      expect(result).toEqual({ accounts: [], refusal: kind })
+      expect(settings.getAccounts()).toEqual([])
+      expect(reconcile).not.toHaveBeenCalled()
+    },
+  )
+
+  /** Only the terminal kinds are a refusal; the rest are worth another go. */
+  it('still rejects when the helper itself could not be reached', async () => {
+    const { service } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new EventKitError('helper_unavailable')),
+    })
+
+    await expect(service.connect('eventkit')).rejects.toThrow(EventKitError)
+  })
+
+  it('reports a refusal on reconnect too, since the prompt is the same one', async () => {
+    const { service } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new EventKitError('denied')),
+    })
+
+    await expect(service.reconnect('eventkit:icloud')).resolves.toEqual({
+      accounts: [],
+      refusal: 'denied',
+    })
   })
 
   it('reconnects an account using its own provider kind', async () => {

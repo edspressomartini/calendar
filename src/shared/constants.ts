@@ -6,6 +6,14 @@ export const ACCOUNT_COLOURS = ['sky', 'violet', 'amber', 'emerald', 'rose'] as 
  * from this list, so neither can quietly fall behind the other (§8.5). */
 export const PROVIDER_KINDS = ['google', 'eventkit', 'mock'] as const
 
+/**
+ * Calendar access the user declined, a policy blocked, or macOS granted
+ * write-only. All three are terminal until a System Settings toggle changes,
+ * so retrying only spins (§7). Shared because both the sync path and the
+ * connect response classify against this one list.
+ */
+export const CALENDAR_ACCESS_REFUSALS = ['denied', 'restricted', 'writeOnly'] as const
+
 /** An event is "imminent" this many minutes before it starts (§6). */
 export const IMMINENT_THRESHOLD_MINUTES = 15
 

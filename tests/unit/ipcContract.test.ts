@@ -10,6 +10,7 @@ import {
   accountViewSchema,
   addTodoSchema,
   connectAccountSchema,
+  connectAccountsResultSchema,
   fitHeightSchema,
   joinEventSchema,
   moveToDisplaySchema,
@@ -19,6 +20,7 @@ import {
   updateSettingsSchema,
 } from '../../src/shared/ipc/contract.ts'
 import {
+  CALENDAR_ACCESS_REFUSALS,
   MAX_TODO_TITLE_LENGTH,
   MAX_WIDGET_FIT_HEIGHT,
   PROVIDER_KINDS,
@@ -65,6 +67,26 @@ describe('IPC contract', () => {
     expect(connectAccountSchema.safeParse({ provider: 'google' }).success).toBe(true)
     // The dev-only mock account is bootstrap's, not something the UI can ask for.
     expect(connectAccountSchema.safeParse({ provider: 'mock' }).success).toBe(false)
+  })
+
+  /**
+   * The router turns every thrown handler error into one opaque message, so a
+   * refused permission can only be told apart from a failed sign-in if it
+   * comes back as data the contract validates (§8.4, §8.5).
+   */
+  it('carries a refused calendar permission back in the connect response', () => {
+    for (const refusal of CALENDAR_ACCESS_REFUSALS) {
+      expect(connectAccountsResultSchema.safeParse({ accounts: [], refusal }).success).toBe(true)
+    }
+    expect(connectAccountsResultSchema.safeParse({ accounts: [], refusal: null }).success).toBe(
+      true,
+    )
+    // Retryable EventKit kinds are failures, not refusals, and never travel.
+    expect(
+      connectAccountsResultSchema.safeParse({ accounts: [], refusal: 'helper_unavailable' })
+        .success,
+    ).toBe(false)
+    expect(connectAccountsResultSchema.safeParse({ accounts: [] }).success).toBe(false)
   })
 
   /** The URL is a constant in main, so there is nothing for a caller to send. */

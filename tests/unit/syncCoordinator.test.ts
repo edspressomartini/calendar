@@ -10,6 +10,7 @@ import {
 import { SettingsStore } from '../../src/main/storage/SettingsStore.ts'
 import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
 import { SyncCoordinator } from '../../src/main/sync/SyncCoordinator.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../src/shared/constants.ts'
 import type { AccountConfig } from '../../src/shared/types/account.ts'
 import type { AppSettings } from '../../src/shared/types/settings.ts'
 import { silentLogger } from '../mocks/logger.ts'
@@ -71,8 +72,12 @@ describe('SyncCoordinator with EventKit failures', () => {
     expect(setStatus).toHaveBeenLastCalledWith(ACCOUNT_ID, 'needsReauth')
   })
 
-  /** All three need a System Settings toggle, so none of them is worth a retry. */
-  it.each(['denied', 'restricted', 'writeOnly'] as const)('treats %s as terminal', async (kind) => {
+  /**
+   * All three need a System Settings toggle, so none of them is worth a
+   * retry. Driven by the shared list, which is the same one the connect
+   * response reports from: the two paths cannot classify differently.
+   */
+  it.each(CALENDAR_ACCESS_REFUSALS)('treats %s as terminal', async (kind) => {
     const { coordinator, setStatus } = buildCoordinator({
       fetchEvents: vi.fn().mockRejectedValue(new EventKitError(kind)),
     })
