@@ -42,9 +42,14 @@
    windows (settings, alert, quick-add), which sit on Electron's default white
    rather than on a material. Giving them a half-transparent base would blend
    it with that white: washed-out tints in light mode and a mid grey behind
-   light text in dark mode. The widget alone has macOS vibrancy behind it for
-   the alpha to reveal, and sets data-surface='glass' on <html> to say so
-   (renderer/widget/main.tsx).
+   light text in dark mode. The widget alone is a transparent window with the
+   desktop behind it for the alpha to reveal, and sets data-surface='glass' on
+   <html> to say so (renderer/widget/main.tsx).
+
+   These alphas are the legibility floor, not a style choice. There is no
+   vibrancy material underneath, so the text sits directly on whatever window
+   the panel happens to cover; going much thinner makes it unreadable over
+   busy content.
 
    :root[data-surface='glass'] is deliberately more specific than the plain
    :root rules above. A bare [data-surface='glass'] ties with them on
@@ -52,14 +57,14 @@
    block would silently beat it. Only the two neutral fills are overridden;
    the mixes below pick them up, so schemes stay two lines each. */
 :root[data-surface='glass'] {
-  --neutral-bg: rgb(255 255 255 / 0.28);
-  --neutral-bg-subtle: rgb(248 250 252 / 0.45);
+  --neutral-bg: rgb(255 255 255 / 0.55);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-surface='glass'] {
-    --neutral-bg: rgb(15 23 42 / 0.26);
-    --neutral-bg-subtle: rgb(30 41 59 / 0.42);
+    --neutral-bg: rgb(15 23 42 / 0.5);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
   }
 }
 

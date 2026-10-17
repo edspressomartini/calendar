@@ -9,14 +9,15 @@ const INPUT = {
 } as const
 
 describe('buildWidgetWindowOptions', () => {
-  it('asks macOS for the under-window material on a transparent window', () => {
+  it('lets the renderer alpha through instead of asking for a vibrancy material', () => {
     const options = buildWidgetWindowOptions(INPUT)
 
-    expect(options.vibrancy).toBe('under-window')
     expect(options.transparent).toBe(true)
     expect(options.roundedCorners).toBe(true)
-    // An opaque background colour defeats the material entirely.
+    // An opaque background colour defeats the transparency entirely.
     expect(options.backgroundColor).toBeUndefined()
+    // under-window only frosts the wallpaper, so it reads as opaque over apps.
+    expect(options.vibrancy).toBeUndefined()
   })
 
   it('keeps the panel behaviour that makes this a widget rather than a window', () => {
