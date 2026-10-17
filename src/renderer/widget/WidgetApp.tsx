@@ -11,6 +11,7 @@ import { useAgenda } from '../common/hooks/useAgenda.ts'
 import { useColourScheme } from '../common/hooks/useColourScheme.ts'
 import { useTodos } from '../common/hooks/useTodos.ts'
 import { widgetApi } from '../common/lib/ipcClient.ts'
+import { emptyPromptFor } from './emptyPrompt.ts'
 import { MergedView } from './views/MergedView.tsx'
 import { SplitView } from './views/SplitView.tsx'
 
@@ -81,6 +82,7 @@ export function WidgetApp(): JSX.Element {
     )
   }
 
+  const prompt = emptyPromptFor(snapshot.accounts)
   const hasAccounts = snapshot.accounts.length > 0
   // Three narrow columns are unreadable, so split collapses to merged (§6).
   const useSplit = snapshot.viewMode === 'split' && width >= SPLIT_VIEW_MIN_WIDTH && hasAccounts
@@ -125,8 +127,12 @@ export function WidgetApp(): JSX.Element {
 
       {snapshot.showTimeline && (
         <div className="card mx-3 mb-2 min-h-0 flex-1 overflow-hidden">
-          {!hasAccounts ? (
-            <EmptyState message="No calendars connected yet. Open Settings to add one." />
+          {prompt ? (
+            <EmptyState
+              message={prompt.message}
+              actionLabel={prompt.actionLabel}
+              onAction={() => void widgetApi().openSettings(prompt.tab)}
+            />
           ) : useSplit ? (
             <SplitView snapshot={snapshot} onJoin={join} />
           ) : (
