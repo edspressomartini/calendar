@@ -70,6 +70,22 @@
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--text-muted) 35%, transparent) transparent;
   }
+
+  /* Reactive only: these fire on hover, press and focus, never on their own.
+     The widget sits in peripheral vision all day, and anything that moves
+     unprompted competes with whatever the user is actually doing. */
+  @media (prefers-reduced-motion: no-preference) {
+    button {
+      transition:
+        background-color 120ms ease-out,
+        color 120ms ease-out,
+        opacity 120ms ease-out;
+    }
+
+    button:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+  }
 }
 
 @layer components {
