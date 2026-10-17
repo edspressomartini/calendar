@@ -84,7 +84,7 @@ export function QuickAddApp(): JSX.Element {
         onKeyDown={onKeyDown}
         className="no-drag w-full border-none bg-transparent text-base text-text outline-none select-text placeholder:text-text-muted"
       />
-      <div className="flex justify-between text-[10px] text-text-muted">
+      <div className="flex justify-between text-small text-text-muted">
         {/* The dictation trigger belongs to macOS and is often reassigned, so
             it is described rather than named. */}
         <span title="Set the trigger in System Settings › Keyboard › Dictation">

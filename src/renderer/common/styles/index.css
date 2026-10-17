@@ -15,6 +15,14 @@
   --color-live: var(--live);
 
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Four sizes, chosen from rather than picked per component. The widget had
+     9, 10, 11 and 13px scattered across a dozen files, which is a scale
+     nobody decided on. */
+  --text-micro: 9px;
+  --text-small: 10px;
+  --text-body: 11px;
+  --text-display: 13px;
 }
 
 @layer base {

@@ -37,23 +37,23 @@ export function NextUpBar({ nextUp, onJoin }: NextUpBarProps): JSX.Element | nul
     >
       {live ? (
         // A coloured dot is too subtle for the one state you must not miss.
-        <span className="shrink-0 rounded-sm bg-live px-1 py-px text-[9px] font-semibold tracking-wide text-white uppercase">
+        <span className="shrink-0 rounded-sm bg-live px-1 py-px text-micro font-semibold tracking-wide text-white uppercase">
           Now
         </span>
       ) : (
         <span className={`size-1.5 shrink-0 rounded-full ${COLOUR_DOT[nextUp.colour]}`} />
       )}
-      <span className="min-w-0 flex-1 truncate text-[11px] font-medium" title={nextUp.title}>
+      <span className="min-w-0 flex-1 truncate text-body font-medium" title={nextUp.title}>
         {nextUp.title}
       </span>
-      <span className={`tabular shrink-0 font-mono text-[11px] ${tone}`}>{timing}</span>
+      <span className={`tabular shrink-0 font-mono text-body ${tone}`}>{timing}</span>
       {nextUp.canJoin && (
         <button
           type="button"
           onClick={() => {
             onJoin(nextUp.id)
           }}
-          className="no-drag shrink-0 rounded border border-border px-1.5 text-[10px] text-accent hover:bg-accent/10"
+          className="no-drag shrink-0 rounded border border-border px-1.5 text-small text-accent hover:bg-accent/10"
         >
           Join
         </button>

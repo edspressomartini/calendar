@@ -26,13 +26,13 @@ export function AlertApp(): JSX.Element | null {
   return (
     <div className="drag-region flex h-full flex-col justify-between rounded-lg border border-live/50 bg-bg p-4">
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-semibold tracking-widest text-live uppercase">
+        <span className="text-small font-semibold tracking-widest text-live uppercase">
           Meeting in progress
         </span>
         <h1 className="truncate text-base font-medium" title={alert.title}>
           {alert.title}
         </h1>
-        <span className="tabular font-mono text-[11px] text-text-muted">
+        <span className="tabular font-mono text-body text-text-muted">
           {formatClockTime(alert.start)} – {formatClockTime(alert.end)}
           {alert.minutesRemaining > 0 && ` · ${formatDuration(alert.minutesRemaining)} left`}
         </span>

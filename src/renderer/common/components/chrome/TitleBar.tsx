@@ -37,10 +37,10 @@ export function TitleBar({
   return (
     <header className="drag-region flex items-center gap-1.5 px-3 py-2">
       {/* The clock anchors the timeline below it (§6). */}
-      <span className="tabular shrink-0 font-mono text-[13px] font-medium">
+      <span className="tabular shrink-0 font-mono text-display font-medium">
         {formatClockTime(nowIso)}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[11px] text-text-muted">
+      <span className="min-w-0 flex-1 truncate text-body text-text-muted">
         {formatDayLabel(nowIso)}
         {privacyMode ? ' · private' : ''}
       </span>
@@ -86,7 +86,7 @@ function TitleBarButton({ label, title, active, onClick }: TitleBarButtonProps):
       aria-pressed={active}
       onClick={onClick}
       // Buttons must opt out of the drag region or they cannot be clicked (§10).
-      className={`no-drag rounded px-1.5 py-0.5 text-[11px] hover:bg-bg-subtle ${
+      className={`no-drag rounded px-1.5 py-0.5 text-body hover:bg-bg-subtle ${
         active ? 'text-accent' : 'text-text-muted'
       }`}
     >

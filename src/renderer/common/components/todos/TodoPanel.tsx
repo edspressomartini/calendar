@@ -65,7 +65,7 @@ export function TodoPanel({
             setCollapsed((current) => !current)
           }}
           aria-expanded={!collapsed}
-          className="no-drag flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10px] font-semibold tracking-widest text-text-muted uppercase hover:text-text"
+          className="no-drag flex min-w-0 flex-1 items-center gap-1.5 text-left text-small font-semibold tracking-widest text-text-muted uppercase hover:text-text"
         >
           <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
           <span>{showingHistory ? 'Done earlier' : 'Todo'}</span>
@@ -82,7 +82,7 @@ export function TodoPanel({
             onClick={() => {
               setShowingHistory((current) => !current)
             }}
-            className={`no-drag shrink-0 rounded px-1 text-[10px] hover:bg-bg-subtle hover:text-accent ${
+            className={`no-drag shrink-0 rounded px-1 text-small hover:bg-bg-subtle hover:text-accent ${
               showingHistory ? 'text-accent' : 'text-text-muted'
             }`}
           >
@@ -91,7 +91,7 @@ export function TodoPanel({
         )}
 
         {!showingHistory && (
-          <span className="shrink-0 text-[10px] text-text-muted" title="Opens the quick add box">
+          <span className="shrink-0 text-small text-text-muted" title="Opens the quick add box">
             {formatAccelerator(shortcut)}
           </span>
         )}
@@ -102,7 +102,7 @@ export function TodoPanel({
       {!collapsed && !showingHistory && (
         <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto pb-1">
           {isEmpty && (
-            <p className="px-3 py-1 text-[11px] text-text-muted">
+            <p className="px-3 py-1 text-body text-text-muted">
               Nothing to do. Press the shortcut to add one.
             </p>
           )}
@@ -112,7 +112,7 @@ export function TodoPanel({
               <button
                 type="button"
                 onClick={onRollAllOverdue}
-                className="no-drag rounded px-1 text-[10px] text-text-muted hover:bg-bg-subtle hover:text-accent"
+                className="no-drag rounded px-1 text-small text-text-muted hover:bg-bg-subtle hover:text-accent"
               >
                 Roll all to today
               </button>
@@ -138,7 +138,7 @@ export function TodoPanel({
           />
 
           {snapshot.upcoming.length > 0 && (
-            <p className="px-3 pt-1 text-[10px] text-text-muted">
+            <p className="px-3 pt-1 text-small text-text-muted">
               {snapshot.upcoming.length} rolled to a later day
             </p>
           )}
@@ -156,7 +156,7 @@ export function TodoPanel({
 function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element {
   if (days.length === 0) {
     return (
-      <p className="px-3 py-1 text-[11px] text-text-muted">
+      <p className="px-3 py-1 text-body text-text-muted">
         Nothing finished before today yet. Completed items stay here for 30 days.
       </p>
     )
@@ -171,7 +171,7 @@ function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element
             {entry.todos.map((todo) => (
               <li
                 key={todo.id}
-                className="truncate px-3 py-0.5 text-[11px] text-text-muted"
+                className="truncate px-3 py-0.5 text-body text-text-muted"
                 title={todo.title}
               >
                 {todo.title}
@@ -187,7 +187,7 @@ function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element
 function GroupHeading({ label, children }: { label: string; children?: JSX.Element }): JSX.Element {
   return (
     <div className="flex items-center gap-2 px-3 pt-1">
-      <span className="text-[10px] font-medium text-text-muted">{label}</span>
+      <span className="text-small font-medium text-text-muted">{label}</span>
       <span className="h-px flex-1 bg-border" />
       {children}
     </div>
