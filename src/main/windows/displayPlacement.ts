@@ -93,6 +93,19 @@ export function displayForBounds(bounds: Rectangle): Display {
 }
 
 /**
+ * Converts a CSS pixel length into window points.
+ *
+ * `setZoomFactor` multiplies the renderer's CSS pixels on their way to the
+ * screen, but window bounds and size limits are not zoomed. Every layout
+ * constraint the renderer cares about — the measured content height, the width
+ * the title bar needs — is therefore a quarter larger in points at 125% than
+ * the number itself.
+ */
+export function pointsForCssPixels(cssPixels: number, textScalePercent: number): number {
+  return Math.ceil((cssPixels * textScalePercent) / 100)
+}
+
+/**
  * The bounds for a height the renderer measured (§6).
  *
  * Pure, and separate from the window, because this is the part that can put

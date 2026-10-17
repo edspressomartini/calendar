@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest'
+import { buildWidgetWindowOptions } from '../../src/main/windows/widgetWindowOptions.ts'
+
+const INPUT = {
+  bounds: { x: 10, y: 20, width: 400, height: 600 },
+  showTimeline: true,
+  alwaysOnTop: true,
+  textScalePercent: 100,
+  webPreferences: {},
+} as const
+
+describe('buildWidgetWindowOptions', () => {
+  it('lets the renderer alpha through instead of asking for a vibrancy material', () => {
+    const options = buildWidgetWindowOptions(INPUT)
+
+    expect(options.transparent).toBe(true)
+    expect(options.roundedCorners).toBe(true)
+    // An opaque background colour defeats the transparency entirely.
+    expect(options.backgroundColor).toBeUndefined()
+    // under-window only frosts the wallpaper, so it reads as opaque over apps.
+    expect(options.vibrancy).toBeUndefined()
+  })
+
+  it('keeps the panel behaviour that makes this a widget rather than a window', () => {
+    const options = buildWidgetWindowOptions(INPUT)
+
+    expect(options.type).toBe('panel')
+    expect(options.frame).toBe(false)
+    expect(options.skipTaskbar).toBe(true)
+    expect(options.acceptFirstMouse).toBe(true)
+    expect(options.show).toBe(false)
+    expect(options.fullscreenable).toBe(false)
+  })
+
+  it('converts the minimums into points, so a zoomed layout still fits', () => {
+    const zoomed = buildWidgetWindowOptions({ ...INPUT, textScalePercent: 125 })
+    const plain = buildWidgetWindowOptions(INPUT)
+
+    expect(zoomed.minWidth).toBe((plain.minWidth ?? 0) * 1.25)
+    expect(zoomed.minHeight).toBe((plain.minHeight ?? 0) * 1.25)
+  })
+
+  it('uses the compact floor when the timeline is hidden', () => {
+    const tall = buildWidgetWindowOptions(INPUT)
+    const compact = buildWidgetWindowOptions({ ...INPUT, showTimeline: false })
+
+    expect(compact.minHeight).toBeLessThan(tall.minHeight ?? 0)
+  })
+})

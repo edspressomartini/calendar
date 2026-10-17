@@ -45,14 +45,14 @@ export function StatusStrip({ accounts, nowIso, onSync }: StatusStripProps): JSX
   const tone = needsReauth.length > 0 ? 'text-urgent' : 'text-text-muted'
 
   return (
-    <footer className="flex items-center gap-2 border-t border-border px-3 py-1">
-      <span className={`min-w-0 flex-1 truncate text-[11px] ${tone}`}>{message}</span>
+    <footer className="flex items-center gap-2 px-3 py-1.5">
+      <span className={`min-w-0 flex-1 truncate text-body ${tone}`}>{message}</span>
       <button
         type="button"
         onClick={onSync}
         disabled={syncing}
         title="Check for changes now"
-        className="no-drag shrink-0 rounded px-1.5 py-0.5 text-[11px] text-text-muted hover:bg-bg-subtle hover:text-accent disabled:opacity-40"
+        className="no-drag shrink-0 rounded-full px-1.5 py-0.5 text-body text-text-muted hover:bg-bg-subtle hover:text-accent disabled:opacity-40"
       >
         {syncing ? '…' : 'Sync'}
       </button>

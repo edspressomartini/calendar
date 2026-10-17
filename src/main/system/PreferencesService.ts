@@ -60,6 +60,9 @@ export class PreferencesService {
     }
     if (patch.widgetTextScale !== undefined) {
       this.widget.applyTextScale(updated.widgetTextScale)
+      // The size limits are expressed in the renderer's pixels, so changing
+      // the zoom changes what they come to in window points.
+      this.widget.applySectionVisibility(updated.showTimeline)
     }
     if (patch.showTimeline !== undefined) {
       this.widget.applySectionVisibility(updated.showTimeline)

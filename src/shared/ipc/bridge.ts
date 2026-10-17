@@ -1,7 +1,7 @@
 import type { AgendaSnapshot } from '../types/agenda.ts'
 import type { AccountView } from '../types/account.ts'
 import type { CalendarId, CalendarSummary } from '../types/calendar.ts'
-import type { AppSettings, DisplayOption } from '../types/settings.ts'
+import type { AppSettings, DisplayOption, SettingsTab } from '../types/settings.ts'
 import type { TodoSnapshot } from '../types/todo.ts'
 import type {
   MeetingAlert,
@@ -28,7 +28,7 @@ export interface WidgetBridge {
    * given rather than having one of its own.
    */
   fitHeight(height: number): Promise<void>
-  openSettings(): Promise<void>
+  openSettings(tab?: SettingsTab): Promise<void>
   syncNow(): Promise<void>
   /** Returns an unsubscribe function. */
   onTodos(listener: (snapshot: TodoSnapshot) => void): () => void
@@ -68,6 +68,8 @@ export interface SettingsBridge {
   syncNow(): Promise<void>
   /** Shows a sample alert, so notification setup can be checked. */
   testAlert(): Promise<void>
+  /** Returns an unsubscribe function. */
+  onShowTab(listener: (tab: SettingsTab) => void): () => void
 }
 
 export interface AlertBridge {

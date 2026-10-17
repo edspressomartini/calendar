@@ -38,6 +38,36 @@
   }
 }
 
+/* Only the widget is translucent. This stylesheet is shared with three opaque
+   windows (settings, alert, quick-add), which sit on Electron's default white
+   rather than on a material. Giving them a half-transparent base would blend
+   it with that white: washed-out tints in light mode and a mid grey behind
+   light text in dark mode. The widget alone is a transparent window with the
+   desktop behind it for the alpha to reveal, and sets data-surface='glass' on
+   <html> to say so (renderer/widget/main.tsx).
+
+   These alphas are the legibility floor, not a style choice. There is no
+   vibrancy material underneath, so the text sits directly on whatever window
+   the panel happens to cover; going much thinner makes it unreadable over
+   busy content.
+
+   :root[data-surface='glass'] is deliberately more specific than the plain
+   :root rules above. A bare [data-surface='glass'] ties with them on
+   specificity, so it would win or lose by source order alone, and the dark
+   block would silently beat it. Only the two neutral fills are overridden;
+   the mixes below pick them up, so schemes stay two lines each. */
+:root[data-surface='glass'] {
+  --neutral-bg: rgb(255 255 255 / 0.72);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.82);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='glass'] {
+    --neutral-bg: rgb(15 23 42 / 0.7);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.8);
+  }
+}
+
 /* Urgent and live are deliberately absent from every scheme. They are not
    decoration: red means a meeting is about to start and green means one is
    running, and a scheme that recoloured them to match itself would trade the
@@ -97,10 +127,21 @@
    are for. The colour should look chosen.
  
    Text is the one thing left alone. Everything else here sits behind it, and
-   a tinted panel that costs you legibility is a worse panel. */
+   a tinted panel that costs you legibility is a worse panel.
+
+   In the widget the base is translucent, so these mixes land on top of
+   whatever happens to be behind the window rather than on a known colour.
+   That is why the alpha lives in the neutral rather than in each mix: one
+   place decides how much shows through, and the schemes stay two lines each.
+
+   The percentages went up once the base became translucent. Twelve per cent
+   of an accent against solid white was already faint; against a half-visible
+   base it disappeared, and the six schemes were again indistinguishable from
+   each other in both appearances. Checked over a dark window and over a
+   bright striped background, in light and dark, before being changed. */
 :root {
-  --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
-  --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
+  --bg: color-mix(in oklab, var(--accent) 24%, var(--neutral-bg));
+  --bg-subtle: color-mix(in oklab, var(--accent) 34%, var(--neutral-bg-subtle));
   --border: color-mix(in oklab, var(--accent) 45%, var(--neutral-border));
   --text-muted: color-mix(in oklab, var(--accent) 30%, var(--neutral-text-muted));
 }

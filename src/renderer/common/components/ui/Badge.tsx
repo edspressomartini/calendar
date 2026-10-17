@@ -12,5 +12,5 @@ const TONES: Record<NonNullable<BadgeProps['tone']>, string> = {
 }
 
 export function Badge({ children, tone = 'neutral' }: BadgeProps): JSX.Element {
-  return <span className={`rounded px-1.5 py-0.5 text-[11px] ${TONES[tone]}`}>{children}</span>
+  return <span className={`rounded px-1.5 py-0.5 text-body ${TONES[tone]}`}>{children}</span>
 }

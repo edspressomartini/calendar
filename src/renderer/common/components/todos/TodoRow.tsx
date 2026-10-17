@@ -18,7 +18,7 @@ export function TodoRow({ todo, daysLate, onToggle, onRoll, onRemove }: TodoRowP
   const done = todo.completedAt !== null
 
   return (
-    <li className="group flex items-center gap-1.5 px-3 py-0.5 text-[11px]">
+    <li className="group flex items-center gap-1.5 px-3 py-0.5 text-body">
       <button
         type="button"
         role="checkbox"
@@ -27,7 +27,7 @@ export function TodoRow({ todo, daysLate, onToggle, onRoll, onRemove }: TodoRowP
         onClick={() => {
           onToggle(todo.id)
         }}
-        className={`no-drag flex size-3.5 shrink-0 items-center justify-center rounded-sm border text-[9px] ${
+        className={`no-drag flex size-3.5 shrink-0 items-center justify-center rounded-sm border text-micro ${
           done ? 'border-accent bg-accent/20 text-accent' : 'border-border hover:border-accent'
         }`}
       >
@@ -42,7 +42,7 @@ export function TodoRow({ todo, daysLate, onToggle, onRoll, onRemove }: TodoRowP
       </span>
 
       {daysLate > 0 && !done && (
-        <span className="tabular shrink-0 font-mono text-[9px] text-urgent">{daysLate}d</span>
+        <span className="tabular shrink-0 font-mono text-micro text-urgent">{daysLate}d</span>
       )}
 
       {!done && (

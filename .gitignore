@@ -14,3 +14,6 @@ docs/company-questions.md
 # Scratch input to iconutil; build/icon.icns is the committed artefact.
 # Rebuild both with `npm run icons`.
 build/icon.iconset/
+
+# Subagent-driven development scratch
+.superpowers/

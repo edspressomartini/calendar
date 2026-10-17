@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Rectangle } from 'electron'
-import { boundsForFittedHeight, type DisplayArea } from '../../src/main/windows/displayPlacement.ts'
+import {
+  boundsForFittedHeight,
+  pointsForCssPixels,
+  type DisplayArea,
+} from '../../src/main/windows/displayPlacement.ts'
 import { WIDGET_COMPACT_MIN_HEIGHT } from '../../src/shared/constants.ts'
 
 /**
@@ -52,5 +56,20 @@ describe('boundsForFittedHeight', () => {
     const fitted = boundsForFittedHeight(bounds, tiny, 500, WIDGET_COMPACT_MIN_HEIGHT)
 
     expect(fitted.height).toBeLessThanOrEqual(60)
+  })
+})
+
+describe('pointsForCssPixels', () => {
+  it('leaves an unzoomed measurement alone', () => {
+    expect(pointsForCssPixels(300, 100)).toBe(300)
+  })
+
+  it('grows the window by the zoom the renderer was already drawing at', () => {
+    expect(pointsForCssPixels(300, 125)).toBe(375)
+    expect(pointsForCssPixels(300, 75)).toBe(225)
+  })
+
+  it('rounds up, because a window half a pixel short still clips', () => {
+    expect(pointsForCssPixels(301, 125)).toBe(377)
   })
 })

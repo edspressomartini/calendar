@@ -181,51 +181,66 @@ export function PreferencesView({ state }: PreferencesViewProps): JSX.Element {
         </select>
       </Row>
 
-      <Toggle
+      <Row
         label="Show the timeline"
         hint="Off makes the widget small enough for a laptop screen with no second monitor. What's next stays either way. Also on the widget's title bar."
-        checked={settings.showTimeline}
-        onChange={(checked) => void state.update({ showTimeline: checked })}
-      />
+      >
+        <Checkbox
+          checked={settings.showTimeline}
+          onChange={(checked) => void state.update({ showTimeline: checked })}
+        />
+      </Row>
 
-      <Toggle
-        label="Show the TODO list"
-        checked={settings.showTodos}
-        onChange={(checked) => void state.update({ showTodos: checked })}
-      />
+      <Row label="Show the TODO list">
+        <Checkbox
+          checked={settings.showTodos}
+          onChange={(checked) => void state.update({ showTodos: checked })}
+        />
+      </Row>
 
-      <Toggle
+      <Row
         label="Privacy mode"
         hint="Replaces meeting titles with “Busy” everywhere. Turn this on before screen sharing."
-        checked={settings.privacyMode}
-        onChange={(checked) => void state.update({ privacyMode: checked })}
-      />
+      >
+        <Checkbox
+          checked={settings.privacyMode}
+          onChange={(checked) => void state.update({ privacyMode: checked })}
+        />
+      </Row>
 
-      <Toggle
+      <Row
         label="Hide titles in the menu bar"
         hint="Shows only the countdown next to the menu-bar icon."
-        checked={settings.hideTitlesInMenuBar}
-        onChange={(checked) => void state.update({ hideTitlesInMenuBar: checked })}
-      />
+      >
+        <Checkbox
+          checked={settings.hideTitlesInMenuBar}
+          onChange={(checked) => void state.update({ hideTitlesInMenuBar: checked })}
+        />
+      </Row>
 
-      <Toggle
-        label="Float on top"
-        checked={settings.alwaysOnTop}
-        onChange={(checked) => void state.update({ alwaysOnTop: checked })}
-      />
+      <Row label="Float on top">
+        <Checkbox
+          checked={settings.alwaysOnTop}
+          onChange={(checked) => void state.update({ alwaysOnTop: checked })}
+        />
+      </Row>
 
-      <Toggle
+      <Row
         label="Hide from screen sharing"
         hint="Keeps the widget out of recordings and shared screens. Turn it off to show it on a call. Some capture tools ignore this, so use privacy mode if the day must not be read."
-        checked={settings.hideFromScreenShare}
-        onChange={(checked) => void state.update({ hideFromScreenShare: checked })}
-      />
+      >
+        <Checkbox
+          checked={settings.hideFromScreenShare}
+          onChange={(checked) => void state.update({ hideFromScreenShare: checked })}
+        />
+      </Row>
 
-      <Toggle
-        label="Launch at login"
-        checked={settings.launchAtLogin}
-        onChange={(checked) => void state.update({ launchAtLogin: checked })}
-      />
+      <Row label="Launch at login">
+        <Checkbox
+          checked={settings.launchAtLogin}
+          onChange={(checked) => void state.update({ launchAtLogin: checked })}
+        />
+      </Row>
 
       <div className="flex gap-2">
         <button
@@ -439,39 +454,38 @@ interface RowProps {
   readonly children: JSX.Element
 }
 
+/**
+ * Label, control, hint — in that order, with the control in a cell of its own.
+ *
+ * The hint sits under the control rather than beside it, and critically is not
+ * a sibling of it in a column: a hint is a sentence, so it would set that
+ * column's width and the control would be positioned inside whatever the
+ * wording happened to come to. That is why the checkboxes used to land in a
+ * different place on every row.
+ */
 function Row({ label, hint, children }: RowProps): JSX.Element {
   return (
-    <label className="flex items-start gap-3">
-      <span className="w-40 shrink-0 pt-1 text-sm">{label}</span>
-      <span className="flex flex-col gap-1">
-        {children}
-        {hint && <span className="text-xs text-text-muted">{hint}</span>}
-      </span>
+    <label className="grid grid-cols-[10rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
+      <span className="pt-1 text-sm">{label}</span>
+      <span className="flex min-h-7 items-center">{children}</span>
+      {hint && <span className="col-start-2 text-xs text-text-muted">{hint}</span>}
     </label>
   )
 }
 
-interface ToggleProps {
-  readonly label: string
-  readonly hint?: string
+interface CheckboxProps {
   readonly checked: boolean
   readonly onChange: (checked: boolean) => void
 }
 
-function Toggle({ label, hint, checked, onChange }: ToggleProps): JSX.Element {
+function Checkbox({ checked, onChange }: CheckboxProps): JSX.Element {
   return (
-    <label className="flex items-start gap-3">
-      <span className="w-40 shrink-0 text-sm">{label}</span>
-      <span className="flex flex-col gap-1">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(event) => {
-            onChange(event.target.checked)
-          }}
-        />
-        {hint && <span className="text-xs text-text-muted">{hint}</span>}
-      </span>
-    </label>
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => {
+        onChange(event.target.checked)
+      }}
+    />
   )
 }

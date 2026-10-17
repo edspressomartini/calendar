@@ -1,5 +1,7 @@
 import { BrowserWindow } from 'electron'
 import { SETTINGS_WINDOW_HEIGHT, SETTINGS_WINDOW_WIDTH } from '../../shared/constants.ts'
+import { CHANNELS } from '../../shared/ipc/channels.ts'
+import type { SettingsTab } from '../../shared/types/settings.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import { resolveRendererUrl } from './appProtocol.ts'
 import { applyWindowSecurity, hardenedWebPreferences } from './windowSecurity.ts'
@@ -22,10 +24,11 @@ export class SettingsWindow {
     private readonly logger: AppLogger,
   ) {}
 
-  async open(): Promise<void> {
+  async open(tab?: SettingsTab): Promise<void> {
     if (this.window && !this.window.isDestroyed()) {
       this.window.show()
       this.window.focus()
+      this.showTab(this.window, tab)
       return
     }
 
@@ -54,7 +57,24 @@ export class SettingsWindow {
       window.show()
     })
 
-    await window.loadURL(resolveRendererUrl('settings', this.options.devServerUrl))
+    // A fresh window takes its tab from the URL, not from the channel below:
+    // the send would be racing the renderer's subscription, and losing that
+    // race is silent.
+    const search = tab ? new URLSearchParams({ tab }) : undefined
+    await window.loadURL(resolveRendererUrl('settings', this.options.devServerUrl, search))
+  }
+
+  /**
+   * The tab is a request, not state: the window keeps whatever the user picks
+   * afterwards, so there is nothing to remember here.
+   *
+   * Only for a window that is already up. A new one is told through its URL.
+   */
+  private showTab(window: BrowserWindow, tab: SettingsTab | undefined): void {
+    if (!tab) {
+      return
+    }
+    window.webContents.send(CHANNELS.settingsShowTab, tab)
   }
 
   close(): void {

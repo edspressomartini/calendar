@@ -158,7 +158,7 @@ function ZoneHeader({
   const at = new Date(Date.parse(nowIso))
 
   return (
-    <div className="flex border-b border-border pb-0.5 text-[9px] text-text-muted">
+    <div className="flex border-b border-border pb-0.5 text-micro text-text-muted">
       <div className="flex shrink-0" style={{ width: `${gutterWidthPx}px` }}>
         <span
           className="truncate text-right"
@@ -206,8 +206,8 @@ function TimeGutter({
               // whole hour and every gap looks twice as long as it is.
               className={`tabular absolute right-1.5 -translate-y-1/2 font-mono ${
                 tick.major
-                  ? 'text-[10px] font-semibold text-text'
-                  : 'text-[9px] font-normal text-text-muted/45'
+                  ? 'text-small font-semibold text-text'
+                  : 'text-micro font-normal text-text-muted/45'
               } ${index > 0 ? 'opacity-70' : ''}`}
               style={{ top: `${ratioFor(tick.ms, window) * 100}%` }}
             >
@@ -271,7 +271,7 @@ function LaneColumn({
     <div className="relative min-w-0 flex-1">
       {lane.label && (
         <div
-          className={`absolute inset-x-0 top-0 z-10 truncate px-1 text-[10px] font-medium ${
+          className={`absolute inset-x-0 top-0 z-10 truncate px-1 text-small font-medium ${
             lane.colour ? COLOUR_HEADER[lane.colour] : ''
           }`}
         >
@@ -318,7 +318,7 @@ function EventBlock({
 
   return (
     <div
-      className={`absolute overflow-hidden rounded-sm border-l-2 px-1.5 py-0.5 text-[11px] ${BLOCK_STATE[item.status]}`}
+      className={`absolute overflow-hidden rounded-sm border-l-2 px-1.5 py-0.5 text-body ${BLOCK_STATE[item.status]}`}
       style={{
         top: `${position.top * 100}%`,
         height: `max(${MIN_BLOCK_HEIGHT_PX}px, ${position.height * 100}%)`,
@@ -333,7 +333,7 @@ function EventBlock({
       />
 
       <div className="flex items-baseline gap-1">
-        <span className="tabular shrink-0 font-mono text-[10px] text-text-muted">
+        <span className="tabular shrink-0 font-mono text-small text-text-muted">
           {formatClockTime(item.start)}
         </span>
         <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
@@ -343,7 +343,7 @@ function EventBlock({
             onClick={() => {
               onJoin(item.id)
             }}
-            className="no-drag shrink-0 rounded border border-border px-1 text-[10px] text-accent hover:bg-accent/10"
+            className="no-drag shrink-0 rounded border border-border px-1 text-small text-accent hover:bg-accent/10"
           >
             Join
           </button>
@@ -364,7 +364,7 @@ function NowLine({ ratio, label }: { ratio: number; label: string }): JSX.Elemen
     >
       <span className="-ml-1 size-1.5 shrink-0 rounded-full bg-urgent" />
       <span className="h-px flex-1 bg-urgent" />
-      <span className="tabular ml-1 rounded bg-urgent px-1 font-mono text-[9px] text-white">
+      <span className="tabular ml-1 rounded bg-urgent px-1 font-mono text-micro text-white">
         {label}
       </span>
     </div>

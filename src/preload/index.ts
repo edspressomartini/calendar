@@ -15,7 +15,7 @@ import type {
 import type { AgendaSnapshot } from '../shared/types/agenda.ts'
 import type { AccountView } from '../shared/types/account.ts'
 import type { CalendarId, CalendarSummary } from '../shared/types/calendar.ts'
-import type { AppSettings, DisplayOption } from '../shared/types/settings.ts'
+import type { AppSettings, DisplayOption, SettingsTab } from '../shared/types/settings.ts'
 import type { TodoSnapshot } from '../shared/types/todo.ts'
 
 /**
@@ -123,8 +123,8 @@ function createWidgetBridge(): WidgetBridge {
       await ipcRenderer.invoke(CHANNELS.widgetFitHeight, { height })
     },
 
-    async openSettings(): Promise<void> {
-      await ipcRenderer.invoke(CHANNELS.settingsOpen)
+    async openSettings(tab?: SettingsTab): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.settingsOpen, { tab })
     },
 
     async syncNow(): Promise<void> {
@@ -191,6 +191,16 @@ function createSettingsBridge(): SettingsBridge {
     syncNow: () => ipcRenderer.invoke(CHANNELS.syncNow) as Promise<void>,
 
     testAlert: () => ipcRenderer.invoke(CHANNELS.alertTest) as Promise<void>,
+
+    onShowTab(listener: (tab: SettingsTab) => void): () => void {
+      const subscription = (_event: IpcRendererEvent, tab: SettingsTab): void => {
+        listener(tab)
+      }
+      ipcRenderer.on(CHANNELS.settingsShowTab, subscription)
+      return () => {
+        ipcRenderer.removeListener(CHANNELS.settingsShowTab, subscription)
+      }
+    },
   }
 }
 

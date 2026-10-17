@@ -1,4 +1,6 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
+import { SETTINGS_TABS, isSettingsTab, type SettingsTab } from '../../shared/types/settings.ts'
+import { settingsApi } from '../common/lib/ipcClient.ts'
 import { useAccounts } from '../common/hooks/useAccounts.ts'
 import { useColourScheme } from '../common/hooks/useColourScheme.ts'
 import { useSettings } from '../common/hooks/useSettings.ts'
@@ -7,17 +9,30 @@ import { CalendarPickerView } from './views/CalendarPickerView.tsx'
 import { DisplayView } from './views/DisplayView.tsx'
 import { PreferencesView } from './views/PreferencesView.tsx'
 
-type Tab = 'accounts' | 'calendars' | 'display' | 'preferences'
+const TAB_LABELS: Readonly<Record<SettingsTab, string>> = {
+  accounts: 'Accounts',
+  calendars: 'Calendars',
+  display: 'Display',
+  preferences: 'Preferences',
+}
 
-const TABS: readonly { id: Tab; label: string }[] = [
-  { id: 'accounts', label: 'Accounts' },
-  { id: 'calendars', label: 'Calendars' },
-  { id: 'display', label: 'Display' },
-  { id: 'preferences', label: 'Preferences' },
-]
+/**
+ * Main puts the tab in the URL when it opens a new window, because a message
+ * sent before this component has mounted would be dropped. The channel below
+ * is only for a window that was already up.
+ */
+function initialTab(): SettingsTab {
+  const requested = new URLSearchParams(window.location.search).get('tab')
+  return isSettingsTab(requested) ? requested : 'accounts'
+}
 
 export function SettingsApp(): JSX.Element {
-  const [tab, setTab] = useState<Tab>('accounts')
+  const [tab, setTab] = useState<SettingsTab>(initialTab)
+
+  useEffect(() => {
+    return settingsApi().onShowTab(setTab)
+  }, [])
+
   const accounts = useAccounts()
   const settings = useSettings()
   // So the scheme is picked in a window already wearing it.
@@ -26,18 +41,18 @@ export function SettingsApp(): JSX.Element {
   return (
     <div className="flex h-full flex-col bg-bg">
       <nav className="flex gap-1 border-b border-border px-3 pt-8 pb-2">
-        {TABS.map((entry) => (
+        {SETTINGS_TABS.map((entry) => (
           <button
-            key={entry.id}
+            key={entry}
             type="button"
             onClick={() => {
-              setTab(entry.id)
+              setTab(entry)
             }}
             className={`rounded px-3 py-1 text-sm ${
-              tab === entry.id ? 'bg-bg-subtle text-text' : 'text-text-muted hover:bg-bg-subtle'
+              tab === entry ? 'bg-bg-subtle text-text' : 'text-text-muted hover:bg-bg-subtle'
             }`}
           >
-            {entry.label}
+            {TAB_LABELS[entry]}
           </button>
         ))}
       </nav>

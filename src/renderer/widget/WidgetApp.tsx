@@ -11,6 +11,7 @@ import { useAgenda } from '../common/hooks/useAgenda.ts'
 import { useColourScheme } from '../common/hooks/useColourScheme.ts'
 import { useTodos } from '../common/hooks/useTodos.ts'
 import { widgetApi } from '../common/lib/ipcClient.ts'
+import { emptyPromptFor } from './emptyPrompt.ts'
 import { MergedView } from './views/MergedView.tsx'
 import { SplitView } from './views/SplitView.tsx'
 
@@ -82,6 +83,7 @@ export function WidgetApp(): JSX.Element {
     )
   }
 
+  const prompt = emptyPromptFor(snapshot.accounts)
   const hasAccounts = snapshot.accounts.length > 0
   // Three narrow columns are unreadable, so split collapses to merged (§6).
   const useSplit = snapshot.viewMode === 'split' && width >= SPLIT_VIEW_MIN_WIDTH && hasAccounts
@@ -89,7 +91,6 @@ export function WidgetApp(): JSX.Element {
   const todoPanel = snapshot.showTodos ? (
     <TodoPanel
       snapshot={todos}
-      placement={snapshot.todoPlacement}
       shortcut={snapshot.quickAddShortcut}
       // Without the timeline there is no tall thing to take a share of, so a
       // percentage cap would be measured against a height this panel is
@@ -99,6 +100,7 @@ export function WidgetApp(): JSX.Element {
       onRoll={rollTodo}
       onRollAllOverdue={rollAllOverdueTodos}
       onRemove={removeTodo}
+      onChangeShortcut={() => void widgetApi().openSettings('preferences')}
     />
   ) : null
 
@@ -125,14 +127,21 @@ export function WidgetApp(): JSX.Element {
 
       {snapshot.todoPlacement === 'above' && todoPanel}
 
-      {snapshot.showTimeline &&
-        (!hasAccounts ? (
-          <EmptyState message="No calendars connected yet. Open Settings to add one." />
-        ) : useSplit ? (
-          <SplitView snapshot={snapshot} onJoin={join} />
-        ) : (
-          <MergedView snapshot={snapshot} onJoin={join} />
-        ))}
+      {snapshot.showTimeline && (
+        <div className="card mx-3 mb-2 min-h-0 flex-1 overflow-hidden">
+          {prompt ? (
+            <EmptyState
+              message={prompt.message}
+              actionLabel={prompt.actionLabel}
+              onAction={() => void widgetApi().openSettings(prompt.tab)}
+            />
+          ) : useSplit ? (
+            <SplitView snapshot={snapshot} onJoin={join} />
+          ) : (
+            <MergedView snapshot={snapshot} onJoin={join} />
+          )}
+        </div>
+      )}
 
       {snapshot.todoPlacement === 'below' && todoPanel}
 
@@ -174,7 +183,7 @@ function useFitToContent(enabled: boolean, ref: RefObject<HTMLDivElement | null>
       if (!(child instanceof HTMLElement)) {
         continue
       }
-      height += child.offsetHeight
+      height += child.offsetHeight + verticalMargin(child)
     }
 
     const target = Math.ceil(height)
@@ -185,6 +194,19 @@ function useFitToContent(enabled: boolean, ref: RefObject<HTMLDivElement | null>
     lastSent.current = target
     void widgetApi().fitHeight(target)
   })
+}
+
+/**
+ * `offsetHeight` is border-box: it counts padding and border but not margin,
+ * so the gaps between the section cards would be measured as nothing and the
+ * window would come up short by the sum of them.
+ */
+function verticalMargin(element: HTMLElement): number {
+  const style = getComputedStyle(element)
+  const top = Number.parseFloat(style.marginTop)
+  const bottom = Number.parseFloat(style.marginBottom)
+
+  return (Number.isNaN(top) ? 0 : top) + (Number.isNaN(bottom) ? 0 : bottom)
 }
 
 function useWindowWidth(): number {

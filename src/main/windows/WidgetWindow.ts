@@ -15,6 +15,7 @@ import type { SettingsStore } from '../storage/SettingsStore.ts'
 import { resolveRendererUrl } from './appProtocol.ts'
 import {
   boundsForFittedHeight,
+  pointsForCssPixels,
   computeBounds,
   displayForBounds,
   findDisplay,
@@ -22,6 +23,7 @@ import {
   clampToDisplay,
 } from './displayPlacement.ts'
 import { applyWindowSecurity, hardenedWebPreferences } from './windowSecurity.ts'
+import { buildWidgetWindowOptions } from './widgetWindowOptions.ts'
 
 const BOUNDS_SAVE_DEBOUNCE_MS = 500
 
@@ -59,26 +61,18 @@ export class WidgetWindow {
       height: WIDGET_DEFAULT_HEIGHT,
     })
 
-    const window = new BrowserWindow({
-      ...bounds,
-      minWidth: WIDGET_MIN_WIDTH,
-      minHeight: settings.showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
-      // NSPanel behaviour: all Spaces, above full-screen apps, non-activating.
-      type: 'panel',
-      frame: false,
-      show: false,
-      skipTaskbar: true,
-      fullscreenable: false,
-      maximizable: false,
-      minimizable: false,
-      alwaysOnTop: settings.alwaysOnTop,
-      // Without this the first click on the inactive panel is swallowed.
-      acceptFirstMouse: true,
-      webPreferences: hardenedWebPreferences({
-        preloadPath: this.options.preloadPath,
-        isDev: this.options.isDev,
+    const window = new BrowserWindow(
+      buildWidgetWindowOptions({
+        bounds,
+        showTimeline: settings.showTimeline,
+        alwaysOnTop: settings.alwaysOnTop,
+        textScalePercent: settings.widgetTextScale,
+        webPreferences: hardenedWebPreferences({
+          preloadPath: this.options.preloadPath,
+          isDev: this.options.isDev,
+        }),
       }),
-    })
+    )
 
     this.window = window
     applyWindowSecurity(window, this.logger)
@@ -169,14 +163,27 @@ export class WidgetWindow {
     if (!this.window) {
       return
     }
-    const minHeight = showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT
-    this.window.setMinimumSize(WIDGET_MIN_WIDTH, minHeight)
+
+    // The minimums are what the layout needs in CSS pixels, so they have to be
+    // converted: left unscaled, a zoomed widget sits inside a window that is
+    // legally at its minimum while the title bar has already run out of room.
+    const scale = this.settings.getSettings().widgetTextScale
+    const minHeight = pointsForCssPixels(
+      showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
+      scale,
+    )
+    this.window.setMinimumSize(pointsForCssPixels(WIDGET_MIN_WIDTH, scale), minHeight)
 
     // Growing back is main's job because the renderer has no height to
     // measure once the timeline is drawing again: it fills what it is given.
     const bounds = this.window.getBounds()
-    if (showTimeline && bounds.height < WIDGET_MIN_HEIGHT) {
-      this.window.setBounds({ ...bounds, height: WIDGET_MIN_HEIGHT })
+    const width = Math.max(bounds.width, pointsForCssPixels(WIDGET_MIN_WIDTH, scale))
+    if (width !== bounds.width || (showTimeline && bounds.height < minHeight)) {
+      this.window.setBounds({
+        ...bounds,
+        width,
+        height: showTimeline ? Math.max(bounds.height, minHeight) : bounds.height,
+      })
     }
   }
 
@@ -186,13 +193,19 @@ export class WidgetWindow {
    * number would be meaningless.
    */
   fitHeight(height: number): void {
-    if (!this.window || this.settings.getSettings().showTimeline) {
+    if (!this.window) {
       return
     }
 
+    const settings = this.settings.getSettings()
+    if (settings.showTimeline) {
+      return
+    }
+
+    const requested = pointsForCssPixels(height, settings.widgetTextScale)
     const bounds = this.window.getBounds()
     const display = displayForBounds(bounds)
-    const fitted = boundsForFittedHeight(bounds, display, height, WIDGET_COMPACT_MIN_HEIGHT)
+    const fitted = boundsForFittedHeight(bounds, display, requested, WIDGET_COMPACT_MIN_HEIGHT)
     if (fitted.height === bounds.height) {
       return
     }

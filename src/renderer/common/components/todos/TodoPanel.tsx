@@ -1,14 +1,12 @@
 import { useState, type JSX } from 'react'
 import { formatAccelerator } from '../../../../shared/shortcuts.ts'
 import { daysBetweenDayKeys } from '../../../../shared/time.ts'
-import type { TodoPlacement } from '../../../../shared/types/settings.ts'
 import type { Todo, TodoHistoryDay, TodoSnapshot } from '../../../../shared/types/todo.ts'
 import { formatDayKeyLabel } from '../../lib/formatTime.ts'
 import { TodoRow } from './TodoRow.tsx'
 
 interface TodoPanelProps {
   readonly snapshot: TodoSnapshot | null
-  readonly placement: TodoPlacement
   readonly shortcut: string
   /** Set when the timeline is hidden; see the call site for why it matters. */
   readonly compact: boolean
@@ -16,6 +14,7 @@ interface TodoPanelProps {
   readonly onRoll: (todoId: string) => void
   readonly onRollAllOverdue: () => void
   readonly onRemove: (todoId: string) => void
+  readonly onChangeShortcut: () => void
 }
 
 /**
@@ -31,13 +30,13 @@ interface TodoPanelProps {
  */
 export function TodoPanel({
   snapshot,
-  placement,
   shortcut,
   compact,
   onToggle,
   onRoll,
   onRollAllOverdue,
   onRemove,
+  onChangeShortcut,
 }: TodoPanelProps): JSX.Element | null {
   const [collapsed, setCollapsed] = useState(false)
   // Transient on purpose: you open history, read your update out, and leave.
@@ -52,10 +51,13 @@ export function TodoPanel({
     snapshot.overdue.length + snapshot.current.filter((todo) => todo.completedAt === null).length
   const isEmpty = snapshot.overdue.length + snapshot.current.length + snapshot.upcoming.length === 0
 
+  // The card sits on this element rather than on a wrapper around it:
+  // max-h-[45%] needs a parent with a definite height, and a wrapper sized to
+  // its own content gives the percentage nothing to resolve against.
   return (
     <section
-      className={`flex shrink-0 flex-col border-border ${compact ? 'max-h-60' : 'max-h-[45%]'} ${
-        placement === 'above' ? 'border-b' : 'border-t'
+      className={`card mx-3 mb-2 flex shrink-0 flex-col overflow-hidden ${
+        compact ? 'max-h-60' : 'max-h-[45%]'
       }`}
     >
       <header className="flex items-center gap-2 px-3 py-1">
@@ -65,7 +67,7 @@ export function TodoPanel({
             setCollapsed((current) => !current)
           }}
           aria-expanded={!collapsed}
-          className="no-drag flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10px] font-semibold tracking-widest text-text-muted uppercase hover:text-text"
+          className="no-drag flex min-w-0 flex-1 items-center gap-1.5 text-left text-small font-semibold tracking-widest text-text-muted uppercase hover:text-text"
         >
           <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
           <span>{showingHistory ? 'Done earlier' : 'Todo'}</span>
@@ -82,7 +84,7 @@ export function TodoPanel({
             onClick={() => {
               setShowingHistory((current) => !current)
             }}
-            className={`no-drag shrink-0 rounded px-1 text-[10px] hover:bg-bg-subtle hover:text-accent ${
+            className={`no-drag shrink-0 rounded px-1 text-small hover:bg-bg-subtle hover:text-accent ${
               showingHistory ? 'text-accent' : 'text-text-muted'
             }`}
           >
@@ -91,7 +93,7 @@ export function TodoPanel({
         )}
 
         {!showingHistory && (
-          <span className="shrink-0 text-[10px] text-text-muted" title="Opens the quick add box">
+          <span className="shrink-0 text-small text-text-muted" title="Opens the quick add box">
             {formatAccelerator(shortcut)}
           </span>
         )}
@@ -102,9 +104,18 @@ export function TodoPanel({
       {!collapsed && !showingHistory && (
         <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto pb-1">
           {isEmpty && (
-            <p className="px-3 py-1 text-[11px] text-text-muted">
-              Nothing to do. Press the shortcut to add one.
-            </p>
+            <div className="flex flex-col gap-1 px-3 py-1 text-body text-text-muted">
+              <span>
+                Nothing on the list. Press {formatAccelerator(shortcut)} anywhere to add something.
+              </span>
+              <button
+                type="button"
+                onClick={onChangeShortcut}
+                className="no-drag self-start text-accent hover:underline"
+              >
+                Change the shortcut
+              </button>
+            </div>
           )}
 
           {snapshot.overdue.length > 0 && (
@@ -112,7 +123,7 @@ export function TodoPanel({
               <button
                 type="button"
                 onClick={onRollAllOverdue}
-                className="no-drag rounded px-1 text-[10px] text-text-muted hover:bg-bg-subtle hover:text-accent"
+                className="no-drag rounded px-1 text-small text-text-muted hover:bg-bg-subtle hover:text-accent"
               >
                 Roll all to today
               </button>
@@ -138,7 +149,7 @@ export function TodoPanel({
           />
 
           {snapshot.upcoming.length > 0 && (
-            <p className="px-3 pt-1 text-[10px] text-text-muted">
+            <p className="px-3 pt-1 text-small text-text-muted">
               {snapshot.upcoming.length} rolled to a later day
             </p>
           )}
@@ -156,7 +167,7 @@ export function TodoPanel({
 function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element {
   if (days.length === 0) {
     return (
-      <p className="px-3 py-1 text-[11px] text-text-muted">
+      <p className="px-3 py-1 text-body text-text-muted">
         Nothing finished before today yet. Completed items stay here for 30 days.
       </p>
     )
@@ -171,7 +182,7 @@ function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element
             {entry.todos.map((todo) => (
               <li
                 key={todo.id}
-                className="truncate px-3 py-0.5 text-[11px] text-text-muted"
+                className="truncate px-3 py-0.5 text-body text-text-muted"
                 title={todo.title}
               >
                 {todo.title}
@@ -187,7 +198,7 @@ function TodoHistory({ days }: { days: readonly TodoHistoryDay[] }): JSX.Element
 function GroupHeading({ label, children }: { label: string; children?: JSX.Element }): JSX.Element {
   return (
     <div className="flex items-center gap-2 px-3 pt-1">
-      <span className="text-[10px] font-medium text-text-muted">{label}</span>
+      <span className="text-small font-medium text-text-muted">{label}</span>
       <span className="h-px flex-1 bg-border" />
       {children}
     </div>
