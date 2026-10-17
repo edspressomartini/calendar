@@ -313,7 +313,9 @@ a {
 /* Each section is a card on the glass, as in the app: a border, a subtle
    fill, and a shadow faint enough to read as a lifted edge. The borders do
    the separating that a row of divider rules used to. */
+.widget-title,
 .widget-next,
+.allday,
 .timeline,
 .todos {
   margin: 0 0.4rem;
@@ -326,8 +328,9 @@ a {
 .widget-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem 0;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.5rem;
 }
 
 .widget-clock {
@@ -339,20 +342,25 @@ a {
 
 .widget-day {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--app-muted);
 }
 
+/* Text, not outlined pills. The app's title bar buttons carry their state in
+   the colour of the word and nothing else, and drawing borders round them here
+   made the strip look like a toolbar the app does not have. */
 .widget-chip {
-  border: 1px solid var(--app-border);
   border-radius: 999px;
-  padding: 0 0.4rem;
-  font-size: 9px;
+  padding: 0 0.15rem;
+  font-size: 10px;
   color: var(--app-muted);
 }
 
 .widget-chip--on {
   color: var(--app-accent);
-  border-color: var(--app-accent);
 }
 
 .widget-next {
@@ -389,28 +397,132 @@ a {
   color: var(--app-accent);
 }
 
+/* A meeting you are already in. The app tints the whole card and swaps the
+   colour dot for a badge, because this is the one state where a dot a few
+   pixels across is not enough. */
+.widget-next--live {
+  border-color: color-mix(in oklab, var(--app-live) 40%, transparent);
+  background: color-mix(in oklab, var(--app-live) 12%, var(--app-subtle));
+}
+
+.widget-next .now {
+  flex: none;
+  border-radius: 999px;
+  padding: 0 0.3rem;
+  background: var(--app-live);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.widget-next--live .time {
+  color: var(--app-live);
+}
+
+/* out of office, above the day */
+
+.allday {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
+.allday span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.allday .dot {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.allday .dot--sky {
+  background: #38bdf8;
+}
+
+.allday .dot--violet {
+  background: #a78bfa;
+}
+
 /* the hour grid */
 
 .timeline {
   position: relative;
   display: flex;
-  height: 13.5rem;
-  padding: 0.4rem 0.5rem 0.4rem 0;
+  flex-direction: column;
+  height: 10.5rem;
+  padding: 0.3rem 0.5rem 0.4rem 0;
+}
+
+/* Names the two gutter columns. Without a header, two times stacked beside
+   each other are just ambiguous. */
+.zones {
+  display: flex;
+  flex: none;
+  margin-right: -0.5rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.zones span {
+  width: 3.5rem;
+  flex: none;
+  padding-right: 0.4rem;
+  text-align: right;
+}
+
+.grid {
+  position: relative;
+  display: flex;
+  flex: 1;
+  margin-top: 0.45rem;
 }
 
 .gutter {
-  width: 2.6rem;
+  display: flex;
   flex: none;
+}
+
+/* Two columns, local first. The second is the same clock in somebody else's
+   timezone, so it is dimmed: it is there to be checked, not read. */
+.gutter .col {
   position: relative;
+  width: 3.5rem;
+}
+
+.gutter .col--second {
+  opacity: 0.7;
 }
 
 .gutter span {
   position: absolute;
-  right: 0.45rem;
+  right: 0.4rem;
   transform: translateY(-50%);
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Half hours are demoted rather than dropped, as in the app. Without them a
+     half-hour row reads as a whole hour and every gap looks twice as long as
+     it is. */
+  font-size: 8px;
+  color: color-mix(in oklab, var(--app-muted) 55%, transparent);
+}
+
+.gutter span.major {
   font-size: 10px;
-  color: var(--app-muted);
+  font-weight: 600;
+  color: var(--app-text);
 }
 
 .tracks {
@@ -425,6 +537,10 @@ a {
   height: 1px;
   background: var(--app-border);
   opacity: 0.55;
+}
+
+.tracks .rule--half {
+  opacity: 0.22;
 }
 
 .event {
@@ -461,9 +577,11 @@ a {
   opacity: 0.45;
 }
 
-.event--now {
-  background: color-mix(in oklab, var(--app-urgent) 26%, var(--app-subtle));
-  border-left-color: var(--app-urgent);
+/* Green, matching the app: urgent is the colour of the clock running out, and
+   a meeting you are already in is not running out. */
+.event--live {
+  background: color-mix(in oklab, var(--app-live) 22%, var(--app-subtle));
+  border-left-color: var(--app-live);
 }
 
 .nowline {
@@ -567,6 +685,41 @@ a {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 9px;
   color: var(--app-urgent);
+}
+
+/* One row drawn as though the pointer were over it. The arrows that rank a
+   TODO and the arrow that rolls it only appear on hover in the app, so a
+   mockup of the resting state shows none of it. */
+.todo--hover {
+  background: color-mix(in oklab, var(--app-accent) 10%, transparent);
+}
+
+.todo .rank,
+.todo .roll {
+  font-size: 7px;
+  line-height: 1;
+  color: var(--app-muted);
+}
+
+.todo .rank:first-of-type {
+  margin-left: auto;
+}
+
+.todo .roll {
+  font-size: 9px;
+  margin-left: 0.15rem;
+}
+
+.todo-note {
+  margin: 0.2rem 0 0;
+  padding: 0 0.6rem;
+  font-size: 9px;
+  color: var(--app-muted);
+}
+
+.todo .box--on {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
 .widget-status {
