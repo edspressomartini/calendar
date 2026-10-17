@@ -29,8 +29,9 @@
         <div>
           <h1>Your day, <em>always on screen</em>.</h1>
           <p class="lede">
-            A real macOS window that floats above whatever you are working in, showing what is
-            coming and what you still owe people. Nothing to open. Nothing to go and check.
+            A real macOS window that floats above whatever you are working in &mdash; translucent,
+            so it does not hide it &mdash; showing what is coming and what you still owe people.
+            Nothing to open. Nothing to go and check.
           </p>
           <div class="cta">
             <a class="button" href="#install">Install for macOS</a>
@@ -47,102 +48,146 @@
         </div>
 
         <div class="stage">
-          <div class="menubar" aria-hidden="true">
-            <span class="apple">Figma</span>
-            <span class="spacer"></span>
-            <span class="countdown">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                <rect x="2" y="3" width="7" height="2" rx="1" />
-                <rect x="2" y="7" width="10" height="2" rx="1" />
-                <rect x="2" y="11" width="5" height="2" rx="1" />
-              </svg>
-              Design review · 12m
-            </span>
-          </div>
-
-          <div class="widget" aria-hidden="true">
-            <div class="widget-title">
-              <span class="widget-clock">10:48</span>
-              <span class="widget-day">Thursday 8 October</span>
-              <span class="widget-chip widget-chip--on">Pin</span>
-              <span class="widget-chip">Hide</span>
+          <div class="frame">
+            <div class="desk" aria-hidden="true">
+              <p class="desk-line desk-line--accent" style="width: 38%"></p>
+              <p class="desk-line" style="width: 71%"></p>
+              <p class="desk-line" style="width: 54%"></p>
+              <p class="desk-line desk-line--warm" style="width: 44%"></p>
+              <p class="desk-line" style="width: 82%"></p>
+              <p class="desk-line" style="width: 63%"></p>
+              <p class="desk-line desk-line--accent" style="width: 30%"></p>
+              <p class="desk-line" style="width: 76%"></p>
+              <p class="desk-line" style="width: 49%"></p>
+              <p class="desk-line desk-line--warm" style="width: 58%"></p>
+              <p class="desk-line" style="width: 67%"></p>
+              <p class="desk-line" style="width: 41%"></p>
+              <p class="desk-line desk-line--accent" style="width: 73%"></p>
+              <p class="desk-line" style="width: 52%"></p>
+              <p class="desk-line" style="width: 79%"></p>
+              <p class="desk-line desk-line--warm" style="width: 35%"></p>
+              <p class="desk-line" style="width: 61%"></p>
+              <p class="desk-line" style="width: 46%"></p>
+              <p class="desk-line desk-line--accent" style="width: 69%"></p>
+              <p class="desk-line" style="width: 56%"></p>
+              <p class="desk-line" style="width: 74%"></p>
+              <p class="desk-line" style="width: 43%"></p>
+              <p class="desk-line desk-line--warm" style="width: 66%"></p>
+              <p class="desk-line" style="width: 51%"></p>
+              <p class="desk-line" style="width: 78%"></p>
+              <p class="desk-line desk-line--accent" style="width: 36%"></p>
+              <p class="desk-line" style="width: 64%"></p>
+              <p class="desk-line" style="width: 47%"></p>
+              <p class="desk-line desk-line--warm" style="width: 72%"></p>
+              <p class="desk-line" style="width: 55%"></p>
+              <p class="desk-line" style="width: 68%"></p>
+              <p class="desk-line desk-line--accent" style="width: 42%"></p>
+              <p class="desk-line" style="width: 75%"></p>
+              <p class="desk-line" style="width: 59%"></p>
             </div>
 
-            <div class="widget-next">
-              <span class="dot"></span>
-              <span class="label">Design review</span>
-              <span class="time">in 12m</span>
-              <span class="join">Join</span>
+            <div class="menubar" aria-hidden="true">
+              <span class="apple">Figma</span>
+              <span class="spacer"></span>
+              <span class="countdown">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                  <rect x="2" y="3" width="7" height="2" rx="1" />
+                  <rect x="2" y="7" width="10" height="2" rx="1" />
+                  <rect x="2" y="11" width="5" height="2" rx="1" />
+                </svg>
+                Design review · 12m
+              </span>
             </div>
 
-            <div class="timeline">
-              <div class="gutter">
-                <span style="top: 0%">09:00</span>
-                <span style="top: 12.5%">10:00</span>
-                <span style="top: 25%">11:00</span>
-                <span style="top: 37.5%">12:00</span>
-                <span style="top: 50%">13:00</span>
-                <span style="top: 62.5%">14:00</span>
-                <span style="top: 75%">15:00</span>
-                <span style="top: 87.5%">16:00</span>
-                <span style="top: 100%">17:00</span>
+            <div class="widget" aria-hidden="true">
+              <div class="widget-title">
+                <span class="widget-clock">10:48</span>
+                <span class="widget-day">Thursday 8 October</span>
+                <span class="widget-chip widget-chip--on">Pin</span>
+                <span class="widget-chip">Hide</span>
               </div>
 
-              <div class="tracks">
-                <i class="rule" style="top: 0%"></i>
-                <i class="rule" style="top: 12.5%"></i>
-                <i class="rule" style="top: 25%"></i>
-                <i class="rule" style="top: 37.5%"></i>
-                <i class="rule" style="top: 50%"></i>
-                <i class="rule" style="top: 62.5%"></i>
-                <i class="rule" style="top: 75%"></i>
-                <i class="rule" style="top: 87.5%"></i>
-                <i class="rule" style="top: 100%"></i>
+              <div class="widget-next">
+                <span class="dot"></span>
+                <span class="label">Design review</span>
+                <span class="time">in 12m</span>
+                <span class="join">Join</span>
+              </div>
 
-                <div class="event event--past" style="top: 6.25%; height: 6.25%">
-                  <time>09:30</time><span>Standup</span>
-                </div>
-                <div class="event event--now" style="top: 25%; height: 12.5%">
-                  <time>11:00</time><span>Design review</span>
-                </div>
-                <div class="event" style="top: 62.5%; height: 6.25%">
-                  <time>14:00</time><span>1:1 with Priya</span>
-                </div>
-                <div class="event" style="top: 87.5%; height: 9.3%">
-                  <time>16:00</time><span>Release retro</span>
+              <div class="timeline">
+                <div class="gutter">
+                  <span style="top: 0%">09:00</span>
+                  <span style="top: 12.5%">10:00</span>
+                  <span style="top: 25%">11:00</span>
+                  <span style="top: 37.5%">12:00</span>
+                  <span style="top: 50%">13:00</span>
+                  <span style="top: 62.5%">14:00</span>
+                  <span style="top: 75%">15:00</span>
+                  <span style="top: 87.5%">16:00</span>
+                  <span style="top: 100%">17:00</span>
                 </div>
 
-                <div class="nowline" style="top: 22.5%">
-                  <span class="bead"></span><span class="wire"></span
-                  ><span class="stamp">10:48</span>
+                <div class="tracks">
+                  <i class="rule" style="top: 0%"></i>
+                  <i class="rule" style="top: 12.5%"></i>
+                  <i class="rule" style="top: 25%"></i>
+                  <i class="rule" style="top: 37.5%"></i>
+                  <i class="rule" style="top: 50%"></i>
+                  <i class="rule" style="top: 62.5%"></i>
+                  <i class="rule" style="top: 75%"></i>
+                  <i class="rule" style="top: 87.5%"></i>
+                  <i class="rule" style="top: 100%"></i>
+
+                  <div class="event event--past" style="top: 6.25%; height: 6.25%">
+                    <time>09:30</time><span>Standup</span>
+                  </div>
+                  <div class="event event--now" style="top: 25%; height: 12.5%">
+                    <time>11:00</time><span>Design review</span>
+                  </div>
+                  <div class="event" style="top: 62.5%; height: 6.25%">
+                    <time>14:00</time><span>1:1 with Priya</span>
+                  </div>
+                  <div class="event" style="top: 87.5%; height: 9.3%">
+                    <time>16:00</time><span>Release retro</span>
+                  </div>
+
+                  <div class="nowline" style="top: 22.5%">
+                    <span class="bead"></span><span class="wire"></span
+                    ><span class="stamp">10:48</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="todos">
-              <header>
-                Todo <span class="count">3</span><span class="spacer"></span>
-                <span class="hint">⌃⌥Space</span>
-              </header>
-              <p class="todo todo--done">
-                <span class="box"></span><span class="text">Reply to the audit</span>
-              </p>
-              <p class="todo">
-                <span class="box"></span><span class="text">Write up the migration plan</span>
-              </p>
-              <p class="todo">
-                <span class="box"></span><span class="text">Chase the invoice</span>
-                <span class="late">2d</span>
-              </p>
-              <p class="todo"><span class="box"></span><span class="text">Book the venue</span></p>
-            </div>
+              <div class="todos">
+                <header>
+                  Todo <span class="count">3</span><span class="spacer"></span>
+                  <span class="hint">⌃⌥Space</span>
+                </header>
+                <p class="todo todo--done">
+                  <span class="box"></span><span class="text">Reply to the audit</span>
+                </p>
+                <p class="todo">
+                  <span class="box"></span><span class="text">Write up the migration plan</span>
+                </p>
+                <p class="todo">
+                  <span class="box"></span><span class="text">Chase the invoice</span>
+                  <span class="late">2d</span>
+                </p>
+                <p class="todo">
+                  <span class="box"></span><span class="text">Book the venue</span>
+                </p>
+              </div>
 
-            <div class="widget-status">
-              <span>synced just now</span><span class="spacer"></span><span>Refresh</span>
+              <div class="widget-status">
+                <span>synced just now</span><span class="spacer"></span><span>Refresh</span>
+              </div>
             </div>
           </div>
 
-          <p class="caption">The widget, drawn to scale. Nobody&rsquo;s real diary was harmed.</p>
+          <p class="caption">
+            The widget, drawn to scale, over an editor it is not hiding. Nobody&rsquo;s real diary
+            was harmed.
+          </p>
         </div>
       </section>
 
@@ -237,6 +282,13 @@ brew install --cask up-next</code></pre>
             </p>
           </div>
           <div class="card">
+            <h3>You can still read what is under it</h3>
+            <p>
+              The panel is properly see-through, not a frosted pane that only works against the
+              desktop picture. Put it over an editor and the editor is still there.
+            </p>
+          </div>
+          <div class="card">
             <h3>Six colour schemes</h3>
             <p>
               Pink, lavender, mint, peach, graphite or the original blue, tinting the whole panel
@@ -257,6 +309,14 @@ brew install --cask up-next</code></pre>
           <div class="card">
             <h3>Gets you into the call</h3>
             <p>A nudge shortly before a meeting starts, and one click to open the link.</p>
+          </div>
+          <div class="card">
+            <h3>Tells you what to do when it is empty</h3>
+            <p>
+              Nothing connected yet, or an account that needs signing in again, and the widget puts
+              the button that fixes it right there. An empty task list spells out the shortcut for
+              adding one.
+            </p>
           </div>
           <div class="card">
             <h3>Reads almost nothing</h3>
