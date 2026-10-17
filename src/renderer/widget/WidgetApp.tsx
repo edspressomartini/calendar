@@ -99,6 +99,7 @@ export function WidgetApp(): JSX.Element {
       onRoll={rollTodo}
       onRollAllOverdue={rollAllOverdueTodos}
       onRemove={removeTodo}
+      onChangeShortcut={() => void widgetApi().openSettings('preferences')}
     />
   ) : null
 

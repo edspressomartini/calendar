@@ -3,7 +3,6 @@ import { formatAccelerator } from '../../../../shared/shortcuts.ts'
 import { daysBetweenDayKeys } from '../../../../shared/time.ts'
 import type { Todo, TodoHistoryDay, TodoSnapshot } from '../../../../shared/types/todo.ts'
 import { formatDayKeyLabel } from '../../lib/formatTime.ts'
-import { widgetApi } from '../../lib/ipcClient.ts'
 import { TodoRow } from './TodoRow.tsx'
 
 interface TodoPanelProps {
@@ -15,6 +14,7 @@ interface TodoPanelProps {
   readonly onRoll: (todoId: string) => void
   readonly onRollAllOverdue: () => void
   readonly onRemove: (todoId: string) => void
+  readonly onChangeShortcut: () => void
 }
 
 /**
@@ -36,6 +36,7 @@ export function TodoPanel({
   onRoll,
   onRollAllOverdue,
   onRemove,
+  onChangeShortcut,
 }: TodoPanelProps): JSX.Element | null {
   const [collapsed, setCollapsed] = useState(false)
   // Transient on purpose: you open history, read your update out, and leave.
@@ -109,7 +110,7 @@ export function TodoPanel({
               </span>
               <button
                 type="button"
-                onClick={() => void widgetApi().openSettings('preferences')}
+                onClick={onChangeShortcut}
                 className="no-drag self-start text-accent hover:underline"
               >
                 Change the shortcut
