@@ -13,8 +13,8 @@
    scheme is two lines and cannot produce a palette that half-changed. */
 
 :root {
-  --neutral-bg: #ffffff;
-  --neutral-bg-subtle: #f8fafc; /* slate-50  */
+  --neutral-bg: rgb(255 255 255 / 0.55);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
   --neutral-border: #e2e8f0; /* slate-200 */
 
   --text: #0f172a; /* slate-900 */
@@ -26,8 +26,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --neutral-bg: #0f172a;
-    --neutral-bg-subtle: #1e293b;
+    --neutral-bg: rgb(15 23 42 / 0.5);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
     --neutral-border: #334155;
 
     --text: #f1f5f9;
@@ -97,7 +97,12 @@
    are for. The colour should look chosen.
  
    Text is the one thing left alone. Everything else here sits behind it, and
-   a tinted panel that costs you legibility is a worse panel. */
+   a tinted panel that costs you legibility is a worse panel.
+
+   The base is translucent now, so these mixes land on top of whatever macOS
+   has blurred behind the window rather than on a known colour. That is why
+   the alpha lives in the neutral rather than in each mix: one place decides
+   how much wallpaper comes through, and the schemes stay two lines each. */
 :root {
   --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
   --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
