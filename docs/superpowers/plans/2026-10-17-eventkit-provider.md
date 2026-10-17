@@ -325,6 +325,11 @@ git commit -m "feat(eventkit): a typed error for calendar-store failures"
 > 5. `ensureChild` applies `restartDelayMs` instead of only logging it: within
 >    the backoff window it throws `EventKitError('helper_unavailable')` rather
 >    than respawning a binary that is failing on startup.
+> 6. `'error'` listeners cover the process and both pipes, attached at spawn
+>    rather than at subscription: a helper dying mid-write raises EPIPE on
+>    `child.stdin`, which crashes the process by the same mechanism. Logging
+>    the errno code makes the export a factory, `defaultHelperSpawn(logger):
+HelperSpawn`, which is what `bootstrap.ts` calls in Task 8.
 
 **Files:**
 
