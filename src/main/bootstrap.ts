@@ -1,6 +1,7 @@
 import { chmod } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app, Menu, session } from 'electron'
+import type { AccountId } from '../shared/types/calendar.ts'
 import { AgendaClock } from './agenda/AgendaClock.ts'
 import { AgendaService } from './agenda/AgendaService.ts'
 import { TodoService } from './agenda/TodoService.ts'
@@ -231,7 +232,7 @@ class Application {
           widget.moveToDisplay(display, 'topRight')
         },
         reconnect: (accountId) => {
-          void accounts.reconnect(accountId)
+          void this.reconnectFromTray(accounts, settingsWindow, accountId)
         },
         quit: () => {
           app.quit()
@@ -361,6 +362,25 @@ class Application {
       parts.widget.restoreToChosenDisplay()
       parts.tray.refreshMenu()
     })
+  }
+
+  /**
+   * The tray has nowhere to show a refused calendar prompt, so it hands the
+   * user to the accounts pane, which does.
+   */
+  private async reconnectFromTray(
+    accounts: AccountService,
+    settingsWindow: SettingsWindow,
+    accountId: AccountId,
+  ): Promise<void> {
+    try {
+      const result = await accounts.reconnect(accountId)
+      if (result.refusal) {
+        await settingsWindow.open('accounts')
+      }
+    } catch (error) {
+      this.logger.warn('tray reconnect failed', { error: describeError(error) })
+    }
   }
 
   /** Owner-only: settings and encrypted tokens live here (§8.2). */
