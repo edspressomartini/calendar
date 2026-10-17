@@ -31,8 +31,8 @@ export function NextUpBar({ nextUp, onJoin }: NextUpBarProps): JSX.Element | nul
 
   return (
     <div
-      className={`flex items-center gap-2 border-b px-3 py-1 ${
-        live ? 'border-live/40 bg-live/10' : 'border-border'
+      className={`card mx-3 mb-2 flex items-center gap-2 px-3 py-1.5 ${
+        live ? 'border-live/40 bg-live/10' : ''
       }`}
     >
       {live ? (

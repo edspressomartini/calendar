@@ -86,19 +86,21 @@ export function WidgetApp(): JSX.Element {
   const useSplit = snapshot.viewMode === 'split' && width >= SPLIT_VIEW_MIN_WIDTH && hasAccounts
 
   const todoPanel = snapshot.showTodos ? (
-    <TodoPanel
-      snapshot={todos}
-      placement={snapshot.todoPlacement}
-      shortcut={snapshot.quickAddShortcut}
-      // Without the timeline there is no tall thing to take a share of, so a
-      // percentage cap would be measured against a height this panel is
-      // itself about to determine. A fixed ceiling cannot feed back.
-      compact={!snapshot.showTimeline}
-      onToggle={toggleTodo}
-      onRoll={rollTodo}
-      onRollAllOverdue={rollAllOverdueTodos}
-      onRemove={removeTodo}
-    />
+    <div className="card mx-3 mb-2 overflow-hidden">
+      <TodoPanel
+        snapshot={todos}
+        placement={snapshot.todoPlacement}
+        shortcut={snapshot.quickAddShortcut}
+        // Without the timeline there is no tall thing to take a share of, so a
+        // percentage cap would be measured against a height this panel is
+        // itself about to determine. A fixed ceiling cannot feed back.
+        compact={!snapshot.showTimeline}
+        onToggle={toggleTodo}
+        onRoll={rollTodo}
+        onRollAllOverdue={rollAllOverdueTodos}
+        onRemove={removeTodo}
+      />
+    </div>
   ) : null
 
   return (
@@ -124,14 +126,17 @@ export function WidgetApp(): JSX.Element {
 
       {snapshot.todoPlacement === 'above' && todoPanel}
 
-      {snapshot.showTimeline &&
-        (!hasAccounts ? (
-          <EmptyState message="No calendars connected yet. Open Settings to add one." />
-        ) : useSplit ? (
-          <SplitView snapshot={snapshot} onJoin={join} />
-        ) : (
-          <MergedView snapshot={snapshot} onJoin={join} />
-        ))}
+      {snapshot.showTimeline && (
+        <div className="card mx-3 mb-2 min-h-0 flex-1 overflow-hidden">
+          {!hasAccounts ? (
+            <EmptyState message="No calendars connected yet. Open Settings to add one." />
+          ) : useSplit ? (
+            <SplitView snapshot={snapshot} onJoin={join} />
+          ) : (
+            <MergedView snapshot={snapshot} onJoin={join} />
+          )}
+        </div>
+      )}
 
       {snapshot.todoPlacement === 'below' && todoPanel}
 

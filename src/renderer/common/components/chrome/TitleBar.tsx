@@ -35,7 +35,7 @@ export function TitleBar({
   onOpenSettings,
 }: TitleBarProps): JSX.Element {
   return (
-    <header className="drag-region flex items-center gap-1.5 border-b border-border px-3 py-1.5">
+    <header className="drag-region flex items-center gap-1.5 px-3 py-2">
       {/* The clock anchors the timeline below it (§6). */}
       <span className="tabular shrink-0 font-mono text-[13px] font-medium">
         {formatClockTime(nowIso)}
