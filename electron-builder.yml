@@ -11,6 +11,13 @@ files:
   # Referenced from main via ?asset, which resolves at runtime rather than
   # copying into out/ (electron-vite public directory).
   - resources/**
+  # The EventKit helper's *source* lives under resources/ only because that is
+  # where `scripts/build-helper.sh` keeps the SwiftPM package; nothing at
+  # runtime reads it, and `build:helper` leaves a ~190MB `.build/` tree beside
+  # it. electron-builder does not read .gitignore, so without this the sources
+  # and the whole build tree go into the asar. The compiled binary is shipped
+  # separately, from build/helper/.
+  - '!resources/eventkit-helper/**'
   - package.json
 
 # Runtime integrity (docs/spec.md §8.8).
