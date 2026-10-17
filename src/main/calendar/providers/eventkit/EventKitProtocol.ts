@@ -5,7 +5,6 @@
  */
 
 import { z } from 'zod'
-import { MAX_EVENT_TITLE_LENGTH } from '../../../../shared/constants.ts'
 
 export const EVENTKIT_REQUEST_TIMEOUT_MS = 10_000
 
@@ -21,7 +20,9 @@ export const eventKitSourceSchema = z.strictObject({
 
 export const eventKitCalendarSchema = z.strictObject({
   id: identifier,
-  title: z.string().max(MAX_EVENT_TITLE_LENGTH),
+  // Bounded generously for the same reason as an event title: one over-long
+  // calendar name must not fail the whole list.
+  title: z.string().max(MAX_TEXT_LENGTH),
   isDefault: z.boolean(),
 })
 

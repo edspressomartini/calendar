@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  eventKitCalendarSchema,
   eventKitEventSchema,
   eventKitMessageSchema,
 } from '../../src/main/calendar/providers/eventkit/EventKitProtocol.ts'
@@ -36,6 +37,13 @@ describe('eventKitEventSchema', () => {
   it('rejects a title beyond the ingest bound', () => {
     const absurd = { ...event, title: 'x'.repeat(4_001) }
     expect(eventKitEventSchema.safeParse(absurd).success).toBe(false)
+  })
+})
+
+describe('eventKitCalendarSchema', () => {
+  it('accepts a calendar title longer than the display cap', () => {
+    const calendar = { id: 'cal-1', title: 'x'.repeat(201), isDefault: false }
+    expect(eventKitCalendarSchema.safeParse(calendar).success).toBe(true)
   })
 })
 
