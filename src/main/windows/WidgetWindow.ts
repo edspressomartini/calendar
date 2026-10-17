@@ -22,6 +22,7 @@ import {
   clampToDisplay,
 } from './displayPlacement.ts'
 import { applyWindowSecurity, hardenedWebPreferences } from './windowSecurity.ts'
+import { buildWidgetWindowOptions } from './widgetWindowOptions.ts'
 
 const BOUNDS_SAVE_DEBOUNCE_MS = 500
 
@@ -59,26 +60,17 @@ export class WidgetWindow {
       height: WIDGET_DEFAULT_HEIGHT,
     })
 
-    const window = new BrowserWindow({
-      ...bounds,
-      minWidth: WIDGET_MIN_WIDTH,
-      minHeight: settings.showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
-      // NSPanel behaviour: all Spaces, above full-screen apps, non-activating.
-      type: 'panel',
-      frame: false,
-      show: false,
-      skipTaskbar: true,
-      fullscreenable: false,
-      maximizable: false,
-      minimizable: false,
-      alwaysOnTop: settings.alwaysOnTop,
-      // Without this the first click on the inactive panel is swallowed.
-      acceptFirstMouse: true,
-      webPreferences: hardenedWebPreferences({
-        preloadPath: this.options.preloadPath,
-        isDev: this.options.isDev,
+    const window = new BrowserWindow(
+      buildWidgetWindowOptions({
+        bounds,
+        showTimeline: settings.showTimeline,
+        alwaysOnTop: settings.alwaysOnTop,
+        webPreferences: hardenedWebPreferences({
+          preloadPath: this.options.preloadPath,
+          isDev: this.options.isDev,
+        }),
       }),
-    })
+    )
 
     this.window = window
     applyWindowSecurity(window, this.logger)

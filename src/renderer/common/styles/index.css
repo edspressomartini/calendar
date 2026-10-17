@@ -26,7 +26,9 @@
 
   body {
     margin: 0;
-    background-color: var(--bg);
+    /* The window is transparent and macOS draws the material behind it, so
+       anything opaque here paints over the blur. */
+    background-color: transparent;
     color: var(--text);
     font-family:
       system-ui,
@@ -37,6 +39,11 @@
     /* A glanceable panel, not a document. */
     user-select: none;
     -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    overflow: hidden;
+    border-radius: 12px;
   }
 
   /* Times line up in a column (§6). */
