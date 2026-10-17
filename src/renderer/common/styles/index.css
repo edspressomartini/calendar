@@ -1,3 +1,8 @@
+/* Latin only, and only the three weights the UI uses. Bundled rather than
+   fetched: the renderer has `connect-src 'none'` and no network at all (§8.4). */
+@import '@fontsource/poppins/latin-400.css';
+@import '@fontsource/poppins/latin-500.css';
+@import '@fontsource/poppins/latin-600.css';
 @import 'tailwindcss';
 @import './theme.css';
 
@@ -28,7 +33,11 @@
     margin: 0;
     background-color: var(--bg);
     color: var(--text);
+    /* Poppins for prose. Times stay monospace: Poppins has no tabular
+       figures, and a column of digits that does not line up is worse than a
+       column in a second typeface. */
     font-family:
+      'Poppins',
       system-ui,
       -apple-system,
       'Helvetica Neue',
