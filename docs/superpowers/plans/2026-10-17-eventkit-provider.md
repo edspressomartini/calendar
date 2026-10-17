@@ -328,8 +328,8 @@ git commit -m "feat(eventkit): a typed error for calendar-store failures"
 > 6. `'error'` listeners cover the process and both pipes, attached at spawn
 >    rather than at subscription: a helper dying mid-write raises EPIPE on
 >    `child.stdin`, which crashes the process by the same mechanism. Logging
->    the errno code makes the export a factory, `defaultHelperSpawn(logger):
-HelperSpawn`, which is what `bootstrap.ts` calls in Task 8.
+>    the errno code makes the export a factory, so `bootstrap.ts` in Task 8
+>    calls `defaultHelperSpawn(logger)` rather than passing the function.
 
 **Files:**
 
