@@ -4,6 +4,8 @@
  * HTTP errors — which carry Authorization headers — never travel (§8.7).
  */
 
+import type { EventKitErrorKind } from '../calendar/providers/eventkit/EventKitProtocol.ts'
+
 export abstract class AppError extends Error {
   protected constructor(message: string) {
     super(message)
@@ -48,6 +50,17 @@ export class AuthFlowError extends AppError {
   }
 }
 
+/**
+ * The macOS calendar store could not be read. `denied`, `restricted` and
+ * `writeOnly` are terminal until the user changes a System Settings toggle;
+ * the rest are worth retrying.
+ */
+export class EventKitError extends AppError {
+  constructor(readonly kind: EventKitErrorKind | 'helper_unavailable' | 'timeout' | 'protocol') {
+    super(`calendar access failed (${kind})`)
+  }
+}
+
 /** OS-level encryption is unavailable, so no token may be written (§8.2). */
 export class SecureStorageUnavailableError extends AppError {
   constructor() {
@@ -70,6 +83,10 @@ export function isReauthRequired(error: unknown): error is ReauthRequiredError {
 
 export function isTransient(error: unknown): error is TransientProviderError {
   return error instanceof TransientProviderError
+}
+
+export function isEventKitError(error: unknown): error is EventKitError {
+  return error instanceof EventKitError
 }
 
 /**

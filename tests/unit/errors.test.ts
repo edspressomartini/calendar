@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   AuthFlowError,
   describeError,
+  EventKitError,
+  isEventKitError,
   ReauthRequiredError,
   TransientProviderError,
 } from '../../src/main/infra/errors.ts'
@@ -52,5 +54,17 @@ describe('describeError', () => {
   it('handles a thrown non-error', () => {
     expect(describeError('boom')).toBe('unknown error')
     expect(describeError(null)).toBe('unknown error')
+  })
+})
+
+describe('EventKitError', () => {
+  it('describes itself without leaking anything beyond the kind', () => {
+    const error = new EventKitError('denied')
+    expect(describeError(error)).toBe('EventKitError: calendar access failed (denied)')
+  })
+
+  it('is recognised by its guard', () => {
+    expect(isEventKitError(new EventKitError('timeout'))).toBe(true)
+    expect(isEventKitError(new Error('timeout'))).toBe(false)
   })
 })
