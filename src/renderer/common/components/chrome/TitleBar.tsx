@@ -86,7 +86,7 @@ function TitleBarButton({ label, title, active, onClick }: TitleBarButtonProps):
       aria-pressed={active}
       onClick={onClick}
       // Buttons must opt out of the drag region or they cannot be clicked (§10).
-      className={`no-drag rounded-full px-2 py-0.5 text-body hover:bg-bg-subtle ${
+      className={`no-drag rounded-full px-1.5 py-0.5 text-body hover:bg-bg-subtle ${
         active ? 'text-accent' : 'text-text-muted'
       }`}
     >

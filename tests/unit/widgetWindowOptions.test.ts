@@ -5,6 +5,7 @@ const INPUT = {
   bounds: { x: 10, y: 20, width: 400, height: 600 },
   showTimeline: true,
   alwaysOnTop: true,
+  textScalePercent: 100,
   webPreferences: {},
 } as const
 
@@ -29,6 +30,14 @@ describe('buildWidgetWindowOptions', () => {
     expect(options.acceptFirstMouse).toBe(true)
     expect(options.show).toBe(false)
     expect(options.fullscreenable).toBe(false)
+  })
+
+  it('converts the minimums into points, so a zoomed layout still fits', () => {
+    const zoomed = buildWidgetWindowOptions({ ...INPUT, textScalePercent: 125 })
+    const plain = buildWidgetWindowOptions(INPUT)
+
+    expect(zoomed.minWidth).toBe((plain.minWidth ?? 0) * 1.25)
+    expect(zoomed.minHeight).toBe((plain.minHeight ?? 0) * 1.25)
   })
 
   it('uses the compact floor when the timeline is hidden', () => {

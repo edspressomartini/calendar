@@ -4,11 +4,13 @@ import {
   WIDGET_MIN_HEIGHT,
   WIDGET_MIN_WIDTH,
 } from '../../shared/constants.ts'
+import { pointsForCssPixels } from './displayPlacement.ts'
 
 export interface WidgetWindowOptionsInput {
   readonly bounds: Rectangle
   readonly showTimeline: boolean
   readonly alwaysOnTop: boolean
+  readonly textScalePercent: number
   readonly webPreferences: WebPreferences
 }
 
@@ -29,8 +31,14 @@ export function buildWidgetWindowOptions(
 ): BrowserWindowConstructorOptions {
   return {
     ...input.bounds,
-    minWidth: WIDGET_MIN_WIDTH,
-    minHeight: input.showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
+    // The minimums are what the layout needs in the renderer's pixels, which
+    // the text scale zooms on their way to the screen. Left unconverted, a
+    // widget at 125% can sit at a window size the layout cannot fit into.
+    minWidth: pointsForCssPixels(WIDGET_MIN_WIDTH, input.textScalePercent),
+    minHeight: pointsForCssPixels(
+      input.showTimeline ? WIDGET_MIN_HEIGHT : WIDGET_COMPACT_MIN_HEIGHT,
+      input.textScalePercent,
+    ),
     // NSPanel behaviour: all Spaces, above full-screen apps, non-activating.
     type: 'panel',
     frame: false,
