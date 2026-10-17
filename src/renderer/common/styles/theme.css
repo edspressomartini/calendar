@@ -57,14 +57,14 @@
    block would silently beat it. Only the two neutral fills are overridden;
    the mixes below pick them up, so schemes stay two lines each. */
 :root[data-surface='glass'] {
-  --neutral-bg: rgb(255 255 255 / 0.55);
-  --neutral-bg-subtle: rgb(248 250 252 / 0.7);
+  --neutral-bg: rgb(255 255 255 / 0.72);
+  --neutral-bg-subtle: rgb(248 250 252 / 0.82);
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-surface='glass'] {
-    --neutral-bg: rgb(15 23 42 / 0.5);
-    --neutral-bg-subtle: rgb(30 41 59 / 0.65);
+    --neutral-bg: rgb(15 23 42 / 0.7);
+    --neutral-bg-subtle: rgb(30 41 59 / 0.8);
   }
 }
 
@@ -130,13 +130,18 @@
    a tinted panel that costs you legibility is a worse panel.
 
    In the widget the base is translucent, so these mixes land on top of
-   whatever macOS has blurred behind the window rather than on a known colour.
+   whatever happens to be behind the window rather than on a known colour.
    That is why the alpha lives in the neutral rather than in each mix: one
-   place decides how much wallpaper comes through, and the schemes stay two
-   lines each. */
+   place decides how much shows through, and the schemes stay two lines each.
+
+   The percentages went up once the base became translucent. Twelve per cent
+   of an accent against solid white was already faint; against a half-visible
+   base it disappeared, and the six schemes were again indistinguishable from
+   each other in both appearances. Checked over a dark window and over a
+   bright striped background, in light and dark, before being changed. */
 :root {
-  --bg: color-mix(in oklab, var(--accent) 12%, var(--neutral-bg));
-  --bg-subtle: color-mix(in oklab, var(--accent) 26%, var(--neutral-bg-subtle));
+  --bg: color-mix(in oklab, var(--accent) 24%, var(--neutral-bg));
+  --bg-subtle: color-mix(in oklab, var(--accent) 34%, var(--neutral-bg-subtle));
   --border: color-mix(in oklab, var(--accent) 45%, var(--neutral-border));
   --text-muted: color-mix(in oklab, var(--accent) 30%, var(--neutral-text-muted));
 }
