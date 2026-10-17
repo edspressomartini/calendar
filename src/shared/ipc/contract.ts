@@ -130,6 +130,17 @@ export const addTodoSchema = z.strictObject({
 })
 export const todoIdSchema = z.strictObject({ todoId: identifier })
 
+/**
+ * A neighbour, not a position. An index built in the renderer is stale as
+ * soon as anything else changes the list, and acting on a stale index moves
+ * the wrong row; an id either still exists or the move is refused.
+ */
+export const reorderTodoSchema = z.strictObject({
+  todoId: identifier,
+  /** The item it should sit after. Null puts it at the top of its group. */
+  afterId: identifier.nullable(),
+})
+
 export const REQUEST_SCHEMAS = {
   [CHANNELS.agendaJoin]: joinEventSchema,
   [CHANNELS.widgetHide]: noPayload,
@@ -157,6 +168,7 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.todosRoll]: todoIdSchema,
   [CHANNELS.todosRollAllOverdue]: noPayload,
   [CHANNELS.todosRemove]: todoIdSchema,
+  [CHANNELS.todosReorder]: reorderTodoSchema,
   [CHANNELS.quickAddClose]: noPayload,
 } as const
 
@@ -294,6 +306,7 @@ export const todoSchema = z.strictObject({
   createdAt: isoTimestamp,
   completedAt: isoTimestamp.nullable(),
   rollCount: z.number().int().min(0),
+  rank: z.number().int().min(0),
 })
 
 export const todoHistoryDaySchema = z.strictObject({

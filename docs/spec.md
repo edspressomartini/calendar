@@ -416,6 +416,7 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 
 - **Each section is a card on the glass**: 1px `--border`, 10px radius, `--bg-subtle` fill, and a shadow faint enough to read as a lifted edge rather than a drop shadow. The border does the separating that a row of divider rules used to, so those came out as the cards went in.
 - **The card class goes on the section, not a wrapper around it.** The TODO panel is capped at 45% of the widget height, and a percentage needs a parent with a definite height; a wrapper sized to its own content gives it nothing to resolve against and the panel collapses to two rows.
+- **The title bar is a card too.** It was the one strip left sitting on bare glass, which over a chat window or an editor put that window's content directly under the date. Its margin stays inside the drag region, so the grab area changes shape rather than shrinking.
 - **Measuring for the compact fit has to include margins.** `offsetHeight` is border-box — padding and border, but not margin — so the gaps between cards measure as nothing and the window comes up short by the sum of them.
 
 ### Motion
@@ -434,6 +435,17 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 | Nothing left today | Centred muted line, generous whitespace                                     |
 | Needs re-auth      | Muted "Reconnect" line under that account; its last-known events stay       |
 
+### TODO priority
+
+- **The list is ordered by hand, top first.** Two chevrons appear on a row on hover and move it within its group. The panel already reveals a roll arrow and a delete cross the same way, so this is the existing idiom rather than a new one.
+- **Rank lives on the item, not in a list beside it.** Adding, rolling, pruning and redacting all move items about already, and a separate ordering array would have to be reconciled with every one of them. Because it is a property of the TODO, a ranking survives the item rolling to another day.
+- **Ranks are spaced, not consecutive.** A move writes the midpoint of its new neighbours, so one item changes rather than the whole list being renumbered. When two neighbours are adjacent integers there is no midpoint left and the group is re-spaced — rare, but handled, because the alternative is a chevron that silently stops working. The sequence starts one gap above zero so there is room below the first item; starting at zero would re-space the group on every "move to the top", which is the most likely move anyone makes.
+- **Each group ranks independently,** and a move between groups is refused rather than approximated. An overdue item is late whatever its rank, so merging the blocks to get one ordering would hide the thing the user most needs to see.
+- **A new TODO lands at the bottom.** Something just typed is unranked until it is ranked, and inserting at the top would reshuffle the list under the user every time they add anything.
+- **Completed items leave the ranked run** and sink below it, most recently finished first. A ticked-off line sitting between the second and third thing you mean to do is noise in the one part of the panel that is a priority list.
+- **The reorder message names a neighbour, not a position.** An index computed in the renderer is stale the moment a sync, a midnight regroup or the other window changes the list, and acting on a stale index moves the wrong row. An id either still resolves or the move is dropped. Widget only: quick-add can file a TODO and nothing else.
+- **A list written before ranking is ranked by `createdAt` on first load,** which is the order the panel used to display, so upgrading finds the list exactly as it was left. It is not a schema version bump — an older build has no entry for the field and ignores it.
+
 ### Empty states
 
 - **An empty widget offers the fix, not an instruction.** "Open Settings to add one" was correct and useless: it named a window and then left the user to find it. The message now carries a button underneath it, which opens Settings on the tab that fixes the particular thing that is wrong.
@@ -444,6 +456,7 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 | Every account needs reconnecting | Reconnect to see your calendar. | Reconnect          | `accounts` |
 
 - **Every account, not any.** With one healthy account out of two there is still a day to draw, and replacing it with a reconnect prompt would throw that day away to say something the per-account status dot already says. Nothing on today keeps the plain centred line.
+- **A clear day shrinks to its message and gives the space away.** An hour grid with nothing on it was taking most of the widget to say "nothing", while the TODO panel — the only part with anything in it — sat squeezed under its 45% cap. On a clear day the timeline collapses to one line and the cap comes off the panel. The grid is drawn from the day's events, so there is nothing lost by not drawing it.
 - **The button opens the window; it does not start the OAuth flow.** `connectAccount` stays on the Settings bridge (§8.5), so the widget gains no capability — one extra click, the same attack surface.
 - **An empty TODO list names the shortcut.** Global quick-add is the only way in, so the empty panel spells the binding out, from the same `formatAccelerator` call as the header hint so the two cannot drift, and offers a link that opens Settings on Preferences to change it. Inline rather than a tooltip: a tooltip on an empty panel is only found by someone who already suspected something was there.
 

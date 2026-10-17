@@ -1,5 +1,5 @@
 import { todoSchema } from '../../shared/ipc/contract.ts'
-import { MAX_TODOS, TODO_COMPLETED_RETENTION_DAYS } from '../../shared/constants.ts'
+import { MAX_TODOS, RANK_GAP, TODO_COMPLETED_RETENTION_DAYS } from '../../shared/constants.ts'
 import { addLocalDays } from '../../shared/time.ts'
 import type { Todo } from '../../shared/types/todo.ts'
 
@@ -31,6 +31,7 @@ const TODO_FALLBACKS: Readonly<Record<keyof Todo, unknown>> = {
   createdAt: '',
   completedAt: null,
   rollCount: 0,
+  rank: 0,
 }
 
 /**
@@ -49,6 +50,7 @@ export function parseTodos(candidate: unknown): Todo[] {
 
   const seen = new Set<string>()
   const todos: Todo[] = []
+  let anyUnranked = false
   for (const row of stored) {
     const todo = parseTodo(row)
     if (!todo || seen.has(todo.id)) {
@@ -56,11 +58,43 @@ export function parseTodos(candidate: unknown): Todo[] {
     }
     seen.add(todo.id)
     todos.push(todo)
+    anyUnranked ||= !hasRank(row)
     if (todos.length >= MAX_TODOS) {
       break
     }
   }
-  return todos
+
+  return anyUnranked ? rankByAge(todos) : todos
+}
+
+/**
+ * Whether the stored row carried a rank at all.
+ *
+ * Asked of the raw row rather than of the parsed one, because the parsed one
+ * has already had the fallback applied and a missing rank is indistinguishable
+ * from a stored zero by then.
+ */
+function hasRank(row: unknown): boolean {
+  return typeof row === 'object' && row !== null && 'rank' in row
+}
+
+/**
+ * Ranks a list written before ranking existed.
+ *
+ * In `createdAt` order, because that is the order the panel displayed before
+ * this field: upgrading finds the list exactly as it was left rather than in
+ * whatever order the file happened to hold. This runs on the first load after
+ * the upgrade and never again, since every row written since carries a rank.
+ *
+ * All-or-nothing on purpose. A file with ranks on some rows and not others can
+ * only come from hand editing, and threading new ranks between existing ones
+ * would produce collisions that are harder to reason about than re-spacing.
+ */
+function rankByAge(todos: readonly Todo[]): Todo[] {
+  const order = [...todos].sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+  const assigned = new Map(order.map((todo, index) => [todo.id, (index + 1) * RANK_GAP] as const))
+
+  return todos.map((todo) => ({ ...todo, rank: assigned.get(todo.id) ?? RANK_GAP }))
 }
 
 /** Keeps the file from growing without bound once things are ticked off. */

@@ -36,6 +36,8 @@ export interface WidgetBridge {
   rollTodo(todoId: string): Promise<void>
   rollAllOverdueTodos(): Promise<void>
   removeTodo(todoId: string): Promise<void>
+  /** `afterId` null puts it at the top of its group. */
+  reorderTodo(todoId: string, afterId: string | null): Promise<void>
 }
 
 /**

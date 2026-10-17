@@ -35,7 +35,11 @@ export function TitleBar({
   onOpenSettings,
 }: TitleBarProps): JSX.Element {
   return (
-    <header className="drag-region flex items-center gap-1.5 px-3 py-2">
+    // The card is not decoration here. This was the one strip left sitting on
+    // bare glass, which over a chat or an editor put the window behind it
+    // directly underneath the date. The margin stays draggable, so the grab
+    // area changes shape rather than shrinking.
+    <header className="card drag-region mx-3 mt-2 mb-2 flex items-center gap-1.5 px-2.5 py-1.5">
       {/* The clock anchors the timeline below it (§6). */}
       <span className="tabular shrink-0 font-mono text-display leading-none font-semibold tracking-tight">
         {formatClockTime(nowIso)}

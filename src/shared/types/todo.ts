@@ -12,6 +12,14 @@ export interface Todo {
   readonly completedAt: string | null
   /** How many times it has been deferred. */
   readonly rollCount: number
+  /**
+   * Where the user put it, ascending, within whichever group it falls into.
+   *
+   * On the item rather than in an ordering list alongside it: adding,
+   * rolling, pruning and redacting all move items around already, and a
+   * separate list would have to be reconciled with each of them.
+   */
+  readonly rank: number
 }
 
 /**

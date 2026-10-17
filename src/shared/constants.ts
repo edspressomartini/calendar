@@ -51,6 +51,14 @@ export const MAX_TODOS = 500
 export const TODO_COMPLETED_RETENTION_DAYS = 30
 
 /**
+ * The space left between neighbouring TODO ranks (§6).
+ *
+ * Reordering writes the midpoint of an item's new neighbours, so a gap this
+ * wide means one item changes rather than the whole list being renumbered.
+ */
+export const RANK_GAP = 1000
+
+/**
  * Opens the quick-add window from anywhere, since there is no Dock icon (§6).
  * Configurable, because a global shortcut is taken from every other app and
  * whatever we pick will collide with something on someone's machine. Control
