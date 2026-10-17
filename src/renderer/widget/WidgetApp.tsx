@@ -127,8 +127,13 @@ export function WidgetApp(): JSX.Element {
 
       {snapshot.todoPlacement === 'above' && todoPanel}
 
+      {/* `flex flex-col` on the card is load-bearing, not decoration. The
+          timeline sizes itself with flex-1 against this box and scrolls
+          inside it; in a block container that resolves to content height, so
+          the scroll container has nothing to overflow and `overflow-hidden`
+          quietly clips the afternoon off instead. */}
       {snapshot.showTimeline && (
-        <div className="card mx-3 mb-2 min-h-0 flex-1 overflow-hidden">
+        <div className="card mx-3 mb-2 flex min-h-0 flex-1 flex-col overflow-hidden">
           {prompt ? (
             <EmptyState
               message={prompt.message}
