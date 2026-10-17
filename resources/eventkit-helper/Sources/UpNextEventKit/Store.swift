@@ -36,6 +36,37 @@ let maxSourceTitleLength = 120
 /// `eventKitCalendarSchema.title`.
 let maxCalendarTitleLength = 4_000
 
+/// `eventKitEventSchema.externalId`. The one bounded field that used to go
+/// out raw.
+let maxExternalIdLength = 512
+
+/*
+ * The list caps, which bound the arrays rather than the scalars inside them.
+ *
+ * Capped here rather than raised or removed on the Zod side, because the
+ * three outcomes are not symmetrical. An over-long list fails `safeParse` as
+ * a whole, arrives as `EventKitError('protocol')`, is classified transient
+ * and retried on every tick: the account sits on "Offline" forever and no
+ * action available to the user changes that. Truncating costs the far end of
+ * a list nobody can read to the bottom of; the alternative costs the whole
+ * account, permanently. Dropping the caps instead would give up a bound at a
+ * process boundary to make room for volumes no real Mac produces.
+ *
+ * None of the three is reachable in ordinary use: the sync window is a single
+ * local day, and a widget showing today cannot usefully show two thousand
+ * events. The TypeScript side logs a count when a list arrives at exactly its
+ * cap, so a truncation that does happen is not silent.
+ */
+
+/// `eventKitSourceListSchema`.
+let maxSourceCount = 50
+
+/// `eventKitCalendarListSchema`.
+let maxCalendarCount = 500
+
+/// `eventKitEventListSchema`.
+let maxEventCount = 2_000
+
 /// Stands in for a source whose title is empty or blank, which
 /// `eventKitSourceSchema.title`'s `min(1)` would otherwise reject, taking
 /// every other account down with it. Named for what the user is looking at
@@ -91,6 +122,30 @@ func urlForWire(_ value: String?) -> String? {
     return value
 }
 
+/// Bounds a list so one implausible length cannot fail the parse of the
+/// whole frame. Order is the caller's: these lists are already in the order
+/// the user will see them.
+func boundedForWire<T>(_ items: [T], to limit: Int) -> [T] {
+    guard items.count > limit else {
+        return items
+    }
+    return Array(items.prefix(limit))
+}
+
+/// The event list's own bound. Over the cap something has to be dropped, and
+/// for a widget showing today the defensible something is the far end of the
+/// day rather than whatever order `events(matching:)` returned. Sorted only
+/// when the cap actually bites, so an ordinary day pays nothing for it.
+func earliestForWire(_ events: [EKEvent], to limit: Int) -> [EKEvent] {
+    guard events.count > limit else {
+        return events
+    }
+    let sorted = events.sorted {
+        ($0.startDate ?? .distantFuture) < ($1.startDate ?? .distantFuture)
+    }
+    return Array(sorted.prefix(limit))
+}
+
 /// Narrows a source's calendars to the ones the user picked.
 ///
 /// An empty selection means none of them. It is tempting to read it as "not
@@ -144,8 +199,8 @@ struct CalendarStore {
     let store = EKEventStore()
 
     func sources() -> [SourcePayload] {
-        return store.sources
-            .filter { !$0.calendars(for: .event).isEmpty }
+        let withCalendars = store.sources.filter { !$0.calendars(for: .event).isEmpty }
+        return boundedForWire(withCalendars, to: maxSourceCount)
             .map { source in
                 let calendars = eventCalendars(of: source)
                 let fallback = store.defaultCalendarForNewEvents
@@ -163,7 +218,8 @@ struct CalendarStore {
             throw HelperError.unknownSource
         }
         let defaultId = store.defaultCalendarForNewEvents?.calendarIdentifier
-        return eventCalendars(of: source).map { calendar in
+        let calendars = boundedForWire(eventCalendars(of: source), to: maxCalendarCount)
+        return calendars.map { calendar in
             CalendarPayload(
                 id: calendar.calendarIdentifier,
                 title: truncatedForWire(calendar.title, to: maxCalendarTitleLength) ?? "",
@@ -188,7 +244,8 @@ struct CalendarStore {
         // optionals and are nil on an event the store failed to materialise.
         // Dropped one at a time rather than force-unwrapped: one malformed
         // event must not take the rest of the window down with it.
-        return store.events(matching: predicate).compactMap { event in
+        let matching = earliestForWire(store.events(matching: predicate), to: maxEventCount)
+        return matching.compactMap { event in
             guard let startDate = event.startDate,
                   let endDate = event.endDate,
                   let calendar = event.calendar else {
@@ -200,7 +257,10 @@ struct CalendarStore {
             return EventPayload(
                 id: event.eventIdentifier ?? UUID().uuidString,
                 calendarId: calendar.calendarIdentifier,
-                externalId: event.calendarItemExternalIdentifier ?? "",
+                externalId: truncatedForWire(
+                    event.calendarItemExternalIdentifier,
+                    to: maxExternalIdLength
+                ) ?? "",
                 title: truncatedForWire(event.title, to: maxEventTextLength) ?? "",
                 start: isoString(from: startDate, timeZone: timeZone),
                 end: isoString(from: endDate, timeZone: timeZone),

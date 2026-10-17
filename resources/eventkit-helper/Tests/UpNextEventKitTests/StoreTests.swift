@@ -181,6 +181,67 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(maxEventUrlLength, 2_048)
         XCTAssertEqual(maxSourceTitleLength, 120)
         XCTAssertEqual(maxCalendarTitleLength, 4_000)
+        XCTAssertEqual(maxExternalIdLength, 512)
+    }
+
+    /// The list caps, which until now had no Swift counterpart at all. An
+    /// over-long list fails `safeParse` whole, becomes `EventKitError`
+    /// `protocol`, is classified transient and retried forever: the account
+    /// sits on Offline with nothing the user can do about it.
+    func testListBoundsMatchTheSchemaCaps() {
+        XCTAssertEqual(maxSourceCount, 50)
+        XCTAssertEqual(maxCalendarCount, 500)
+        XCTAssertEqual(maxEventCount, 2_000)
+    }
+
+    // MARK: - boundedForWire
+
+    func testAListUnderItsCapIsLeftAlone() {
+        XCTAssertEqual(boundedForWire([1, 2, 3], to: 10), [1, 2, 3])
+        XCTAssertEqual(boundedForWire([Int](), to: 10), [])
+    }
+
+    /// The cap is inclusive in the schema, so a list of exactly the cap is
+    /// valid and must come through whole.
+    func testAListAtItsCapIsLeftAlone() {
+        let items = Array(0..<10)
+        XCTAssertEqual(boundedForWire(items, to: 10), items)
+    }
+
+    func testAnOverLongListIsCutToItsCap() {
+        XCTAssertEqual(boundedForWire(Array(0..<25), to: 10), Array(0..<10))
+    }
+
+    // MARK: - earliestForWire
+
+    private func event(startingAt secondsSinceEpoch: TimeInterval, in store: EKEventStore) -> EKEvent {
+        let event = EKEvent(eventStore: store)
+        event.startDate = Date(timeIntervalSince1970: secondsSinceEpoch)
+        return event
+    }
+
+    /// Under the cap nothing is sorted: the widget sorts downstream, and
+    /// paying for a sort on every ordinary day would buy nothing.
+    func testEventsUnderTheCapAreNotReordered() {
+        let store = EKEventStore()
+        let later = event(startingAt: 200, in: store)
+        let earlier = event(startingAt: 100, in: store)
+
+        let kept = earliestForWire([later, earlier], to: 10)
+
+        XCTAssertEqual(kept.map(\.startDate), [later.startDate, earlier.startDate])
+    }
+
+    /// Over the cap something has to go, and for a widget showing today the
+    /// defensible something is the far end of the day, not whatever order
+    /// `events(matching:)` happened to return.
+    func testOverflowingEventsKeepTheEarliest() {
+        let store = EKEventStore()
+        let events = (0..<10).reversed().map { event(startingAt: TimeInterval($0) * 60, in: store) }
+
+        let kept = earliestForWire(events, to: 3)
+
+        XCTAssertEqual(kept.map(\.startDate), [0, 60, 120].map { Date(timeIntervalSince1970: $0) })
     }
 
     /// A calendar title is capped far more loosely than a source's, but the

@@ -216,7 +216,15 @@ TypeScript, in Vitest, consistent with the existing suite:
 - `ProviderFactory` returning the right provider per `ProviderKind`.
 
 Swift, in `swift test`, only where the helper is not thin: date-range predicate
-construction, and all-day boundary conversion across a DST change.
+construction, and all-day boundary conversion across a DST change. Plus the wire
+bounds — every scalar cap and every list cap has a Swift constant pinned against
+its Zod counterpart, because those two numbers drifting apart is a silent
+wire-format regression that nothing else would catch.
+
+`swift test --package-path resources/eventkit-helper` runs in CI and in
+`npm run check`. In `check` it goes through `scripts/swift-test.sh`, which skips
+with a sentence off macOS or without a working toolchain; CI calls the command
+directly, where a missing toolchain must fail rather than skip.
 
 `MockCalendarProvider` keeps the UI developable without any of this, so no widget
 work is blocked on the helper existing.

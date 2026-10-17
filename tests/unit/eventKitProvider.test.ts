@@ -9,6 +9,8 @@ import {
 import type { EventKitRequester } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import {
   EVENTKIT_AUTHORIZE_TIMEOUT_MS,
+  EVENTKIT_MAX_CALENDARS,
+  EVENTKIT_MAX_EVENTS,
   EVENTKIT_REQUEST_TIMEOUT_MS,
   eventKitAuthorizationSchema,
   eventKitCalendarListSchema,
@@ -16,7 +18,7 @@ import {
   eventKitSourceListSchema,
   type EventKitEvent,
 } from '../../src/main/calendar/providers/eventkit/EventKitProtocol.ts'
-import { silentLogger } from '../mocks/logger.ts'
+import { recordingLogger, silentLogger, type LogEntry } from '../mocks/logger.ts'
 
 /**
  * The requester interface is deliberately narrow, so a fake is a plain object
@@ -160,6 +162,60 @@ describe('EventKitProvider', () => {
     await expect(provider.listCalendars()).resolves.toEqual([
       { id: 'cal-1', title: 'Home', primary: true },
     ])
+  })
+
+  /**
+   * The helper trims a list that would overflow its schema cap, because the
+   * alternative — a parse failure, retried forever — strands the account on
+   * Offline. A list arriving at exactly the cap is the one observable trace
+   * of that, so it is logged rather than passed on in silence.
+   */
+  it('logs a count when the event list arrives at its cap', async () => {
+    const atTheCap = Array.from({ length: EVENTKIT_MAX_EVENTS }, (_unused, index) =>
+      anEvent({ id: `E${index}`, calendarId: 'cal-1' }),
+    )
+    const { helper } = helperReturning(atTheCap)
+    const entries: LogEntry[] = []
+    const provider = new EventKitProvider('eventkit:src', 'src', helper, recordingLogger(entries))
+
+    await provider.fetchEvents(['cal-1'], {
+      start: '2026-10-17T00:00:00+01:00',
+      end: '2026-10-18T00:00:00+01:00',
+    })
+
+    expect(entries).toContainEqual(
+      expect.objectContaining({ level: 'warn', context: { events: EVENTKIT_MAX_EVENTS } }),
+    )
+  })
+
+  it('does not warn about an ordinary event list', async () => {
+    const { helper } = helperReturning([anEvent({ id: 'E1', calendarId: 'cal-1' })])
+    const entries: LogEntry[] = []
+    const provider = new EventKitProvider('eventkit:src', 'src', helper, recordingLogger(entries))
+
+    await provider.fetchEvents(['cal-1'], {
+      start: '2026-10-17T00:00:00+01:00',
+      end: '2026-10-18T00:00:00+01:00',
+    })
+
+    expect(entries.filter((entry) => entry.level === 'warn')).toEqual([])
+  })
+
+  it('logs a count when the calendar list arrives at its cap', async () => {
+    const atTheCap = Array.from({ length: EVENTKIT_MAX_CALENDARS }, (_unused, index) => ({
+      id: `cal-${index}`,
+      title: `Calendar ${index}`,
+      isDefault: false,
+    }))
+    const { helper } = helperReturning(atTheCap)
+    const entries: LogEntry[] = []
+    const provider = new EventKitProvider('eventkit:src', 'src', helper, recordingLogger(entries))
+
+    await provider.listCalendars()
+
+    expect(entries).toContainEqual(
+      expect.objectContaining({ level: 'warn', context: { calendars: EVENTKIT_MAX_CALENDARS } }),
+    )
   })
 
   it('disconnects without calling the helper, because there is nothing to revoke', async () => {

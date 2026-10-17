@@ -11,6 +11,8 @@ import type { CalendarProvider } from '../../CalendarProvider.ts'
 import { mapEventKitEvents } from './eventKitEventMapper.ts'
 import type { EventKitRequester } from './EventKitHelperProcess.ts'
 import {
+  EVENTKIT_MAX_CALENDARS,
+  EVENTKIT_MAX_EVENTS,
   eventKitCalendarListSchema,
   eventKitEventListSchema,
   type EventKitEvent,
@@ -59,6 +61,13 @@ export class EventKitProvider implements CalendarProvider {
       { sourceId: this.sourceId },
       eventKitCalendarListSchema,
     )
+    if (calendars.length >= EVENTKIT_MAX_CALENDARS) {
+      // The helper trims to the cap so the frame still parses; at the cap we
+      // cannot tell a trimmed list from an exact one, so both are reported.
+      this.logger.warn('calendar list reached its cap and may have been trimmed', {
+        calendars: calendars.length,
+      })
+    }
     return calendars.map((calendar) => ({
       id: calendar.id,
       title: calendar.title,
@@ -88,6 +97,11 @@ export class EventKitProvider implements CalendarProvider {
       eventKitEventListSchema,
     )
     this.logger.debug('read events from the calendar store', { events: raw.length })
+    if (raw.length >= EVENTKIT_MAX_EVENTS) {
+      this.logger.warn('event list reached its cap and may have been trimmed', {
+        events: raw.length,
+      })
+    }
 
     // Grouped because a MappingContext carries one calendar, and the helper
     // answers for every calendar of the source in one reply.

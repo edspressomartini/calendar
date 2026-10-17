@@ -85,9 +85,22 @@ const pushSchema = z.strictObject({ event: z.literal('changed') })
 
 export const eventKitMessageSchema = z.union([replySchema, pushSchema])
 
-export const eventKitSourceListSchema = z.array(eventKitSourceSchema).max(50)
-export const eventKitCalendarListSchema = z.array(eventKitCalendarSchema).max(500)
-export const eventKitEventListSchema = z.array(eventKitEventSchema).max(2_000)
+/*
+ * The list caps. Named rather than inline because three parties need the
+ * numbers: the schemas below, the helper's own `boundedForWire` (which trims
+ * to them, so an over-long list can never fail the parse of a whole frame),
+ * and the provider, which logs a count when a list arrives at exactly its cap
+ * so that a trim is visible rather than silent.
+ */
+export const EVENTKIT_MAX_SOURCES = 50
+export const EVENTKIT_MAX_CALENDARS = 500
+export const EVENTKIT_MAX_EVENTS = 2_000
+
+export const eventKitSourceListSchema = z.array(eventKitSourceSchema).max(EVENTKIT_MAX_SOURCES)
+export const eventKitCalendarListSchema = z
+  .array(eventKitCalendarSchema)
+  .max(EVENTKIT_MAX_CALENDARS)
+export const eventKitEventListSchema = z.array(eventKitEventSchema).max(EVENTKIT_MAX_EVENTS)
 
 export type EventKitSource = z.infer<typeof eventKitSourceSchema>
 export type EventKitCalendar = z.infer<typeof eventKitCalendarSchema>
