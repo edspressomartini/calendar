@@ -161,6 +161,42 @@ describe('EventKitHelperProcess', () => {
     vi.useRealTimers()
   })
 
+  /**
+   * The authorize case: a human reading the macOS prompt routinely takes
+   * longer than the default, and a timeout there is reported as a failure
+   * after macOS has already granted access.
+   */
+  it('does not apply the default timeout to a request with its own', async () => {
+    vi.useFakeTimers()
+    const child = fakeChild()
+    const helper = new EventKitHelperProcess('/bin/helper', () => child, silentLogger(), 1_000)
+
+    const pending = helper.request('authorize', {}, z.array(z.string()), 60_000)
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    child.emitLine(JSON.stringify({ id: 1, ok: true, result: ['icloud'] }))
+
+    await expect(pending).resolves.toEqual(['icloud'])
+    helper.stop()
+    vi.useRealTimers()
+  })
+
+  /** Still bounded: a user who walks away must not strand the pending entry. */
+  it('still times out a request with its own timeout, once that one elapses', async () => {
+    vi.useFakeTimers()
+    const child = fakeChild()
+    const helper = new EventKitHelperProcess('/bin/helper', () => child, silentLogger(), 1_000)
+
+    const pending = helper.request('authorize', {}, z.array(z.string()), 60_000)
+    const assertion = expect(pending).rejects.toMatchObject({ kind: 'timeout' })
+    await vi.advanceTimersByTimeAsync(60_001)
+    await assertion
+
+    helper.stop()
+    expect(vi.getTimerCount()).toBe(0)
+    vi.useRealTimers()
+  })
+
   it('fails pending requests when the helper exits, and respawns on the next one', async () => {
     vi.useFakeTimers()
     const firstChild = fakeChild()

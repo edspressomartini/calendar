@@ -22,9 +22,20 @@ export interface HelperChild {
 
 export type HelperSpawn = (binaryPath: string) => HelperChild
 
-/** What consumers actually need. Keeps their tests free of process fakes. */
+/**
+ * What consumers actually need. Keeps their tests free of process fakes.
+ *
+ * `timeoutMs` is per request rather than per process because one op —
+ * `authorize` — waits on a human and the rest wait on a local store. It is
+ * optional so only that call site has to think about it.
+ */
 export interface EventKitRequester {
-  request<T>(op: string, payload: Record<string, unknown>, schema: ZodType<T>): Promise<T>
+  request<T>(
+    op: string,
+    payload: Record<string, unknown>,
+    schema: ZodType<T>,
+    timeoutMs?: number,
+  ): Promise<T>
 }
 
 const RESTART_FLOOR_MS = 1_000
@@ -52,7 +63,12 @@ export class EventKitHelperProcess implements EventKitRequester {
     private readonly timeoutMs: number = EVENTKIT_REQUEST_TIMEOUT_MS,
   ) {}
 
-  async request<T>(op: string, payload: Record<string, unknown>, schema: ZodType<T>): Promise<T> {
+  async request<T>(
+    op: string,
+    payload: Record<string, unknown>,
+    schema: ZodType<T>,
+    timeoutMs: number = this.timeoutMs,
+  ): Promise<T> {
     const child = this.ensureChild()
     const id = this.nextId++
 
@@ -60,7 +76,7 @@ export class EventKitHelperProcess implements EventKitRequester {
       const timer = setTimeout(() => {
         this.pending.delete(id)
         reject(new EventKitError('timeout'))
-      }, this.timeoutMs)
+      }, timeoutMs)
 
       this.pending.set(id, { settle: resolve, fail: reject, timer })
       // Framing last: a payload carrying `id` must not take over correlation.

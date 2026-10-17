@@ -3,7 +3,11 @@ import { EventKitError } from '../../../infra/errors.ts'
 import type { AppLogger } from '../../../infra/logger.ts'
 import type { AccountAuthenticator, AuthenticationResult } from '../../CalendarProvider.ts'
 import type { EventKitRequester } from './EventKitHelperProcess.ts'
-import { eventKitAuthorizationSchema, eventKitSourceListSchema } from './EventKitProtocol.ts'
+import {
+  EVENTKIT_AUTHORIZE_TIMEOUT_MS,
+  eventKitAuthorizationSchema,
+  eventKitSourceListSchema,
+} from './EventKitProtocol.ts'
 import { eventKitAccountId } from './EventKitProvider.ts'
 
 /**
@@ -19,7 +23,14 @@ export class EventKitAuthorizer implements AccountAuthenticator {
   ) {}
 
   async authenticate(): Promise<AuthenticationResult[]> {
-    const authorization = await this.helper.request('authorize', {}, eventKitAuthorizationSchema)
+    // Its own timeout: the helper blocks here until the user answers the
+    // macOS prompt, which the ordinary request budget does not allow for.
+    const authorization = await this.helper.request(
+      'authorize',
+      {},
+      eventKitAuthorizationSchema,
+      EVENTKIT_AUTHORIZE_TIMEOUT_MS,
+    )
 
     if (authorization.status !== 'granted') {
       // denied, restricted and writeOnly are all terminal until the user

@@ -8,6 +8,8 @@ import {
 } from '../../src/main/calendar/providers/eventkit/EventKitProvider.ts'
 import type { EventKitRequester } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import {
+  EVENTKIT_AUTHORIZE_TIMEOUT_MS,
+  EVENTKIT_REQUEST_TIMEOUT_MS,
   eventKitAuthorizationSchema,
   eventKitCalendarListSchema,
   eventKitEventListSchema,
@@ -162,7 +164,7 @@ describe('EventKitAuthorizer', () => {
     const results = await authorizer.authenticate()
 
     expect(request.mock.calls).toEqual([
-      ['authorize', {}, eventKitAuthorizationSchema],
+      ['authorize', {}, eventKitAuthorizationSchema, EVENTKIT_AUTHORIZE_TIMEOUT_MS],
       ['sources', {}, eventKitSourceListSchema],
     ])
 
@@ -178,6 +180,16 @@ describe('EventKitAuthorizer', () => {
         defaultCalendarIds: [],
       },
     ])
+  })
+
+  /**
+   * The bound is there to release a prompt nobody will ever answer, not to
+   * police how long the user thinks about it. Anything near the ordinary
+   * request timeout would report failure after macOS had granted access.
+   */
+  it('waits minutes, not seconds, for the macOS prompt to be answered', () => {
+    expect(EVENTKIT_AUTHORIZE_TIMEOUT_MS).toBeGreaterThanOrEqual(5 * 60_000)
+    expect(EVENTKIT_AUTHORIZE_TIMEOUT_MS).toBeGreaterThan(EVENTKIT_REQUEST_TIMEOUT_MS)
   })
 
   it('throws when the user refuses access', async () => {

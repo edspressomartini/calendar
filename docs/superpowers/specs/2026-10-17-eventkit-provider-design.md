@@ -177,7 +177,11 @@ fix next to the problem. The deep link is
 Other failures:
 
 - Helper exits: its accounts go `offline`, restart backs off from 1s to a 30s cap.
-- Request timeout: 10s, rejected as `EventKitError('timeout')`.
+- Request timeout: 10s, rejected as `EventKitError('timeout')`. `authorize` is the
+  exception and takes its own 5-minute bound: the helper blocks inside
+  `requestFullAccessToEvents()` until the user answers the macOS prompt, so a flat
+  10s reports failure after macOS has already granted access. Not unbounded, because
+  a prompt nobody answers would hold a pending entry and a spinning pane forever.
 - Malformed JSON: dropped and logged; a run of them is treated as a crash.
 - No sources at all: connect succeeds with zero accounts and the settings view
   says the Mac has no calendar accounts, pointing at `Calendar.app`. Not an error.

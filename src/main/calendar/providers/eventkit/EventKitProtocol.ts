@@ -8,6 +8,21 @@ import { z } from 'zod'
 
 export const EVENTKIT_REQUEST_TIMEOUT_MS = 10_000
 
+/**
+ * `authorize` alone, because it is the one request whose reply waits on a
+ * human: the helper blocks inside `requestFullAccessToEvents()` until the
+ * macOS prompt is answered. At the ordinary ten seconds, a user who reads the
+ * prompt and then clicks Allow is told the connection failed after macOS has
+ * already granted access.
+ *
+ * Five minutes rather than no timeout at all. A prompt nobody answers — the
+ * user walked away, or the dialog is behind a full-screen app — would
+ * otherwise hold a pending entry and leave the Accounts pane spinning for the
+ * life of the process. Five minutes is far past any plausible answer and
+ * still settles on its own.
+ */
+export const EVENTKIT_AUTHORIZE_TIMEOUT_MS = 5 * 60_000
+
 const MAX_TEXT_LENGTH = 4_000
 
 const identifier = z.string().min(1).max(512)
