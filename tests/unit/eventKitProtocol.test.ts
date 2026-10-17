@@ -28,9 +28,14 @@ describe('eventKitEventSchema', () => {
     expect(eventKitEventSchema.safeParse({ ...event, attendees: [] }).success).toBe(false)
   })
 
-  it('rejects a title longer than the cap', () => {
-    const long = { ...event, title: 'x'.repeat(5_000) }
-    expect(eventKitEventSchema.safeParse(long).success).toBe(false)
+  it('accepts a title longer than the display cap, which the mapper truncates', () => {
+    const long = { ...event, title: 'x'.repeat(201) }
+    expect(eventKitEventSchema.safeParse(long).success).toBe(true)
+  })
+
+  it('rejects a title beyond the ingest bound', () => {
+    const absurd = { ...event, title: 'x'.repeat(4_001) }
+    expect(eventKitEventSchema.safeParse(absurd).success).toBe(false)
   })
 })
 

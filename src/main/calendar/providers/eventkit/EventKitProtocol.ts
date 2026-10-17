@@ -1,11 +1,11 @@
-import { z } from 'zod'
-import { MAX_EVENT_TITLE_LENGTH } from '../../../../shared/constants.ts'
-
-/**
+/*
  * The helper is a separate process and therefore a trust boundary: nothing it
  * sends is used before it is parsed, for the same reason nothing from the
  * renderer is (docs/spec.md §8.5).
  */
+
+import { z } from 'zod'
+import { MAX_EVENT_TITLE_LENGTH } from '../../../../shared/constants.ts'
 
 export const EVENTKIT_REQUEST_TIMEOUT_MS = 10_000
 
@@ -29,7 +29,10 @@ export const eventKitEventSchema = z.strictObject({
   id: identifier,
   calendarId: identifier,
   externalId: z.string().max(512),
-  title: z.string().max(MAX_EVENT_TITLE_LENGTH),
+  // Bounded generously, not at the display cap: one over-long title must not
+  // fail the whole array and cost the user their agenda. The mapper truncates
+  // to MAX_EVENT_TITLE_LENGTH, as the Google path does.
+  title: z.string().max(MAX_TEXT_LENGTH),
   start: z.string().min(1).max(40),
   end: z.string().min(1).max(40),
   isAllDay: z.boolean(),
