@@ -43,12 +43,12 @@
   --glow: rgb(88 198 248 / 22%);
   --shadow: 0 1.75rem 4rem rgb(4 113 170 / 16%);
 
-  /* app tokens, light */
-  --app-bg: #ffffff;
-  --app-subtle: #f8fafc;
-  --app-border: #e2e8f0;
+  /* app tokens, light. The neutrals carry the alpha and the mixes are the
+     app's own, so the recreation is translucent for the same reason the real
+     widget is and in the same proportion. */
+  --app-neutral: rgb(255 255 255 / 72%);
+  --app-neutral-subtle: rgb(248 250 252 / 82%);
   --app-text: #0f172a;
-  --app-muted: #64748b;
   --app-accent: #0ea5e9;
   --app-urgent: #ef4444;
   --app-live: #10b981;
@@ -66,14 +66,29 @@
     --shadow: 0 1.75rem 4rem rgb(0 0 0 / 55%);
 
     /* app tokens, dark */
-    --app-bg: #0f172a;
-    --app-subtle: #1e293b;
-    --app-border: #334155;
+    --app-neutral: rgb(15 23 42 / 70%);
+    --app-neutral-subtle: rgb(30 41 59 / 80%);
     --app-text: #f1f5f9;
-    --app-muted: #94a3b8;
     --app-accent: #38bdf8;
     --app-urgent: #f87171;
     --app-live: #34d399;
+  }
+}
+
+/* The derived tints, the same four mixes the app makes in theme.css. Kept as
+   mixes rather than flattened to hex so that changing an accent here changes
+   the whole recreation, exactly as it does in the app. */
+:root {
+  --app-bg: color-mix(in oklab, var(--app-accent) 24%, var(--app-neutral));
+  --app-subtle: color-mix(in oklab, var(--app-accent) 34%, var(--app-neutral-subtle));
+  --app-border: color-mix(in oklab, var(--app-accent) 45%, #e2e8f0);
+  --app-muted: color-mix(in oklab, var(--app-accent) 30%, #64748b);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-border: color-mix(in oklab, var(--app-accent) 45%, #334155);
+    --app-muted: color-mix(in oklab, var(--app-accent) 30%, #94a3b8);
   }
 }
 
@@ -204,18 +219,48 @@ a {
   padding: 2.5rem 0;
 }
 
-.stage::before {
-  content: '';
+/* Something for the widget to be translucent *over*. The panel is see-through
+   against whatever window it covers, not against a blur of the wallpaper, and
+   a recreation floating on the page background would quietly misrepresent
+   that. So there is an editor underneath, and its lines run under the panel. */
+/* The desk is sized against this rather than against the stage, so that the
+   caption wrapping onto a second line cannot push the editor out from under
+   the panel. */
+.frame {
+  position: relative;
+  padding-bottom: 1.8rem;
+}
+
+.desk {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(60% 50% at 50% 45%, var(--glow), transparent 70%);
-  filter: blur(0.5rem);
+  inset: 0 -1rem;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  padding: 3.1rem 1.2rem 0;
+  background: linear-gradient(155deg, #14314d, #071220 55%, #0d2135);
+  box-shadow: var(--shadow);
+}
+
+.desk-line {
+  height: 0.45rem;
+  border-radius: 0.225rem;
+  margin: 0 0 0.62rem;
+  background: #7b9bba;
+}
+
+.desk-line--accent {
+  background: var(--sky);
+}
+
+.desk-line--warm {
+  background: var(--amber);
 }
 
 /* The countdown the app puts in the real menu bar, shown where it actually
    lives rather than as a floating pill. */
 .menubar {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -251,24 +296,38 @@ a {
 
 .widget {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.1rem;
   background: var(--app-bg);
   color: var(--app-text);
   border: 1px solid var(--app-border);
   border-radius: 0.65rem;
   box-shadow: var(--shadow);
-  overflow: hidden;
   font-size: 11px;
   line-height: 1.45;
+}
+
+/* Each section is a card on the glass, as in the app: a border, a subtle
+   fill, and a shadow faint enough to read as a lifted edge. The borders do
+   the separating that a row of divider rules used to. */
+.widget-next,
+.timeline,
+.todos {
+  margin: 0 0.4rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  background: var(--app-subtle);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
 }
 
 .widget-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  border-bottom: 1px solid var(--app-border);
+  padding: 0.4rem 0.75rem 0;
 }
 
 .widget-clock {
@@ -285,8 +344,8 @@ a {
 
 .widget-chip {
   border: 1px solid var(--app-border);
-  border-radius: 0.25rem;
-  padding: 0 0.3rem;
+  border-radius: 999px;
+  padding: 0 0.4rem;
   font-size: 9px;
   color: var(--app-muted);
 }
@@ -300,9 +359,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.3rem 0.75rem;
-  border-bottom: 1px solid var(--app-border);
-  background: rgb(239 68 68 / 10%);
+  padding: 0.35rem 0.6rem;
 }
 
 .widget-next .dot {
@@ -326,8 +383,8 @@ a {
 
 .widget-next .join {
   border: 1px solid var(--app-border);
-  border-radius: 0.2rem;
-  padding: 0 0.3rem;
+  border-radius: 999px;
+  padding: 0 0.4rem;
   font-size: 10px;
   color: var(--app-accent);
 }
@@ -338,7 +395,7 @@ a {
   position: relative;
   display: flex;
   height: 13.5rem;
-  padding: 0.35rem 0.5rem 0.35rem 0;
+  padding: 0.4rem 0.5rem 0.4rem 0;
 }
 
 .gutter {
@@ -377,7 +434,9 @@ a {
   padding: 0.1rem 0.35rem;
   border-left: 2px solid var(--app-border);
   border-radius: 0.2rem;
-  background: var(--app-subtle);
+  /* A block has to read against the card it sits on, which is itself the
+     subtle fill, so it takes a heavier dose of the same accent. */
+  background: color-mix(in oklab, var(--app-accent) 26%, var(--app-subtle));
   overflow: hidden;
   display: flex;
   align-items: baseline;
@@ -403,7 +462,7 @@ a {
 }
 
 .event--now {
-  background: rgb(239 68 68 / 14%);
+  background: color-mix(in oklab, var(--app-urgent) 26%, var(--app-subtle));
   border-left-color: var(--app-urgent);
 }
 
@@ -445,15 +504,14 @@ a {
 /* the TODO half */
 
 .todos {
-  border-top: 1px solid var(--app-border);
-  padding: 0.3rem 0 0.45rem;
+  padding: 0.35rem 0 0.45rem;
 }
 
 .todos header {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0 0.75rem 0.15rem;
+  padding: 0 0.6rem 0.15rem;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -480,7 +538,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.1rem 0.75rem;
+  padding: 0.1rem 0.6rem;
 }
 
 .todo .box {
@@ -514,8 +572,8 @@ a {
 .widget-status {
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--app-border);
-  padding: 0.25rem 0.75rem;
+  padding: 0.1rem 0.75rem 0.3rem;
+  font-size: 10px;
   color: var(--app-muted);
 }
 
@@ -528,7 +586,7 @@ a {
   text-align: center;
   font-size: 0.78rem;
   color: var(--muted);
-  margin: 1rem 0 0;
+  margin: 1.2rem 0 0;
 }
 
 /* ---------- sections ---------- */
