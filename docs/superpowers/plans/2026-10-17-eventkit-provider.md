@@ -1070,8 +1070,13 @@ struct CalendarStore {
         guard let source = store.sources.first(where: { $0.sourceIdentifier == sourceId }) else {
             throw HelperError.unknownSource
         }
+        // An empty selection means no calendars, not every calendar. The user
+        // got here by unticking every box, and an app whose promise is that you
+        // choose what it reads must fail closed. (Corrected at final review: the
+        // original `calendarIds.isEmpty ? all : …` showed the whole source while
+        // the pane read "0 calendars selected".)
         let all = source.calendars(for: .event)
-        let wanted = calendarIds.isEmpty ? all : all.filter { calendarIds.contains($0.calendarIdentifier) }
+        let wanted = all.filter { calendarIds.contains($0.calendarIdentifier) }
         if wanted.isEmpty {
             return []
         }

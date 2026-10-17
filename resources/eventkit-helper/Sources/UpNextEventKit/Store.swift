@@ -91,6 +91,21 @@ func urlForWire(_ value: String?) -> String? {
     return value
 }
 
+/// Narrows a source's calendars to the ones the user picked.
+///
+/// An empty selection means none of them. It is tempting to read it as "not
+/// configured, so show everything", and this helper used to; but the only way
+/// to arrive here with an empty list is the user unticking every box in the
+/// calendar picker, and an app whose promise is that you choose what it reads
+/// must fail closed. Showing every event in the source while the pane reads
+/// "0 calendars selected" is the opposite of that promise.
+func selectedCalendars(from all: [EKCalendar], calendarIds: [String]) -> [EKCalendar] {
+    guard !calendarIds.isEmpty else {
+        return []
+    }
+    return all.filter { calendarIds.contains($0.calendarIdentifier) }
+}
+
 /// `calendars(for:)` hands back a `Set`, whose order differs run to run.
 /// Sorted so the list the user picks from, and the default this falls back
 /// to, stay put between calls. `localizedStandardCompare` is the Finder's
@@ -161,8 +176,7 @@ struct CalendarStore {
         guard let source = store.sources.first(where: { $0.sourceIdentifier == sourceId }) else {
             throw HelperError.unknownSource
         }
-        let all = eventCalendars(of: source)
-        let wanted = calendarIds.isEmpty ? all : all.filter { calendarIds.contains($0.calendarIdentifier) }
+        let wanted = selectedCalendars(from: eventCalendars(of: source), calendarIds: calendarIds)
         if wanted.isEmpty {
             return []
         }

@@ -70,6 +70,13 @@ export class EventKitProvider implements CalendarProvider {
     calendarIds: readonly CalendarId[],
     range: TimeRange,
   ): Promise<CalendarEvent[]> {
+    // An empty selection means no calendars, not all of them: the user has
+    // unticked every box. Answered here as well as in the helper, so it costs
+    // no round trip and cannot spawn the helper for a user who reads nothing.
+    if (calendarIds.length === 0) {
+      return []
+    }
+
     const raw = await this.helper.request(
       'events',
       {

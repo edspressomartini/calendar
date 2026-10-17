@@ -135,6 +135,24 @@ describe('EventKitProvider', () => {
     ])
   })
 
+  /**
+   * An empty selection is the user having unticked every box, which must
+   * mean no events rather than every event in the source. Answered without
+   * the helper, so unticking the last box cannot even spawn it.
+   */
+  it('reads nothing when no calendar is selected', async () => {
+    const { helper, request } = helperReturning()
+    const provider = new EventKitProvider('eventkit:src', 'src', helper, silentLogger())
+
+    const events = await provider.fetchEvents([], {
+      start: '2026-10-17T00:00:00+01:00',
+      end: '2026-10-18T00:00:00+01:00',
+    })
+
+    expect(events).toEqual([])
+    expect(request).not.toHaveBeenCalled()
+  })
+
   it('lists its source calendars and reports the default as primary', async () => {
     const { helper } = helperReturning([{ id: 'cal-1', title: 'Home', isDefault: true }])
     const provider = new EventKitProvider('eventkit:src', 'src', helper, silentLogger())

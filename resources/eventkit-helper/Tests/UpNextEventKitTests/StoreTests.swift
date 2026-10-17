@@ -106,6 +106,41 @@ final class StoreTests: XCTestCase {
         XCTAssertTrue(sortedForDisplay([]).isEmpty)
     }
 
+    // MARK: - selectedCalendars
+
+    private func calendar(titled title: String) -> EKCalendar {
+        let calendar = EKCalendar(for: .event, eventStore: EKEventStore())
+        calendar.title = title
+        return calendar
+    }
+
+    /// The whole point of this one. An empty selection is the user having
+    /// unticked every box, and this app's promise is that it reads only what
+    /// the user picked — so it reads nothing, rather than everything.
+    func testAnEmptySelectionSelectsNothing() {
+        let all = [calendar(titled: "Home"), calendar(titled: "Work")]
+
+        XCTAssertTrue(selectedCalendars(from: all, calendarIds: []).isEmpty)
+    }
+
+    func testOnlyTheNamedCalendarsAreSelected() {
+        let home = calendar(titled: "Home")
+        let work = calendar(titled: "Work")
+
+        let selected = selectedCalendars(from: [home, work], calendarIds: [work.calendarIdentifier])
+
+        XCTAssertEqual(selected.map(\.title), ["Work"])
+    }
+
+    /// A stale identifier — a calendar deleted in Calendar.app since the user
+    /// picked it — selects nothing extra, and in particular does not fall
+    /// back to the whole source.
+    func testIdentifiersThatMatchNothingSelectNothing() {
+        let all = [calendar(titled: "Home")]
+
+        XCTAssertTrue(selectedCalendars(from: all, calendarIds: ["gone"]).isEmpty)
+    }
+
     // MARK: - truncatedForWire
 
     func testShortTextIsLeftAlone() {
