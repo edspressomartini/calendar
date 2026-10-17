@@ -56,6 +56,7 @@ class Application {
   private clock: AgendaClock | null = null
   private tray: TrayController | null = null
   private scheduler: SyncScheduler | null = null
+  private helper: EventKitHelperProcess | null = null
   private widget: WidgetWindow | null = null
   private alertWindow: MeetingAlertWindow | null = null
   private quickAdd: QuickAddWindow | null = null
@@ -108,6 +109,7 @@ class Application {
       defaultHelperSpawn(this.logger.child('eventkit-spawn')),
       this.logger.child('eventkit-helper'),
     )
+    this.helper = helper
     const factory = new ProviderFactory(
       this.config,
       vault,
@@ -248,6 +250,7 @@ class Application {
       agenda,
       todos,
       clock,
+      helper,
       systemEvents,
       widget,
       quickAdd,
@@ -301,6 +304,7 @@ class Application {
   stop(): void {
     this.clock?.stop()
     this.scheduler?.stop()
+    this.helper?.stop()
     this.shortcuts?.stop()
     this.tray?.destroy()
     this.alertWindow?.close()
@@ -311,6 +315,7 @@ class Application {
     agenda: AgendaService
     todos: TodoService
     clock: AgendaClock
+    helper: EventKitHelperProcess
     systemEvents: SystemEvents
     widget: WidgetWindow
     quickAdd: QuickAddWindow
@@ -344,6 +349,12 @@ class Application {
     parts.systemEvents.resumed.subscribe((reason) => {
       parts.clock.forceTick()
       parts.scheduler.syncAllNow(reason)
+    })
+
+    // An edit the user just made in Calendar.app should appear without
+    // waiting for the next refresh (§7).
+    parts.helper.changed.subscribe(() => {
+      parts.scheduler.syncProviderNow('eventkit', 'calendar store changed')
     })
 
     parts.systemEvents.displaysChanged.subscribe(() => {

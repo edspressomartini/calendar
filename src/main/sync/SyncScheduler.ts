@@ -1,4 +1,4 @@
-import type { AccountId } from '../../shared/types/calendar.ts'
+import type { AccountId, ProviderKind } from '../../shared/types/calendar.ts'
 import { MINUTE_MS } from '../../shared/time.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
@@ -15,10 +15,12 @@ import type { SyncCoordinator, SyncOutcome } from './SyncCoordinator.ts'
 const JITTER_MS = 30_000
 const BACKOFF_START_MS = 30_000
 const BACKOFF_CAP_MS = 10 * MINUTE_MS
+const STORE_CHANGE_DEBOUNCE_MS = 2_000
 
 export class SyncScheduler {
   private readonly timers = new Map<AccountId, NodeJS.Timeout>()
   private readonly backoff = new Map<AccountId, number>()
+  private storeChangeTimer: NodeJS.Timeout | null = null
   private running = false
 
   constructor(
@@ -34,6 +36,10 @@ export class SyncScheduler {
 
   stop(): void {
     this.running = false
+    if (this.storeChangeTimer) {
+      clearTimeout(this.storeChangeTimer)
+      this.storeChangeTimer = null
+    }
     for (const timer of this.timers.values()) {
       clearTimeout(timer)
     }
@@ -75,6 +81,26 @@ export class SyncScheduler {
     for (const account of this.settings.getAccounts()) {
       void this.syncNow(account.id)
     }
+  }
+
+  /**
+   * The macOS calendar store announces changes in bursts — one per calendar
+   * touched — so the first one starts a short timer and the rest join it.
+   */
+  syncProviderNow(kind: ProviderKind, reason: string): void {
+    if (!this.running || this.storeChangeTimer) {
+      return
+    }
+
+    this.storeChangeTimer = setTimeout(() => {
+      this.storeChangeTimer = null
+      this.logger.info('sync triggered', { reason })
+      for (const account of this.settings.getAccounts()) {
+        if (account.provider === kind) {
+          void this.syncNow(account.id)
+        }
+      }
+    }, STORE_CHANGE_DEBOUNCE_MS)
   }
 
   async syncNow(accountId: AccountId): Promise<void> {
