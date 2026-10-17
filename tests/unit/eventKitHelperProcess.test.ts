@@ -1,12 +1,15 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
   defaultHelperSpawn,
   EventKitHelperProcess,
 } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import type { HelperChild } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
-import { silentLogger } from '../mocks/logger.ts'
+import { recordingLogger, silentLogger, type LogEntry } from '../mocks/logger.ts'
 
 interface FakeChild extends HelperChild {
   exit(): void
@@ -49,6 +52,13 @@ function fakeChild(): FakeChild {
 function flushStreams(): Promise<void> {
   return new Promise((resolve) => {
     setImmediate(resolve)
+  })
+}
+
+/** Long enough for a real child process to fail and report it. */
+function flushProcessEvents(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 200)
   })
 }
 
@@ -266,22 +276,115 @@ describe('EventKitHelperProcess', () => {
   })
 })
 
+/**
+ * These run a real child process, because the hazard being tested is a Node
+ * one: an 'error' event with no listener is rethrown as an uncaught exception,
+ * and in the main process that is fatal.
+ */
 describe('defaultHelperSpawn', () => {
-  /**
-   * A missing binary is the normal state of a dev tree. Unhandled, the
-   * ChildProcess 'error' event is rethrown as an uncaught exception and takes
-   * the main process with it.
-   */
+  const MISSING_BINARY = '/nonexistent/up-next-eventkit'
+  const temporaryDirectories: string[] = []
+
+  afterAll(async () => {
+    await Promise.all(temporaryDirectories.map((dir) => rm(dir, { force: true, recursive: true })))
+  })
+
+  /** An executable helper stand-in, since the Swift binary does not exist yet. */
+  async function helperFixture(script: string): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), 'up-next-helper-'))
+    temporaryDirectories.push(dir)
+    const binary = join(dir, 'up-next-eventkit')
+    await writeFile(binary, script, { mode: 0o755 })
+    return binary
+  }
+
+  /** A missing binary is the normal state of a dev tree. */
   it('reports a binary that cannot be spawned instead of throwing uncaught', async () => {
     const helper = new EventKitHelperProcess(
-      '/nonexistent/up-next-eventkit',
-      defaultHelperSpawn,
+      MISSING_BINARY,
+      defaultHelperSpawn(silentLogger()),
       silentLogger(),
       2_000,
     )
 
     const pending = helper.request('sources', {}, z.array(z.string()))
     await expect(pending).rejects.toMatchObject({ kind: 'helper_unavailable' })
+    helper.stop()
+  })
+
+  it('logs why the spawn failed, so a broken install is diagnosable', async () => {
+    const entries: LogEntry[] = []
+    const helper = new EventKitHelperProcess(
+      MISSING_BINARY,
+      defaultHelperSpawn(recordingLogger(entries)),
+      silentLogger(),
+      2_000,
+    )
+
+    const pending = helper.request('sources', {}, z.array(z.string()))
+    await expect(pending).rejects.toMatchObject({ kind: 'helper_unavailable' })
+
+    expect(entries).toContainEqual(
+      expect.objectContaining({ level: 'warn', context: { code: 'ENOENT' } }),
+    )
+    helper.stop()
+  })
+
+  it('does not depend on the caller subscribing to stay alive', async () => {
+    // Spawn and ignore: the crash guard must not live in the subscription.
+    const spawn = defaultHelperSpawn(silentLogger())
+    const child = spawn(MISSING_BINARY)
+
+    expect(child.stdin.writable).toBe(true)
+    await flushProcessEvents()
+    child.kill()
+  })
+
+  /**
+   * The gap this class exists to survive: the OS closes the pipe the moment
+   * the helper lets go of it, but `this.child` stays set until 'exit' is
+   * delivered. A request in that window writes to a dead pipe, and the EPIPE
+   * is emitted on the socket.
+   */
+  it('fails a request when the helper has closed its stdin', async () => {
+    const binary = await helperFixture('#!/bin/sh\nexec 0<&-\nsleep 5\n')
+    const helper = new EventKitHelperProcess(
+      binary,
+      defaultHelperSpawn(silentLogger()),
+      silentLogger(),
+      500,
+    )
+
+    // Nothing answers this, and it gives the helper time to close fd 0.
+    const unanswered = helper.request('sources', {}, z.array(z.string()))
+    await expect(unanswered).rejects.toMatchObject({ kind: 'timeout' })
+
+    // The helper is still running, so this writes to the closed pipe.
+    const broken = helper.request('sources', {}, z.array(z.string()))
+    await expect(broken).rejects.toMatchObject({ kind: 'helper_unavailable' })
+    helper.stop()
+  })
+
+  it('logs a broken pipe with its code', async () => {
+    const binary = await helperFixture('#!/bin/sh\nexec 0<&-\nsleep 5\n')
+    const entries: LogEntry[] = []
+    const helper = new EventKitHelperProcess(
+      binary,
+      defaultHelperSpawn(recordingLogger(entries)),
+      silentLogger(),
+      500,
+    )
+
+    await expect(helper.request('sources', {}, z.array(z.string()))).rejects.toMatchObject({
+      kind: 'timeout',
+    })
+    await expect(helper.request('sources', {}, z.array(z.string()))).rejects.toMatchObject({
+      kind: 'helper_unavailable',
+    })
+
+    expect(entries).toContainEqual(
+      expect.objectContaining({ level: 'warn', context: { source: 'stdin', code: 'EPIPE' } }),
+    )
     helper.stop()
   })
 })

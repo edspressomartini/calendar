@@ -185,32 +185,73 @@ export class EventKitHelperProcess implements EventKitRequester {
   }
 }
 
-export function defaultHelperSpawn(binaryPath: string): HelperChild {
-  const child = spawnChild(binaryPath, [], { stdio: ['pipe', 'pipe', 'ignore'] })
-  if (!child.stdout || !child.stdin) {
-    throw new EventKitError('helper_unavailable')
+/** `errno` codes are diagnostics, not user data: ENOENT, EACCES, EPIPE. */
+function errorCode(error: unknown): string | null {
+  if (error instanceof Error && 'code' in error && typeof error.code === 'string') {
+    return error.code
   }
-  return {
-    stdout: child.stdout,
-    stdin: child.stdin,
-    on: (event, listener) => {
-      // A spawn that fails — a missing binary, one that is not executable —
-      // emits 'error' and never 'exit'. Left unhandled, EventEmitter rethrows
-      // it as an uncaught exception and takes the main process with it. It is
-      // the same outcome for us as an exit, so it travels the same path.
-      let gone = false
-      const fire = (): void => {
-        if (gone) {
-          return
-        }
-        gone = true
+  return null
+}
+
+/**
+ * The real adapter, bound to a logger.
+ *
+ * Everything it hardens is one hazard: an `'error'` event with no listener is
+ * rethrown as an uncaught exception, which in the main process is fatal. The
+ * process emits one when a spawn fails (ENOENT, EACCES) and never exits;
+ * either pipe emits one when the helper dies with a write in flight (EPIPE),
+ * which is the window between the OS closing the pipe and `'exit'` being
+ * delivered. All of them mean the same thing to the class — the helper is
+ * gone — so all of them travel the exit path, once.
+ */
+export function defaultHelperSpawn(logger: AppLogger): HelperSpawn {
+  return (binaryPath) => {
+    const child = spawnChild(binaryPath, [], { stdio: ['pipe', 'pipe', 'ignore'] })
+    const { stdin, stdout } = child
+    if (!stdout || !stdin) {
+      throw new EventKitError('helper_unavailable')
+    }
+
+    const listeners: (() => void)[] = []
+    let gone = false
+    const reportGone = (): void => {
+      if (gone) {
+        return
+      }
+      gone = true
+      for (const listener of [...listeners]) {
         listener()
       }
-      child.on(event, fire)
-      child.on('error', fire)
-    },
-    kill: () => {
-      child.kill()
-    },
+    }
+
+    // Attached now rather than when something subscribes, so the process
+    // cannot be killed by a caller that spawns and does not listen.
+    child.on('error', (error: unknown) => {
+      logger.warn('calendar helper could not be started', { code: errorCode(error) })
+      reportGone()
+    })
+    for (const [source, pipe] of [
+      ['stdin', stdin],
+      ['stdout', stdout],
+    ] as const) {
+      pipe.on('error', (error: unknown) => {
+        logger.warn('calendar helper pipe failed', { source, code: errorCode(error) })
+        reportGone()
+      })
+    }
+    child.on('exit', reportGone)
+
+    return {
+      stdout,
+      stdin,
+      // Safe to queue rather than replay: every event above is asynchronous,
+      // and the class subscribes synchronously on spawn.
+      on: (_event, listener) => {
+        listeners.push(listener)
+      },
+      kill: () => {
+        child.kill()
+      },
+    }
   }
 }
