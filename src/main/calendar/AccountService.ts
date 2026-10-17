@@ -126,11 +126,39 @@ export class AccountService {
     // traced: a stall shows up as a spinner that never stops.
     this.logger.info('sign-in returned', { provider: kind, accounts: results.length })
 
+    // This is the boundary between a grant covering several sources and a
+    // single UI response, so a failing source is caught and the rest are still
+    // registered: losing all of iCloud because one local calendar could not be
+    // written is not a trade the user would make.
+    const failures: unknown[] = []
+    let registered = 0
+
     for (const result of results) {
-      await this.register(kind, result)
+      try {
+        await this.register(kind, result)
+        registered += 1
+      } catch (error) {
+        failures.push(error)
+        // No account id: for Google they are email addresses, and no label
+        // either — it is the source's own name (§8.7).
+        this.logger.warn('could not register account', {
+          provider: kind,
+          error: describeError(error),
+        })
+      }
     }
 
+    // Before any rethrow: whatever did register needs scheduling, or it would
+    // sit unsynced until the next restart.
     this.scheduler.reconcile()
+
+    // Nothing landed, so there is nothing to show: the first failure travels on
+    // to the IPC log and the renderer's generic sign-in error. Returning the
+    // list here would look like success.
+    if (registered === 0 && failures.length > 0) {
+      throw failures[0]
+    }
+
     return this.list()
   }
 

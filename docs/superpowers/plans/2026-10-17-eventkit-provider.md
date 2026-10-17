@@ -1829,11 +1829,39 @@ Expected: FAIL, `connect()` takes no argument and handles a single result.
     const results = await authenticator.authenticate()
     this.logger.info('sign-in returned', { provider: kind, accounts: results.length })
 
+    // This is the boundary between a grant covering several sources and a
+    // single UI response, so a failing source is caught and the rest are still
+    // registered: losing all of iCloud because one local calendar could not be
+    // written is not a trade the user would make.
+    const failures: unknown[] = []
+    let registered = 0
+
     for (const result of results) {
-      await this.register(kind, result)
+      try {
+        await this.register(kind, result)
+        registered += 1
+      } catch (error) {
+        failures.push(error)
+        // No account id: for Google they are email addresses, and no label
+        // either — it is the source's own name (§8.7).
+        this.logger.warn('could not register account', {
+          provider: kind,
+          error: describeError(error),
+        })
+      }
     }
 
+    // Before any rethrow: whatever did register needs scheduling, or it would
+    // sit unsynced until the next restart.
     this.scheduler.reconcile()
+
+    // Nothing landed, so there is nothing to show: the first failure travels on
+    // to the IPC log and the renderer's generic sign-in error. Returning the
+    // list here would look like success.
+    if (registered === 0 && failures.length > 0) {
+      throw failures[0]
+    }
+
     return this.list()
   }
 
@@ -1868,6 +1896,16 @@ Expected: FAIL, `connect()` takes no argument and handles a single result.
     void this.scheduler.syncNow(accountId)
   }
 ```
+
+The loop tolerates per-result failure on purpose. One EventKit grant returns an
+`AuthenticationResult` per calendar source and `register` writes to disk, so an
+all-or-nothing loop would half-persist the batch and skip `reconcile()`
+entirely: the accounts that did land would get no scheduled sync until the next
+restart. Hence `reconcile()` runs on every path, and only a clean sweep of
+failures rethrows — the renderer has one generic sign-in error, so a partial
+success must come back as the list of what worked, not as an error. Cover both
+cases in Step 1: one result failing out of several still registers the rest and
+still reconciles exactly once, and every result failing rejects.
 
 - [ ] **Step 4: Widen the IPC contract**
 

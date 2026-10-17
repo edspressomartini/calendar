@@ -29,13 +29,21 @@ vi.mock('../../src/main/sync/SyncScheduler.ts')
 interface Harness {
   readonly service: AccountService
   readonly settings: SettingsStore
+  readonly scheduler: SyncScheduler
   readonly createAuthenticator: MockInstance<ProviderFactory['createAuthenticator']>
 }
 
-function buildService(options: { authenticate: () => Promise<AuthenticationResult[]> }): Harness {
+interface HarnessOptions {
+  readonly authenticate: () => Promise<AuthenticationResult[]>
+  /** Account ids whose settings write throws, standing in for a failed disk write. */
+  readonly unwritableAccountIds?: readonly string[]
+}
+
+function buildService(options: HarnessOptions): Harness {
   const logger = silentLogger()
   const accounts: AccountConfig[] = []
   const currentSettings = (): AppSettings => ({ ...DEFAULT_SETTINGS, accounts })
+  const unwritable = new Set(options.unwritableAccountIds ?? [])
 
   const settings = new SettingsStore(logger)
   vi.spyOn(settings, 'getSettings').mockImplementation(currentSettings)
@@ -44,6 +52,9 @@ function buildService(options: { authenticate: () => Promise<AuthenticationResul
     (accountId) => accounts.find((account) => account.id === accountId) ?? null,
   )
   vi.spyOn(settings, 'addAccount').mockImplementation((account) => {
+    if (unwritable.has(account.id)) {
+      throw new Error('could not write settings')
+    }
     accounts.push({
       id: account.id,
       provider: account.provider,
@@ -74,7 +85,7 @@ function buildService(options: { authenticate: () => Promise<AuthenticationResul
 
   const service = new AccountService(settings, factory, registry, agenda, vault, scheduler, logger)
 
-  return { service, settings, createAuthenticator }
+  return { service, settings, scheduler, createAuthenticator }
 }
 
 function authenticationResult(providerAccountId: string, label: string): AuthenticationResult {
@@ -103,6 +114,69 @@ describe('AccountService.connect', () => {
       'eventkit:icloud',
       'eventkit:work',
     ])
+  })
+
+  it('reconciles the scheduler once, after every result is registered', async () => {
+    const results = [
+      authenticationResult('eventkit:icloud', 'iCloud'),
+      authenticationResult('eventkit:work', 'Work'),
+    ]
+    const { service, scheduler } = buildService({
+      authenticate: vi.fn().mockResolvedValue(results),
+    })
+    const reconcile = vi.spyOn(scheduler, 'reconcile')
+
+    await service.connect('eventkit')
+
+    expect(reconcile).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * One EventKit grant yields an account per calendar source, so a single
+   * source failing must not cost the user the rest of them (§3).
+   */
+  it('keeps the sources that registered when one of them fails', async () => {
+    const results = [
+      authenticationResult('eventkit:icloud', 'iCloud'),
+      authenticationResult('eventkit:work', 'Work'),
+      authenticationResult('eventkit:local', 'On My Mac'),
+    ]
+    const { service, settings, scheduler } = buildService({
+      authenticate: vi.fn().mockResolvedValue(results),
+      unwritableAccountIds: ['eventkit:work'],
+    })
+    const reconcile = vi.spyOn(scheduler, 'reconcile')
+
+    const views = await service.connect('eventkit')
+
+    expect(views.map((view) => view.id)).toEqual(['eventkit:icloud', 'eventkit:local'])
+    expect(settings.getAccounts().map((account) => account.id)).toEqual([
+      'eventkit:icloud',
+      'eventkit:local',
+    ])
+    expect(reconcile).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects when every result failed to register', async () => {
+    const results = [
+      authenticationResult('eventkit:icloud', 'iCloud'),
+      authenticationResult('eventkit:work', 'Work'),
+    ]
+    const { service, scheduler } = buildService({
+      authenticate: vi.fn().mockResolvedValue(results),
+      unwritableAccountIds: ['eventkit:icloud', 'eventkit:work'],
+    })
+    const reconcile = vi.spyOn(scheduler, 'reconcile')
+
+    await expect(service.connect('eventkit')).rejects.toThrow('could not write settings')
+    expect(reconcile).toHaveBeenCalledTimes(1)
+  })
+
+  /** A grant the user declined returns no sources; that is not a failure. */
+  it('resolves when authentication returned no results at all', async () => {
+    const { service } = buildService({ authenticate: vi.fn().mockResolvedValue([]) })
+
+    await expect(service.connect('eventkit')).resolves.toEqual([])
   })
 
   it('reconnects an account using its own provider kind', async () => {
