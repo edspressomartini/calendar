@@ -41,7 +41,12 @@ import { applySessionSecurity } from './windows/windowSecurity.ts'
 class Application {
   private readonly logger: AppLogger
   private readonly config = loadConfig()
-  private readonly devServerUrl = process.env['ELECTRON_RENDERER_URL'] ?? null
+  // Only in development. In a packaged build this would let an environment
+  // variable choose the renderer's origin, which also widens the IPC sender
+  // allowlist — the same class of thing the Node fuses are off for (§8.4).
+  private readonly devServerUrl = this.config.isDev
+    ? (process.env['ELECTRON_RENDERER_URL'] ?? null)
+    : null
 
   private clock: AgendaClock | null = null
   private tray: TrayController | null = null
