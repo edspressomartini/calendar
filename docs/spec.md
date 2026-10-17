@@ -410,6 +410,19 @@ Account colours come from a fixed rotation (sky → violet → amber → emerald
 | Nothing left today | Centred muted line, generous whitespace                                     |
 | Needs re-auth      | Muted "Reconnect" line under that account; its last-known events stay       |
 
+### Empty states
+
+- **An empty widget offers the fix, not an instruction.** "Open Settings to add one" was correct and useless: it named a window and then left the user to find it. The message now carries a button underneath it, which opens Settings on the tab that fixes the particular thing that is wrong.
+
+| Condition                        | Message                         | Button             | Opens on   |
+| -------------------------------- | ------------------------------- | ------------------ | ---------- |
+| Nothing connected                | No calendars connected yet.     | Connect a calendar | `accounts` |
+| Every account needs reconnecting | Reconnect to see your calendar. | Reconnect          | `accounts` |
+
+- **Every account, not any.** With one healthy account out of two there is still a day to draw, and replacing it with a reconnect prompt would throw that day away to say something the per-account status dot already says. Nothing on today keeps the plain centred line.
+- **The button opens the window; it does not start the OAuth flow.** `connectAccount` stays on the Settings bridge (§8.5), so the widget gains no capability — one extra click, the same attack surface.
+- **An empty TODO list names the shortcut.** Global quick-add is the only way in, so the empty panel spells the binding out, from the same `formatAccelerator` call as the header hint so the two cannot drift, and offers a link that opens Settings on Preferences to change it. Inline rather than a tooltip: a tooltip on an empty panel is only found by someone who already suspected something was there.
+
 ### Timeline grid
 
 - **Hours and half hours have to look different, not just differ.** Both were solid lines a few shades of grey apart, which at a glance is one line: a half-hour slot read as a whole hour and every gap looked twice as long as it was. Hours are now a solid line in a stronger tone with a bold label; half hours are a **dotted** line with a smaller, faded one. The half hours are demoted rather than dropped, because without them nothing shows that a 30-minute block is half an hour.
@@ -575,6 +588,7 @@ All of this lives in `windows/windowSecurity.ts` and is applied to every window 
 - **Check the sender.** Each handler verifies that `event.senderFrame.url` is the expected origin for that channel — `app://widget` or `app://settings`, or the Vite dev server in dev builds. Anything else is dropped and logged, without its payload.
 - **Nothing sensitive crosses.** The renderer receives `AgendaSnapshot` view models — titles, times, colours, status and `canJoin` — never meeting URLs (Zoom links embed passcodes), descriptions, attendees or tokens.
 - **Rate-limit side effects.** `agenda:join` and `sync:now` ignore repeats within a second, so a compromised renderer can't spam browser tabs or the API.
+- **The settings tab travels two ways, deliberately.** `settings:open` carries an optional tab, validated as an enum of the four tab names the window actually has, so an unknown string from a renderer never reaches the window that acts on it. A window that is already up is told on `settings:showTab`; a fresh one takes its tab from the URL `resolveRendererUrl` builds instead, because a push sent before the renderer has subscribed is dropped and losing that race is silent. The tab is a request, not state — the window keeps whatever the user picks afterwards.
 
 The whole IPC surface. Adding a channel means a row here, a Zod schema and a sender check.
 
@@ -585,7 +599,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `widget:hide`, `widget:setPinned`            | renderer → main | none / `{ pinned }`                            |
 | Widget            | `widget:setSections`                         | renderer → main | `{ showTimeline, showTodos }`                  |
 | Widget            | `widget:fitHeight`                           | renderer → main | `{ height }`                                   |
-| Widget            | `settings:open`                              | renderer → main | none                                           |
+| Widget            | `settings:open`                              | renderer → main | none / `{ tab }`                               |
 | Settings          | `accounts:list`                              | renderer → main | none                                           |
 | Settings          | `accounts:connect`                           | renderer → main | `{ provider: "google" }`                       |
 | Settings          | `accounts:reconnect`, `accounts:disconnect`  | renderer → main | `{ accountId }`                                |
@@ -593,6 +607,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Settings          | `calendars:list`, `calendars:setSelected`    | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |
 | Settings          | `displays:list`, `widget:moveToDisplay`      | renderer → main | none / `{ displayKey, corner }`                |
 | Settings          | `settings:get`, `settings:update`            | renderer → main | none / partial `AppSettings`                   |
+| Settings          | `settings:showTab`                           | main → renderer | `SettingsTab`                                  |
 | Both              | `sync:now`                                   | renderer → main | none                                           |
 | Widget, Quick add | `todos:snapshot`                             | main → renderer | `TodoSnapshot`                                 |
 | Quick add         | `todos:add`                                  | renderer → main | `{ title }`                                    |
