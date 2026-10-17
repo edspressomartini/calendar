@@ -35,6 +35,10 @@ export function registerTodoHandlers(router: IpcRouter, deps: TodoHandlerDeps): 
     deps.todos.remove(todoId)
   })
 
+  router.handle(CHANNELS.todosReorder, ({ todoId, afterId }) => {
+    deps.todos.reorder(todoId, afterId)
+  })
+
   router.handle(CHANNELS.quickAddClose, () => {
     deps.quickAdd.hide()
   })

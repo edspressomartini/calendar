@@ -148,6 +148,10 @@ function createWidgetBridge(): WidgetBridge {
     async removeTodo(todoId: string): Promise<void> {
       await ipcRenderer.invoke(CHANNELS.todosRemove, { todoId })
     },
+
+    async reorderTodo(todoId: string, afterId: string | null): Promise<void> {
+      await ipcRenderer.invoke(CHANNELS.todosReorder, { todoId, afterId })
+    },
   }
 }
 

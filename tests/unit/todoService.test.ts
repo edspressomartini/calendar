@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
 import type { SettingsReader } from '../../src/main/storage/SettingsStore.ts'
 import type { TodoWriter } from '../../src/main/storage/TodoStore.ts'
 import type { AppLogger } from '../../src/main/infra/logger.ts'
+import { RANK_GAP } from '../../src/shared/constants.ts'
 import type { AppSettings } from '../../src/shared/types/settings.ts'
 import type { Todo, TodoSnapshot } from '../../src/shared/types/todo.ts'
 
@@ -53,7 +54,11 @@ function serviceWith(
   }
 }
 
+let nextFixtureRank = 0
+
 function todoOn(day: string, id: string, overrides: Partial<Todo> = {}): Todo {
+  nextFixtureRank += RANK_GAP
+
   return {
     id,
     title: id,
@@ -61,12 +66,16 @@ function todoOn(day: string, id: string, overrides: Partial<Todo> = {}): Todo {
     createdAt: `${day}T08:00:00.000Z`,
     completedAt: null,
     rollCount: 0,
+    // Ranked in the order the fixtures are built, so a test that does not
+    // care about ordering still gets the order it wrote them in.
+    rank: nextFixtureRank,
     ...overrides,
   }
 }
 
 beforeEach(() => {
   now = new Date(2026, 8, 30, 9, 0)
+  nextFixtureRank = 0
 })
 
 describe('adding', () => {
@@ -321,5 +330,89 @@ describe('history', () => {
     )
 
     expect(service.getSnapshot().history[0]?.todos[0]?.title).toBe('Task')
+  })
+})
+
+/**
+ * Hand ranking (docs/spec.md §6). The service's job is to refuse anything it
+ * cannot make sense of rather than approximate it, because the request comes
+ * from a renderer whose copy of the list may already be out of date.
+ */
+describe('ranking', () => {
+  const current = (snapshot: TodoSnapshot): string[] => snapshot.current.map((todo) => todo.id)
+
+  it('puts a new TODO at the bottom, so adding never reshuffles the list', () => {
+    const { service } = serviceWith([todoOn('2026-09-30', 'first'), todoOn('2026-09-30', 'second')])
+    // By title: `add` mints its own id, so the fixture ids do not apply.
+    const titles = service.add('third').current.map((todo) => todo.title)
+
+    expect(titles).toEqual(['first', 'second', 'third'])
+  })
+
+  it('moves an item up one place', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-30', 'a'),
+      todoOn('2026-09-30', 'b'),
+      todoOn('2026-09-30', 'c'),
+    ])
+
+    expect(current(service.reorder('c', 'a'))).toEqual(['a', 'c', 'b'])
+  })
+
+  it('moves an item to the top when told to follow nothing', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-30', 'a'),
+      todoOn('2026-09-30', 'b'),
+      todoOn('2026-09-30', 'c'),
+    ])
+
+    expect(current(service.reorder('c', null))).toEqual(['c', 'a', 'b'])
+  })
+
+  it('survives a roll, because the rank belongs to the item', () => {
+    const { service } = serviceWith([todoOn('2026-09-30', 'a'), todoOn('2026-09-30', 'b')])
+    service.reorder('b', null)
+    service.roll('a')
+
+    expect(service.getSnapshot().current.map((todo) => todo.id)).toEqual(['b'])
+    expect(service.getSnapshot().upcoming.map((todo) => todo.id)).toEqual(['a'])
+  })
+
+  /**
+   * The groups rank independently, so "after this overdue item" is not a
+   * position in today's list and the request means nothing.
+   */
+  it('refuses a move across groups', () => {
+    const { service } = serviceWith([todoOn('2026-09-29', 'late'), todoOn('2026-09-30', 'today')])
+    const before = service.getSnapshot()
+
+    expect(service.reorder('today', 'late')).toBe(before)
+  })
+
+  it('refuses a neighbour that is no longer in the list', () => {
+    const { service } = serviceWith([todoOn('2026-09-30', 'a')])
+    const before = service.getSnapshot()
+
+    expect(service.reorder('a', 'deleted')).toBe(before)
+  })
+
+  it('refuses to rank a completed item, which has already sunk', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-30', 'a'),
+      todoOn('2026-09-30', 'done', { completedAt: '2026-09-30T09:00:00.000Z' }),
+    ])
+    const before = service.getSnapshot()
+
+    expect(service.reorder('done', 'a')).toBe(before)
+  })
+
+  it('sinks a completed item below the ranked run', () => {
+    const { service } = serviceWith([
+      todoOn('2026-09-30', 'a'),
+      todoOn('2026-09-30', 'b'),
+      todoOn('2026-09-30', 'c'),
+    ])
+
+    expect(current(service.toggle('a'))).toEqual(['b', 'c', 'a'])
   })
 })

@@ -14,6 +14,7 @@ const todo: Todo = {
   createdAt: '2026-09-30T08:00:00.000Z',
   completedAt: null,
   rollCount: 0,
+  rank: 1000,
 }
 
 describe('parseTodos', () => {
@@ -53,6 +54,54 @@ describe('parseTodos', () => {
     expect(parseTodos(null)).toEqual([])
     expect(parseTodos('nonsense')).toEqual([])
     expect(parseTodos({ todos: 'nonsense' })).toEqual([])
+  })
+})
+
+/**
+ * A list written before ranking existed must open in the order the user last
+ * saw it, which was `createdAt` ascending — not in file order, and not all
+ * sharing a rank of zero.
+ */
+describe('parseTodos on a file written before ranking', () => {
+  const withoutRank = (id: string, createdAt: string): Record<string, unknown> => {
+    const row: Record<string, unknown> = { ...todo, id, createdAt }
+    delete row['rank']
+
+    return row
+  }
+
+  const unranked = [
+    withoutRank('newest', '2026-09-30T10:00:00.000Z'),
+    withoutRank('oldest', '2026-09-30T08:00:00.000Z'),
+    withoutRank('middle', '2026-09-30T09:00:00.000Z'),
+  ]
+
+  it('ranks them oldest first, which is the order they used to display in', () => {
+    const parsed = parseTodos({ todos: unranked })
+    const order = [...parsed].sort((left, right) => left.rank - right.rank).map((item) => item.id)
+
+    expect(order).toEqual(['oldest', 'middle', 'newest'])
+  })
+
+  it('gives every row a distinct rank, so the order is not left to chance', () => {
+    const parsed = parseTodos({ todos: unranked })
+
+    expect(new Set(parsed.map((item) => item.rank)).size).toBe(parsed.length)
+  })
+
+  it('leaves room below the first item', () => {
+    const parsed = parseTodos({ todos: unranked })
+
+    expect(Math.min(...parsed.map((item) => item.rank))).toBeGreaterThan(0)
+  })
+
+  it('leaves ranks alone once every row has one', () => {
+    const ranked = [
+      { ...todo, id: 'a', rank: 7 },
+      { ...todo, id: 'b', rank: 3 },
+    ]
+
+    expect(parseTodos({ todos: ranked }).map((item) => item.rank)).toEqual([7, 3])
   })
 })
 

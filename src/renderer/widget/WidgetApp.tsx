@@ -43,6 +43,10 @@ export function WidgetApp(): JSX.Element {
     void widgetApi().removeTodo(todoId)
   }, [])
 
+  const reorderTodo = useCallback((todoId: string, afterId: string | null) => {
+    void widgetApi().reorderTodo(todoId, afterId)
+  }, [])
+
   // Like every other toggle here, the state lives in main and comes back on
   // the snapshot. Local state would start as a guess and drift the moment the
   // same setting was changed in the Settings window.
@@ -85,6 +89,11 @@ export function WidgetApp(): JSX.Element {
 
   const prompt = emptyPromptFor(snapshot.accounts)
   const hasAccounts = snapshot.accounts.length > 0
+  // A day with nothing on it does not need an hour grid to say so. Drawing
+  // one spends most of the widget on empty rules and pushes the TODO list
+  // into whatever is left, which is the wrong way round when the list is the
+  // only thing with anything in it.
+  const clearDay = hasAccounts && snapshot.timed.length === 0 && snapshot.allDay.length === 0
   // Three narrow columns are unreadable, so split collapses to merged (§6).
   const useSplit = snapshot.viewMode === 'split' && width >= SPLIT_VIEW_MIN_WIDTH && hasAccounts
 
@@ -96,10 +105,15 @@ export function WidgetApp(): JSX.Element {
       // percentage cap would be measured against a height this panel is
       // itself about to determine. A fixed ceiling cannot feed back.
       compact={!snapshot.showTimeline}
+      // A clear day leaves the list as the only thing with content in it, so
+      // the 45% cap would hold it to under half a widget that has nothing
+      // else to show.
+      uncapped={clearDay}
       onToggle={toggleTodo}
       onRoll={rollTodo}
       onRollAllOverdue={rollAllOverdueTodos}
       onRemove={removeTodo}
+      onReorder={reorderTodo}
       onChangeShortcut={() => void widgetApi().openSettings('preferences')}
     />
   ) : null
@@ -133,13 +147,19 @@ export function WidgetApp(): JSX.Element {
           the scroll container has nothing to overflow and `overflow-hidden`
           quietly clips the afternoon off instead. */}
       {snapshot.showTimeline && (
-        <div className="card mx-3 mb-2 flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          className={`card mx-3 mb-2 flex flex-col overflow-hidden ${
+            clearDay ? 'shrink-0' : 'min-h-0 flex-1'
+          }`}
+        >
           {prompt ? (
             <EmptyState
               message={prompt.message}
               actionLabel={prompt.actionLabel}
               onAction={() => void widgetApi().openSettings(prompt.tab)}
             />
+          ) : clearDay ? (
+            <EmptyState message="Nothing scheduled today" />
           ) : useSplit ? (
             <SplitView snapshot={snapshot} onJoin={join} />
           ) : (

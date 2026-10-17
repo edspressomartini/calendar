@@ -34,6 +34,7 @@ export const CHANNELS = {
   todosRoll: 'todos:roll',
   todosRollAllOverdue: 'todos:rollAllOverdue',
   todosRemove: 'todos:remove',
+  todosReorder: 'todos:reorder',
   quickAddClose: 'quickAdd:close',
 } as const
 
@@ -84,6 +85,9 @@ export const CHANNEL_CALLERS: Record<ChannelName, readonly WindowRole[]> = {
   [CHANNELS.todosRoll]: ['widget'],
   [CHANNELS.todosRollAllOverdue]: ['widget'],
   [CHANNELS.todosRemove]: ['widget'],
+  // Widget only. Quick-add can file a TODO and nothing else, and ranking a
+  // list it does not show is not a capability it needs.
+  [CHANNELS.todosReorder]: ['widget'],
   [CHANNELS.quickAddClose]: ['quickadd'],
 }
 

@@ -10,10 +10,13 @@ interface TodoPanelProps {
   readonly shortcut: string
   /** Set when the timeline is hidden; see the call site for why it matters. */
   readonly compact: boolean
+  /** Set when the timeline has collapsed because the day is clear. */
+  readonly uncapped: boolean
   readonly onToggle: (todoId: string) => void
   readonly onRoll: (todoId: string) => void
   readonly onRollAllOverdue: () => void
   readonly onRemove: (todoId: string) => void
+  readonly onReorder: (todoId: string, afterId: string | null) => void
   readonly onChangeShortcut: () => void
 }
 
@@ -32,10 +35,12 @@ export function TodoPanel({
   snapshot,
   shortcut,
   compact,
+  uncapped,
   onToggle,
   onRoll,
   onRollAllOverdue,
   onRemove,
+  onReorder,
   onChangeShortcut,
 }: TodoPanelProps): JSX.Element | null {
   const [collapsed, setCollapsed] = useState(false)
@@ -56,8 +61,8 @@ export function TodoPanel({
   // its own content gives the percentage nothing to resolve against.
   return (
     <section
-      className={`card mx-3 mb-2 flex shrink-0 flex-col overflow-hidden ${
-        compact ? 'max-h-60' : 'max-h-[45%]'
+      className={`card mx-3 mb-2 flex flex-col overflow-hidden ${
+        uncapped ? 'min-h-0 flex-1' : `shrink-0 ${compact ? 'max-h-60' : 'max-h-[45%]'}`
       }`}
     >
       <header className="flex items-center gap-2 px-3 py-1">
@@ -135,6 +140,7 @@ export function TodoPanel({
             onToggle={onToggle}
             onRoll={onRoll}
             onRemove={onRemove}
+            onReorder={onReorder}
           />
 
           {snapshot.overdue.length > 0 && snapshot.current.length > 0 && (
@@ -146,6 +152,7 @@ export function TodoPanel({
             onToggle={onToggle}
             onRoll={onRoll}
             onRemove={onRemove}
+            onReorder={onReorder}
           />
 
           {snapshot.upcoming.length > 0 && (
@@ -211,29 +218,74 @@ function TodoList({
   onToggle,
   onRoll,
   onRemove,
+  onReorder,
 }: {
   todos: readonly Todo[]
   today: string
   onToggle: (todoId: string) => void
   onRoll: (todoId: string) => void
   onRemove: (todoId: string) => void
+  onReorder: (todoId: string, afterId: string | null) => void
 }): JSX.Element | null {
   if (todos.length === 0) {
     return null
   }
 
+  // Only what is still outstanding is ranked. Completed items have already
+  // sunk below this run, so including them would offer a move into a part of
+  // the list the sort is about to undo.
+  const rankable = todos.filter((todo) => todo.completedAt === null)
+
   return (
     <ul>
-      {todos.map((todo) => (
-        <TodoRow
-          key={todo.id}
-          todo={todo}
-          daysLate={Math.max(0, daysBetweenDayKeys(todo.day, today))}
-          onToggle={onToggle}
-          onRoll={onRoll}
-          onRemove={onRemove}
-        />
-      ))}
+      {todos.map((todo) => {
+        const position = rankable.indexOf(todo)
+
+        return (
+          <TodoRow
+            key={todo.id}
+            todo={todo}
+            daysLate={Math.max(0, daysBetweenDayKeys(todo.day, today))}
+            onToggle={onToggle}
+            onRoll={onRoll}
+            onRemove={onRemove}
+            onMoveUp={moveHandler(rankable, position, -1, onReorder)}
+            onMoveDown={moveHandler(rankable, position, 1, onReorder)}
+          />
+        )
+      })}
     </ul>
   )
+}
+
+/**
+ * The move one step in `offset`, expressed as the neighbour to land after, or
+ * null when the item is already at that end of its group.
+ *
+ * Moving up by one means landing after whatever currently precedes the
+ * predecessor, which is nothing at all when the item is about to become
+ * first — hence the deliberate null rather than an index of -1.
+ */
+function moveHandler(
+  rankable: readonly Todo[],
+  position: number,
+  offset: -1 | 1,
+  onReorder: (todoId: string, afterId: string | null) => void,
+): (() => void) | null {
+  const target = position + offset
+  if (position === -1 || target < 0 || target >= rankable.length) {
+    return null
+  }
+
+  const afterIndex = offset === -1 ? target - 1 : target
+  const after = rankable[afterIndex]
+  const todoId = rankable[position]?.id
+
+  if (todoId === undefined) {
+    return null
+  }
+
+  return () => {
+    onReorder(todoId, after?.id ?? null)
+  }
 }
