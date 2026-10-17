@@ -160,6 +160,7 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.accountsReconnect]: accountIdPayloadSchema,
   [CHANNELS.accountsDisconnect]: accountIdPayloadSchema,
   [CHANNELS.accountsUpdate]: updateAccountSchema,
+  [CHANNELS.accountsOpenCalendarPrivacy]: noPayload,
   [CHANNELS.calendarsList]: accountIdPayloadSchema,
   [CHANNELS.calendarsSetSelected]: setSelectedCalendarsSchema,
   [CHANNELS.displaysList]: noPayload,

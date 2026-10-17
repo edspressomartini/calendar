@@ -67,6 +67,16 @@ describe('IPC contract', () => {
     expect(connectAccountSchema.safeParse({ provider: 'mock' }).success).toBe(false)
   })
 
+  /** The URL is a constant in main, so there is nothing for a caller to send. */
+  it('lets only the settings window ask for the Calendar privacy pane, with no payload', () => {
+    const schema = REQUEST_SCHEMAS[CHANNELS.accountsOpenCalendarPrivacy]
+
+    expect(CHANNEL_CALLERS[CHANNELS.accountsOpenCalendarPrivacy]).toEqual(['settings'])
+    expect(schema.safeParse(undefined).success).toBe(true)
+    expect(schema.safeParse({ url: 'https://evil.example' }).success).toBe(false)
+    expect(schema.safeParse('x-apple.systempreferences:evil').success).toBe(false)
+  })
+
   it('rejects unexpected properties', () => {
     expect(joinEventSchema.safeParse({ eventId: 'a', extra: 1 }).success).toBe(false)
     expect(

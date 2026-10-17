@@ -17,6 +17,7 @@ export const CHANNELS = {
   accountsReconnect: 'accounts:reconnect',
   accountsDisconnect: 'accounts:disconnect',
   accountsUpdate: 'accounts:update',
+  accountsOpenCalendarPrivacy: 'accounts:openCalendarPrivacy',
   calendarsList: 'calendars:list',
   calendarsSetSelected: 'calendars:setSelected',
   displaysList: 'displays:list',
@@ -66,6 +67,7 @@ export const CHANNEL_CALLERS: Record<ChannelName, readonly WindowRole[]> = {
   [CHANNELS.accountsReconnect]: ['settings'],
   [CHANNELS.accountsDisconnect]: ['settings'],
   [CHANNELS.accountsUpdate]: ['settings'],
+  [CHANNELS.accountsOpenCalendarPrivacy]: ['settings'],
   [CHANNELS.calendarsList]: ['settings'],
   [CHANNELS.calendarsSetSelected]: ['settings'],
   [CHANNELS.displaysList]: ['settings'],
@@ -109,6 +111,9 @@ export const RATE_LIMITED_CHANNELS: readonly ChannelName[] = [
   CHANNELS.syncNow,
   CHANNELS.accountsConnect,
   CHANNELS.accountsReconnect,
+  // Opens a System Settings pane, so it is throttled like the other channels
+  // that hand control to another app (§8.5).
+  CHANNELS.accountsOpenCalendarPrivacy,
   CHANNELS.alertTest,
   CHANNELS.todosAdd,
 ]

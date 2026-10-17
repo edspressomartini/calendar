@@ -61,6 +61,11 @@ export interface SettingsBridge {
     label?: string
     colour?: string
   }): Promise<AccountView[]>
+  /**
+   * Opens the Calendars pane of Privacy & Security. It takes no argument: the
+   * URL is a constant in main, so the renderer cannot choose what opens (§8.6).
+   */
+  openCalendarPrivacy(): Promise<void>
   listCalendars(accountId: string): Promise<CalendarSummary[]>
   setSelectedCalendars(accountId: string, calendarIds: CalendarId[]): Promise<AccountView[]>
   listDisplays(): Promise<DisplayOption[]>

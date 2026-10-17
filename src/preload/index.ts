@@ -171,6 +171,9 @@ function createSettingsBridge(): SettingsBridge {
     updateAccount: (request: { accountId: string; label?: string; colour?: string }) =>
       ipcRenderer.invoke(CHANNELS.accountsUpdate, request) as Promise<AccountView[]>,
 
+    openCalendarPrivacy: () =>
+      ipcRenderer.invoke(CHANNELS.accountsOpenCalendarPrivacy) as Promise<void>,
+
     listCalendars: (accountId: string) =>
       ipcRenderer.invoke(CHANNELS.calendarsList, { accountId }) as Promise<CalendarSummary[]>,
 

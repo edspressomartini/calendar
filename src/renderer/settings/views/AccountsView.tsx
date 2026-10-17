@@ -3,6 +3,7 @@ import type { AccountView } from '../../../shared/types/account.ts'
 import { Badge } from '../../common/components/ui/Badge.tsx'
 import { Spinner } from '../../common/components/ui/Spinner.tsx'
 import type { AccountsState } from '../../common/hooks/useAccounts.ts'
+import { settingsApi } from '../../common/lib/ipcClient.ts'
 
 interface AccountsViewProps {
   readonly state: AccountsState
@@ -66,16 +67,25 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
                 {STATUS_LABEL[account.status]}
               </Badge>
 
-              {account.status === 'needsReauth' && (
-                <button
-                  type="button"
-                  disabled={state.busy}
-                  onClick={() => void state.reconnect(account.id)}
-                  className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
-                >
-                  Reconnect
-                </button>
-              )}
+              {account.status === 'needsReauth' &&
+                (account.provider === 'eventkit' ? (
+                  <button
+                    type="button"
+                    onClick={() => void settingsApi().openCalendarPrivacy()}
+                    className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
+                  >
+                    Open Calendar privacy settings
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={state.busy}
+                    onClick={() => void state.reconnect(account.id)}
+                    className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
+                  >
+                    Reconnect
+                  </button>
+                ))}
 
               <button
                 type="button"

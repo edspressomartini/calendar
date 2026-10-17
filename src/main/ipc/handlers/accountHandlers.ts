@@ -1,8 +1,16 @@
+import { shell } from 'electron'
 import { CHANNELS } from '../../../shared/ipc/channels.ts'
 import type { AccountColour } from '../../../shared/types/account.ts'
 import { ACCOUNT_COLOURS } from '../../../shared/constants.ts'
 import type { AccountService } from '../../calendar/AccountService.ts'
 import type { IpcRouter } from '../IpcRouter.ts'
+
+/**
+ * The Calendars pane of Privacy & Security. A fixed constant, never built
+ * from anything the renderer sends (§8.6).
+ */
+const CALENDAR_PRIVACY_URL =
+  'x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars'
 
 export interface AccountHandlerDeps {
   readonly accounts: AccountService
@@ -31,6 +39,10 @@ export function registerAccountHandlers(router: IpcRouter, deps: AccountHandlerD
       ...(label === undefined ? {} : { label }),
       ...(colour === undefined ? {} : { colour: asColour(colour) }),
     })
+  })
+
+  router.handle(CHANNELS.accountsOpenCalendarPrivacy, async () => {
+    await shell.openExternal(CALENDAR_PRIVACY_URL)
   })
 
   router.handle(

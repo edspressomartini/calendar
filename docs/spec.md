@@ -643,6 +643,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Settings          | `accounts:connect`                           | renderer → main | `{ provider: 'google' \| 'eventkit' }`         |
 | Settings          | `accounts:reconnect`, `accounts:disconnect`  | renderer → main | `{ accountId }`                                |
 | Settings          | `accounts:update`                            | renderer → main | `{ accountId, label?, colour? }`               |
+| Settings          | `accounts:openCalendarPrivacy`               | renderer → main | none                                           |
 | Settings          | `calendars:list`, `calendars:setSelected`    | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |
 | Settings          | `displays:list`, `widget:moveToDisplay`      | renderer → main | none / `{ displayKey, corner }`                |
 | Settings          | `settings:get`, `settings:update`            | renderer → main | none / partial `AppSettings`                   |
@@ -656,7 +657,8 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 
 ### 8.6 External links
 
-- `shell.openExternal` is called from exactly two places: `SystemBrowser` (the Google consent URL, built in main) and the join handler. Nothing else opens URLs.
+- `shell.openExternal` is called from exactly three places: `SystemBrowser` (the Google consent URL, built in main), the join handler, and the `accounts:openCalendarPrivacy` handler. Nothing else opens URLs.
+- **Calendar privacy:** an EventKit account whose access was refused shows a button that opens the Calendars pane of Privacy & Security. The channel carries no payload and the `x-apple.systempreferences:` URL is a compile-time constant in the handler, so the renderer cannot choose what gets opened — it can only ask for that one pane.
 - **Join:** the renderer sends an event ID. Main looks the event up in the current snapshot, takes the link `conferenceLinks.ts` resolved, and opens it only if it's `https:` on an allowlisted host: `meet.google.com`, `zoom.us` and its subdomains, `teams.microsoft.com`, `teams.live.com`. No other scheme (`file:`, `smb:`, `javascript:`, custom app schemes) and no other host. Each new host is a reviewed change to that allowlist.
 - **Link resolution** prefers Google's structured fields (`hangoutLink`, `conferenceData.entryPoints` of type `video`) over parsing `location` or `description` text. Parsed links go through the same allowlist.
 - Notification clicks go through the same path.
