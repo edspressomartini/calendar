@@ -375,7 +375,7 @@ class Application {
   ): Promise<void> {
     try {
       const result = await accounts.reconnect(accountId)
-      if (result.accessProblem) {
+      if (result.problem) {
         await settingsWindow.open('accounts')
       }
     } catch (error) {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
   ACCOUNT_COLOURS,
-  CALENDAR_ACCESS_PROBLEMS,
+  CONNECT_PROBLEMS,
   MAX_EVENT_TITLE_LENGTH,
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SHORTCUT_LENGTH,
@@ -336,14 +336,15 @@ export const todoSnapshotSchema = z.strictObject({
 export const accountListSchema = z.array(accountViewSchema)
 
 /**
- * A permission macOS would not hand over is part of a successful response, not
- * a rejection: the router gives the renderer one opaque message for every
+ * A connect attempt that produced nothing is part of a successful response,
+ * not a rejection: the router gives the renderer one opaque message for every
  * thrown error, so the reason has to arrive as data to be distinguishable
- * (§8.4).
+ * (§8.4). Typed against the same list the pane writes its copy from, so a new
+ * reason cannot reach the wire without words to go with it.
  */
 export const connectAccountsResultSchema = z.strictObject({
   accounts: accountListSchema,
-  accessProblem: z.enum(CALENDAR_ACCESS_PROBLEMS).nullable(),
+  problem: z.enum(CONNECT_PROBLEMS).nullable(),
 })
 export const calendarListSchema = z.array(calendarSummarySchema)
 export const displayListSchema = z.array(displayOptionSchema)

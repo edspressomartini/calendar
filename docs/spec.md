@@ -655,7 +655,20 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `todos:toggle`, `todos:roll`, `todos:remove` | renderer → main | `{ todoId }`                                   |
 | Widget            | `todos:rollAllOverdue`                       | renderer → main | none                                           |
 
-**Calendar access that produced nothing comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, accessProblem }`, where `accessProblem` is `denied`, `restricted`, `writeOnly`, `promptUnavailable` or null, validated by the same contract as the account list. The renderer uses it to explain inline why nothing was added when no account exists to carry a `needsReauth` status (§7), and shows the System Settings button for the three refusals only — `promptUnavailable` means macOS was never asked, so no privacy toggle would change it.
+**A connect attempt that produced nothing comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, problem }`, where `problem` is one of the eight names below or null, validated by the same contract as the account list. The renderer uses it to explain inline why nothing was added when no account exists to carry a `needsReauth` status (§7).
+
+| `problem`           | What happened                                                                                        | What the pane offers           |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `denied`            | The user refused the macOS prompt, or the status already read denied.                                | System Settings → Calendars    |
+| `restricted`        | A policy or Screen Time blocks calendar access on this Mac.                                          | System Settings → Calendars    |
+| `writeOnly`         | macOS granted write-only access, which cannot read events.                                           | System Settings → Calendars    |
+| `promptUnavailable` | macOS would not show the prompt — an app bundle with no `NSCalendarsFullAccessUsageDescription`.     | Reinstall. No privacy button.  |
+| `helperUnavailable` | The helper could not be spawned, or died: a bad signature, a missing binary, a broken pipe.          | Restart, then reinstall.       |
+| `timedOut`          | No reply inside the request budget, or an unanswered permission prompt inside the 5-minute one.      | Answer the prompt, try again.  |
+| `helperMismatch`    | A reply that failed the schema, a request the helper called malformed, or a source it does not know. | Restart, then reinstall.       |
+| `storeUnreadable`   | Access was granted and `EKEventStore` still could not be read.                                       | Open Calendar, then try again. |
+
+Three things keep this honest. The System Settings button is shown for the three refusals only — every other cause would send the user to a pane where nothing is wrong. The mapping from `EventKitError['kind']` to `problem` is a `Record` over the error's own union, so a new kind does not compile until someone has decided what the user is told; `protocol`, `bad_request` and `unknown_source` share `helperMismatch` because they differ to us and not to the user. And a raw error never crosses the boundary: the renderer gets the typed cause, while the message — which can carry a path, and from Google an email address — stays in the main-process log (§8.7). Google's failures are not `EventKitError`s, map to no `problem`, and keep reaching the renderer as the generic sign-in error.
 
 ### 8.6 External links
 

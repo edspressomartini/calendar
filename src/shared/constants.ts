@@ -27,14 +27,37 @@ export const CALENDAR_ACCESS_REFUSALS = ['denied', 'restricted', 'writeOnly'] as
 export const CALENDAR_PROMPT_UNAVAILABLE = 'promptUnavailable'
 
 /**
- * Every reason a connect attempt added no accounts: the refusals, plus the
- * build that could not ask. One list because only one of them can be the
- * reason, and the pane needs exactly one thing to say.
+ * Everything macOS itself would not hand over: the refusals, plus the build
+ * that could not ask. Kept as its own list because the System Settings button
+ * is gated on the refusals inside it.
  */
 export const CALENDAR_ACCESS_PROBLEMS = [
   ...CALENDAR_ACCESS_REFUSALS,
   CALENDAR_PROMPT_UNAVAILABLE,
 ] as const
+
+/**
+ * Connect attempts that produced nothing for a reason macOS never had an
+ * opinion about (§7). Four, not six: a reply nobody could parse, a request
+ * the helper called malformed and a source it has never heard of are one
+ * thing to the user — the two halves of the app disagree — and have one fix.
+ *
+ * Named for what the user is told, not for the helper's error kinds, which
+ * are an internal vocabulary and must not reach a screen.
+ */
+export const CALENDAR_CONNECT_FAILURES = [
+  'helperUnavailable',
+  'timedOut',
+  'helperMismatch',
+  'storeUnreadable',
+] as const
+
+/**
+ * Every reason a connect attempt added no accounts. One list and one response
+ * field, because only one of them can be the reason and the pane needs
+ * exactly one thing to say.
+ */
+export const CONNECT_PROBLEMS = [...CALENDAR_ACCESS_PROBLEMS, ...CALENDAR_CONNECT_FAILURES] as const
 
 /** An event is "imminent" this many minutes before it starts (§6). */
 export const IMMINENT_THRESHOLD_MINUTES = 15

@@ -6,8 +6,8 @@
 
 import type { EventKitErrorKind } from '../calendar/providers/eventkit/EventKitProtocol.ts'
 import type { CALENDAR_PROMPT_UNAVAILABLE } from '../../shared/constants.ts'
-import { CALENDAR_ACCESS_PROBLEMS, CALENDAR_ACCESS_REFUSALS } from '../../shared/constants.ts'
-import type { CalendarAccessProblem, CalendarAccessRefusal } from '../../shared/types/account.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../shared/constants.ts'
+import type { CalendarAccessRefusal, ConnectProblem } from '../../shared/types/account.ts'
 
 export abstract class AppError extends Error {
   protected constructor(message: string) {
@@ -109,9 +109,32 @@ const REFUSED_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError[
   CALENDAR_ACCESS_REFUSALS,
 )
 
-const PROBLEM_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError['kind']>(
-  CALENDAR_ACCESS_PROBLEMS,
-)
+/**
+ * What the Accounts pane is told, for every kind the helper path can produce.
+ *
+ * Keyed on the error's own union, so a new kind does not compile until
+ * someone has decided what the user is told — the alternative is the defect
+ * this map exists to close, where four unrelated failures with four different
+ * fixes all surfaced as one sentence.
+ *
+ * `protocol`, `bad_request` and `unknown_source` share an entry on purpose.
+ * They differ to us and not to the user: in each the two halves of the app
+ * disagree about the conversation, and the only thing to do about any of them
+ * is restart or reinstall. Two merged beats six that all say "something went
+ * wrong".
+ */
+const CONNECT_PROBLEM_BY_KIND: Record<EventKitError['kind'], ConnectProblem> = {
+  denied: 'denied',
+  restricted: 'restricted',
+  writeOnly: 'writeOnly',
+  promptUnavailable: 'promptUnavailable',
+  helper_unavailable: 'helperUnavailable',
+  timeout: 'timedOut',
+  protocol: 'helperMismatch',
+  bad_request: 'helperMismatch',
+  unknown_source: 'helperMismatch',
+  store_failure: 'storeUnreadable',
+}
 
 /**
  * Refused, restricted by policy, or granted write-only. Both the sync path
@@ -130,14 +153,21 @@ export function isCalendarAccessRefusal(
 }
 
 /**
- * The wider question the sign-in path asks: did macOS hand over nothing for a
- * reason the Accounts pane can state? A refusal, or a build that could not put
- * the prompt on screen at all.
+ * The wider question the sign-in path asks: is this a failure the Accounts
+ * pane can name, rather than one more thing that simply went wrong? Every
+ * EventKit kind is, because every one of them is ours and says only what we
+ * wrote. Null for anything else — a Google sign-in failure is not an
+ * `EventKitError` and keeps travelling to the IPC boundary as it always has.
+ *
+ * The returned value is the wire name, never the error itself: a raw message
+ * can carry a path, and on the Google side an email address, so nothing but
+ * this typed cause crosses to the renderer (§8.7).
  */
-export function isCalendarAccessProblem(
-  error: unknown,
-): error is EventKitError & { readonly kind: CalendarAccessProblem } {
-  return isEventKitError(error) && PROBLEM_KINDS.has(error.kind)
+export function connectProblemFor(error: unknown): ConnectProblem | null {
+  if (!isEventKitError(error)) {
+    return null
+  }
+  return CONNECT_PROBLEM_BY_KIND[error.kind]
 }
 
 /**

@@ -5,7 +5,8 @@ import type { AuthenticationResult } from '../../src/main/calendar/CalendarProvi
 import { ProviderFactory } from '../../src/main/calendar/ProviderFactory.ts'
 import { ProviderRegistry } from '../../src/main/calendar/ProviderRegistry.ts'
 import { SystemBrowser } from '../../src/main/auth/SystemBrowser.ts'
-import { EventKitError } from '../../src/main/infra/errors.ts'
+import { AuthFlowError, EventKitError } from '../../src/main/infra/errors.ts'
+import type { AppLogger } from '../../src/main/infra/logger.ts'
 import { SettingsStore } from '../../src/main/storage/SettingsStore.ts'
 import { TokenVault } from '../../src/main/storage/TokenVault.ts'
 import { DEFAULT_SETTINGS } from '../../src/main/storage/schema.ts'
@@ -14,7 +15,7 @@ import { SyncScheduler } from '../../src/main/sync/SyncScheduler.ts'
 import { CALENDAR_ACCESS_REFUSALS } from '../../src/shared/constants.ts'
 import type { AccountConfig } from '../../src/shared/types/account.ts'
 import type { AppSettings } from '../../src/shared/types/settings.ts'
-import { silentLogger } from '../mocks/logger.ts'
+import { recordingLogger, silentLogger, type LogEntry } from '../mocks/logger.ts'
 
 /**
  * Connecting accounts (docs/spec.md §3). The collaborators that reach the
@@ -39,10 +40,12 @@ interface HarnessOptions {
   readonly authenticate: () => Promise<AuthenticationResult[]>
   /** Account ids whose settings write throws, standing in for a failed disk write. */
   readonly unwritableAccountIds?: readonly string[]
+  /** Supplied only by the tests that assert on what an operator would see. */
+  readonly logger?: AppLogger
 }
 
 function buildService(options: HarnessOptions): Harness {
-  const logger = silentLogger()
+  const logger = options.logger ?? silentLogger()
   const accounts: AccountConfig[] = []
   const currentSettings = (): AppSettings => ({ ...DEFAULT_SETTINGS, accounts })
   const unwritable = new Set(options.unwritableAccountIds ?? [])
@@ -175,7 +178,7 @@ describe('AccountService.connect', () => {
     const result = await service.connect('eventkit')
 
     expect(result.accounts.map((view) => view.id)).toEqual(['eventkit:icloud', 'eventkit:local'])
-    expect(result.accessProblem).toBeNull()
+    expect(result.problem).toBeNull()
     expect(settings.getAccounts().map((account) => account.id)).toEqual([
       'eventkit:icloud',
       'eventkit:local',
@@ -204,7 +207,7 @@ describe('AccountService.connect', () => {
 
     await expect(service.connect('eventkit')).resolves.toEqual({
       accounts: [],
-      accessProblem: null,
+      problem: null,
     })
   })
 
@@ -224,7 +227,7 @@ describe('AccountService.connect', () => {
 
       const result = await service.connect('eventkit')
 
-      expect(result).toEqual({ accounts: [], accessProblem: kind })
+      expect(result).toEqual({ accounts: [], problem: kind })
       expect(settings.getAccounts()).toEqual([])
       expect(reconcile).not.toHaveBeenCalled()
     },
@@ -243,17 +246,59 @@ describe('AccountService.connect', () => {
 
     await expect(service.connect('eventkit')).resolves.toEqual({
       accounts: [],
-      accessProblem: 'promptUnavailable',
+      problem: 'promptUnavailable',
     })
   })
 
-  /** Only the terminal kinds are a refusal; the rest are worth another go. */
-  it('still rejects when the helper itself could not be reached', async () => {
+  /**
+   * The defect this replaced: a helper killed on spawn, a store that would
+   * not open and a reply nobody could parse all reached the pane as one
+   * sentence. Each now travels as its own reason, on the field that already
+   * carries a refusal.
+   */
+  it.each([
+    ['helper_unavailable', 'helperUnavailable'],
+    ['timeout', 'timedOut'],
+    ['protocol', 'helperMismatch'],
+    ['bad_request', 'helperMismatch'],
+    ['store_failure', 'storeUnreadable'],
+  ] as const)('reports %s as %s rather than one generic failure', async (kind, problem) => {
     const { service } = buildService({
-      authenticate: vi.fn().mockRejectedValue(new EventKitError('helper_unavailable')),
+      authenticate: vi.fn().mockRejectedValue(new EventKitError(kind)),
     })
 
-    await expect(service.connect('eventkit')).rejects.toThrow(EventKitError)
+    await expect(service.connect('eventkit')).resolves.toEqual({ accounts: [], problem })
+  })
+
+  /** The detail stays in the log; the renderer only ever sees the typed reason. */
+  it('logs which failure it was, without putting it in front of the user', async () => {
+    const entries: LogEntry[] = []
+    const { service } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new EventKitError('helper_unavailable')),
+      logger: recordingLogger(entries),
+    })
+
+    await service.connect('eventkit')
+
+    const warnings = entries.filter((entry) => entry.level === 'warn')
+    expect(warnings).toContainEqual({
+      level: 'warn',
+      message: 'calendar connect added no accounts',
+      context: {
+        provider: 'eventkit',
+        problem: 'helperUnavailable',
+        error: 'EventKitError: calendar access failed (helper_unavailable)',
+      },
+    })
+  })
+
+  /** Google's failures are not EventKit errors and must keep reaching the router. */
+  it('still rejects when a Google sign-in fails', async () => {
+    const { service } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new AuthFlowError('exchange_failed')),
+    })
+
+    await expect(service.connect('google')).rejects.toThrow(AuthFlowError)
   })
 
   it('reports a refusal on reconnect too, since the prompt is the same one', async () => {
@@ -263,7 +308,7 @@ describe('AccountService.connect', () => {
 
     await expect(service.reconnect('eventkit:icloud')).resolves.toEqual({
       accounts: [],
-      accessProblem: 'denied',
+      problem: 'denied',
     })
   })
 

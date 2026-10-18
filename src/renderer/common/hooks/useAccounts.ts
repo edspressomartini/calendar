@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AccountView, CalendarAccessProblem } from '../../../shared/types/account.ts'
+import type { AccountView, ConnectProblem } from '../../../shared/types/account.ts'
 import type { ProviderKind } from '../../../shared/types/calendar.ts'
 import { accountListSchema, connectAccountsResultSchema } from '../../../shared/ipc/contract.ts'
 import { fetchAccounts, settingsApi } from '../lib/ipcClient.ts'
@@ -9,11 +9,13 @@ export interface AccountsState {
   readonly busy: boolean
   readonly error: string | null
   /**
-   * Set when macOS handed over no calendar access during sign-in — refused, or
-   * never asked at all. No account exists in that case, so the pane carries
-   * the explanation, and the fix too when there is one (§7).
+   * Set when a sign-in added nothing and the response said why: macOS refused
+   * or was never asked, or the helper could not be reached, answered too
+   * late, disagreed with this build, or could not read the store. No account
+   * exists in any of those cases, so the pane carries the explanation, and
+   * the fix too when there is one (§7).
    */
-  readonly calendarAccessProblem: CalendarAccessProblem | null
+  readonly connectProblem: ConnectProblem | null
   connect(provider: ProviderKind): Promise<void>
   reconnect(accountId: string): Promise<void>
   disconnect(accountId: string): Promise<void>
@@ -26,9 +28,7 @@ export function useAccounts(): AccountsState {
   const [accounts, setAccounts] = useState<readonly AccountView[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [calendarAccessProblem, setCalendarAccessProblem] = useState<CalendarAccessProblem | null>(
-    null,
-  )
+  const [connectProblem, setConnectProblem] = useState<ConnectProblem | null>(null)
 
   const reload = useCallback(async () => {
     const next = await fetchAccounts()
@@ -58,7 +58,7 @@ export function useAccounts(): AccountsState {
   const run = useCallback(async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
     setError(null)
-    setCalendarAccessProblem(null)
+    setConnectProblem(null)
     try {
       const result = await action()
       const parsed = accountListSchema.safeParse(result)
@@ -80,7 +80,7 @@ export function useAccounts(): AccountsState {
   const runConnect = useCallback(async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
     setError(null)
-    setCalendarAccessProblem(null)
+    setConnectProblem(null)
     try {
       const result = await action()
       const parsed = connectAccountsResultSchema.safeParse(result)
@@ -89,7 +89,7 @@ export function useAccounts(): AccountsState {
         return
       }
       setAccounts(parsed.data.accounts)
-      setCalendarAccessProblem(parsed.data.accessProblem)
+      setConnectProblem(parsed.data.problem)
     } catch {
       setError(message)
     } finally {
@@ -149,7 +149,7 @@ export function useAccounts(): AccountsState {
     accounts,
     busy,
     error,
-    calendarAccessProblem,
+    connectProblem,
     connect,
     reconnect,
     disconnect,

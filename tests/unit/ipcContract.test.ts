@@ -22,6 +22,7 @@ import {
 import {
   CALENDAR_ACCESS_PROBLEMS,
   CALENDAR_ACCESS_REFUSALS,
+  CONNECT_PROBLEMS,
   MAX_TODO_TITLE_LENGTH,
   MAX_WIDGET_FIT_HEIGHT,
   PROVIDER_KINDS,
@@ -75,18 +76,16 @@ describe('IPC contract', () => {
    * refused permission can only be told apart from a failed sign-in if it
    * comes back as data the contract validates (§8.4, §8.5).
    */
-  it('carries a refused calendar permission back in the connect response', () => {
-    for (const problem of CALENDAR_ACCESS_PROBLEMS) {
-      expect(
-        connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: problem }).success,
-      ).toBe(true)
+  it('carries every reason a connect attempt added nothing back in the response', () => {
+    for (const problem of CONNECT_PROBLEMS) {
+      expect(connectAccountsResultSchema.safeParse({ accounts: [], problem }).success).toBe(true)
     }
+    expect(connectAccountsResultSchema.safeParse({ accounts: [], problem: null }).success).toBe(
+      true,
+    )
+    // The wire names are the contract's own, not the helper's error kinds.
     expect(
-      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: null }).success,
-    ).toBe(true)
-    // Retryable EventKit kinds are failures, not refusals, and never travel.
-    expect(
-      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: 'helper_unavailable' })
+      connectAccountsResultSchema.safeParse({ accounts: [], problem: 'helper_unavailable' })
         .success,
     ).toBe(false)
     expect(connectAccountsResultSchema.safeParse({ accounts: [] }).success).toBe(false)
@@ -100,9 +99,15 @@ describe('IPC contract', () => {
   it('carries a prompt that could not be shown on the same field', () => {
     expect(CALENDAR_ACCESS_PROBLEMS).toContain('promptUnavailable')
     expect(
-      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: 'promptUnavailable' })
-        .success,
+      connectAccountsResultSchema.safeParse({ accounts: [], problem: 'promptUnavailable' }).success,
     ).toBe(true)
+  })
+
+  /** Every access problem is still one of the reasons, on the one field. */
+  it('keeps the access problems inside the wider list', () => {
+    for (const problem of CALENDAR_ACCESS_PROBLEMS) {
+      expect(CONNECT_PROBLEMS).toContain(problem)
+    }
   })
 
   /** Only the refusals get the System Settings button, so the sets differ. */

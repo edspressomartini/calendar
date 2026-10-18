@@ -2651,7 +2651,7 @@ pane said macOS had declined — with no prompt ever having appeared.
 
 - Produces: `promptUnavailable` in `eventKitAuthorizationSchema`'s status enum, replacing `notDetermined`, which was never an answer to having asked and existed only to be folded into `denied` on arrival.
 - Produces: `CALENDAR_PROMPT_UNAVAILABLE` and `CALENDAR_ACCESS_PROBLEMS` in `src/shared/constants.ts`, `CalendarAccessProblem` in `src/shared/types/account.ts`, and `isCalendarAccessProblem` in `src/main/infra/errors.ts`.
-- Produces: `ConnectAccountsResult.accessProblem`, renamed from `refusal`, carrying either.
+- Produces: `ConnectAccountsResult.accessProblem`, renamed from `refusal`, carrying either. Renamed again to `problem` by Task 14, once it had to carry causes macOS had no opinion about; `CALENDAR_ACCESS_PROBLEMS` survives as the subset that gates the System Settings button.
 
 **The model, with the fourth state in it:**
 
@@ -2730,3 +2730,55 @@ installed app and revoking either leaves the other alone. Both appear in
 System Settings → Privacy & Security → Calendars. The README note that said a
 dev run prompts as Electron described something that could not happen until
 this task; it now describes the behaviour and says where it comes from.
+
+---
+
+### Task 14: say which failure it was
+
+The whole-branch review's remaining concern, and the one the user hit: pressing
+"Use Apple Calendar" produced "Could not connect that account." and nothing in
+the product could say why. In one hour that sentence stood in for a helper
+SIGKILLed on spawn for an invalid signature, a host app with no
+`NSCalendarsFullAccessUsageDescription`, a request that threw and was reported
+as a user denial, and a stale main process whose reply a hot-reloaded renderer
+`safeParse`-rejected. Four causes, four different fixes, one sentence.
+
+**Files:**
+
+- Modify: `src/shared/constants.ts`, `src/shared/types/account.ts`, `src/shared/ipc/contract.ts`
+- Modify: `src/main/infra/errors.ts`, `src/main/calendar/AccountService.ts`, `src/main/bootstrap.ts`
+- Create: `src/renderer/settings/connectProblemCopy.ts`
+- Modify: `src/renderer/common/hooks/useAccounts.ts`, `src/renderer/settings/views/AccountsView.tsx`
+- Test: `tests/unit/{errors,accountService,ipcContract,connectProblemCopy}.test.ts`
+
+**Interfaces:**
+
+- Produces: `CALENDAR_CONNECT_FAILURES` and `CONNECT_PROBLEMS` in `src/shared/constants.ts`, `ConnectProblem` in `src/shared/types/account.ts`, `connectProblemFor` in `src/main/infra/errors.ts`.
+- Changes: `ConnectAccountsResult.accessProblem` becomes `problem`, over the wider list.
+- Removes: `isCalendarAccessProblem`, whose only caller was the branch `connectProblemFor` replaces.
+
+The full failure model is in the design doc under "Permissions and failure"
+and in `docs/spec.md` §8.5. In short: eight causes, four of them the existing
+access problems, four new; `protocol`, `bad_request` and `unknown_source`
+merged into one `helperMismatch` because they differ to us and not to the
+user. Both maps — kind to cause, cause to copy — are `Record`s over their
+unions, so neither can fall behind a new kind without failing to compile.
+
+**The mixed-version case gets no message.** A packaged build ships main and
+renderer in one asar, so they cannot disagree; the renderer cannot tell an
+older shape from nonsense; and inventing copy for a state a shipped build
+cannot reach is exactly the thing this task is meant not to do.
+
+### Task 15: a helper crash leaves a trace
+
+`EventKitHelperProcess` spawned the child with `'ignore'` for stderr, so a
+Swift crash, a trap or a dyld failure left nothing behind — which is how the
+SIGKILL-on-invalid-signature bug stayed invisible. stderr is now captured,
+bounded per line and in total, and logged; an unclean exit names its signal
+or exit code; and a child dropped for a pipe error is killed rather than left
+running unreachable.
+
+**Files:**
+
+- Modify: `src/main/calendar/providers/eventkit/EventKitHelperProcess.ts`
+- Test: `tests/unit/eventKitHelperProcess.test.ts`

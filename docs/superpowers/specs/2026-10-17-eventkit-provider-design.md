@@ -198,6 +198,45 @@ point the user at somewhere nothing is wrong. The pane says the copy of the app
 cannot ask and to reinstall it. `notDetermined` itself is not a wire status —
 by the time the helper answers it has either read a settled status or asked.
 
+**Every other failure is named too, on the same field.** The four states above
+were the only ones the pane could state; everything else collapsed into "Could
+not connect that account", which stood in for a helper SIGKILLed for a bad
+signature, a missing usage string, a request that threw, and a renderer that
+`safeParse`-rejected a perfectly good reply — four causes, four fixes, one
+sentence. So `ConnectAccountsResult.accessProblem` became `problem`, over the
+wider `CONNECT_PROBLEMS` list, and the whole set is:
+
+| `problem`                           | Cause                                               | Pane offers                 |
+| ----------------------------------- | --------------------------------------------------- | --------------------------- |
+| `denied`, `restricted`, `writeOnly` | A refusal, before or after the request.             | System Settings → Calendars |
+| `promptUnavailable`                 | macOS would not show the prompt at all.             | Reinstall.                  |
+| `helperUnavailable`                 | `helper_unavailable`: no spawn, or a dead child.    | Restart, then reinstall.    |
+| `timedOut`                          | `timeout`, including an unanswered 5-minute prompt. | Answer it, then try again.  |
+| `helperMismatch`                    | `protocol`, `bad_request`, `unknown_source`.        | Restart, then reinstall.    |
+| `storeUnreadable`                   | `store_failure`: granted, and still unreadable.     | Open Calendar, then retry.  |
+
+Three kinds are merged into `helperMismatch` because they differ to us and not
+to the user: in all three the two halves of the app disagree about the
+conversation, and nothing but a restart or a reinstall addresses any of them.
+Six messages that all mean "something went wrong" would be worse than two that
+mean something. The map lives in `infra/errors.ts` as a `Record` over
+`EventKitError['kind']`, so it is total and a new kind will not compile until
+its copy exists; the copy itself is a `Record` over `ConnectProblem` in
+`renderer/settings/connectProblemCopy.ts`, total for the same reason.
+
+The renderer is given the wire name and never the error. A raw message can
+carry a filesystem path, and on the Google side an email address, so the
+detail stays in the main-process log beside the typed cause (§8.7).
+
+**The mixed-version case is deliberately not one of them.** During a hot
+reload the renderer `safeParse`-rejected a valid reply because main and
+renderer were different builds. It is not given a `problem` of its own: a
+packaged build ships both halves in one asar and cannot disagree, the renderer
+cannot tell "main sent an older shape" from "main sent nonsense" — both are
+one failed parse — and a message for a state that cannot occur in a shipped
+build is a message for a state that cannot happen. A parse failure keeps the
+generic sentence.
+
 Other failures:
 
 - Helper exits: its accounts go `offline`, restart backs off from 1s to a 30s cap.

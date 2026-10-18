@@ -11,7 +11,7 @@ import type {
   ProviderKind,
 } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
-import { describeError, isCalendarAccessProblem } from '../infra/errors.ts'
+import { connectProblemFor, describeError } from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
@@ -134,15 +134,20 @@ export class AccountService {
       // Caught to answer the user, not to swallow: nothing was granted, so
       // there is no account to hang a needsReauth status on and the reason
       // travels back in the response for the Accounts pane to state (§7).
-      // Anything else is a real failure and carries on to the IPC boundary.
-      if (!isCalendarAccessProblem(error)) {
+      // Anything else — every Google failure included — is a real failure and
+      // carries on to the IPC boundary.
+      const problem = connectProblemFor(error)
+      if (problem === null) {
         throw error
       }
-      this.logger.warn('calendar access not granted at sign-in', {
+      // The typed cause goes to the renderer; the detail stays here. Only our
+      // own messages are logged, so describeError is safe (§8.7).
+      this.logger.warn('calendar connect added no accounts', {
         provider: kind,
-        kind: error.kind,
+        problem,
+        error: describeError(error),
       })
-      return { accounts: this.list(), accessProblem: error.kind }
+      return { accounts: this.list(), problem }
     }
 
     // Sign-in can span a browser round trip or a permission prompt, so it is
@@ -182,7 +187,7 @@ export class AccountService {
       throw failures[0]
     }
 
-    return { accounts: this.list(), accessProblem: null }
+    return { accounts: this.list(), problem: null }
   }
 
   /** Re-running consent for an existing account; a fresh grant replaces the dead one. */

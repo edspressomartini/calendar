@@ -2,6 +2,7 @@ import type {
   ACCOUNT_COLOURS,
   CALENDAR_ACCESS_PROBLEMS,
   CALENDAR_ACCESS_REFUSALS,
+  CONNECT_PROBLEMS,
 } from '../constants.ts'
 import type { AccountId, CalendarId, ProviderKind } from './calendar.ts'
 
@@ -17,6 +18,16 @@ export type CalendarAccessRefusal = (typeof CALENDAR_ACCESS_REFUSALS)[number]
  * past this point.
  */
 export type CalendarAccessProblem = (typeof CALENDAR_ACCESS_PROBLEMS)[number]
+
+/**
+ * Every reason a connect attempt added no accounts (§7): the four above, plus
+ * the four that have nothing to do with permission — the helper could not be
+ * started or died, it did not answer in time, its replies do not match what
+ * this build expects, or macOS granted access and then could not read the
+ * store. Each one means something different to the user and carries different
+ * advice, which is why they are not one string.
+ */
+export type ConnectProblem = (typeof CONNECT_PROBLEMS)[number]
 
 /**
  * `needsReauth` is terminal until the user acts: the refresh token is dead and
@@ -48,7 +59,7 @@ export interface AccountView {
 
 /**
  * What a connect or reconnect attempt produced: whatever registered, plus the
- * reason macOS handed over nothing when it did.
+ * reason nothing did when nothing did.
  *
  * Reported here rather than thrown because there is no account to carry a
  * `needsReauth` status — nothing was granted — and because the IPC router
@@ -57,5 +68,5 @@ export interface AccountView {
  */
 export interface ConnectAccountsResult {
   readonly accounts: readonly AccountView[]
-  readonly accessProblem: CalendarAccessProblem | null
+  readonly problem: ConnectProblem | null
 }
