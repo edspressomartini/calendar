@@ -2673,3 +2673,60 @@ after the request: a real Deny moves the status to `.denied`, a prompt that
 never appeared leaves it `.notDetermined`. `try?` is gone from
 `requestFullAccessToEvents()`; the error is caught to translate at the
 boundary, and the status read is the translation.
+
+---
+
+### Task 13: `npm run dev` can ask for calendar access
+
+The other half of what running the feature found. The dev host is the stock
+Electron in `node_modules/electron/dist/Electron.app`, whose Info.plist has no
+`NSCalendarsFullAccessUsageDescription` (bundle id `com.github.Electron`), and
+macOS will not show a calendar prompt for an app bundle without it. The usage
+string this branch added lives in `electron-builder.yml` under `mac.extendInfo`,
+which only ever reaches a packaged build. So under `npm run dev` the request
+failed on contact, which is exactly the `promptUnavailable` of Task 12, and
+connecting Apple Calendar could never have succeeded.
+
+**Files:**
+
+- Create: `scripts/patch-dev-electron.sh`
+- Modify: `package.json` (the `dev` script), `README.md`
+
+Nothing in `electron-builder.yml` changes: the packaged path is correct.
+
+**Where it hooks in:** the `dev` script, not `postinstall`. An install that
+cannot be made to fail is the stronger guarantee, and the patch is only ever
+needed at the moment a dev run starts — which is also when the string being
+there matters. `npm install` replaces `node_modules` and undoes it; the next
+`npm run dev` puts it back.
+
+**Why it has to re-sign.** Editing the Info.plist inside the bundle invalidates
+the signature macOS launches it under, and it then refuses to launch at all. The
+script re-signs ad-hoc with `codesign --force --sign -`, dumping the bundle's
+existing entitlements with `codesign -d --entitlements` first and passing them
+back so signing cannot drop them. The stock bundle currently carries none — it
+arrives linker-signed ad-hoc with its Info.plist unbound — so the flag is left
+off in practice, and the nested helper apps keep their own signatures because
+the signing is not `--deep`.
+
+Shaped like `scripts/swift-test.sh`: it skips, successfully and with a sentence,
+off macOS or before `node_modules/electron` exists, and it is silent and does
+nothing on every run after the first. A failed signature puts the Info.plist back
+as it was, because a dev run that cannot start is worse than one that cannot
+prompt.
+
+**The helper had to be re-signed too.** `scripts/build-helper.sh` copies the
+binary `swift build` produced into `build/helper/`, which is the path a dev run
+resolves. A linker-signed ad-hoc binary is only valid where the linker put it:
+the copy has identical bytes and is killed on launch as `Taskgated Invalid
+Signature`, so a dev run could not start the helper at all, never mind prompt.
+The script now ad-hoc signs the copy. The packaged build signs this binary again
+with the Developer ID through `mac.binaries`, replacing that signature rather
+than depending on it.
+
+**The grant is Electron's, not Up Next's.** TCC holds it against
+`com.github.Electron`, so allowing it in a dev run says nothing about the
+installed app and revoking either leaves the other alone. Both appear in
+System Settings → Privacy & Security → Calendars. The README note that said a
+dev run prompts as Electron described something that could not happen until
+this task; it now describes the behaviour and says where it comes from.

@@ -13,7 +13,7 @@
   "scripts": {
     "check-node": "node scripts/check-node.mjs",
     "setup": "npm ci && node node_modules/electron/install.js",
-    "dev": "npm run check-node && electron-vite dev",
+    "dev": "npm run check-node && ./scripts/patch-dev-electron.sh && electron-vite dev",
     "build": "npm run check-node && npm run build:helper && electron-vite build",
     "build:helper": "./scripts/build-helper.sh",
     "preview": "electron-vite preview",

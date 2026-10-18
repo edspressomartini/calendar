@@ -158,8 +158,19 @@ Node 24 is required and enforced; `npm run dev` fails fast on anything else.
 
 A dev run is not the installed app as far as macOS is concerned: connecting Apple Calendar
 under `npm run dev` prompts for calendar access as **Electron**, and that grant is held
-against Electron rather than Up Next. The installed app asks for its own, so allowing one
-says nothing about the other, and revoking either leaves the other alone.
+against `com.github.Electron` rather than Up Next. The installed app asks for its own, so
+allowing one says nothing about the other, and revoking either leaves the other alone.
+Both appear in System Settings → Privacy & Security → Calendars, listed separately.
+
+That prompt only happens because `npm run dev` patches the stock Electron it runs on
+first. macOS will not show a calendar prompt for an app bundle without
+`NSCalendarsFullAccessUsageDescription`, and the string the app ships with reaches the
+packaged build only, through `electron-builder.yml`. `scripts/patch-dev-electron.sh` adds
+a development-build wording to `node_modules/electron/dist/Electron.app` and re-signs it
+ad-hoc, because editing the Info.plist invalidates the signature macOS launches it under.
+It runs on the way into every dev run, does nothing when the string is already there, and
+skips with a sentence rather than failing anywhere it cannot apply. `npm install` replaces
+`node_modules`, which undoes it; the next `npm run dev` puts it back.
 
 The app is Electron 44, React 19, TypeScript 6 and Tailwind 4. The privileged process
 owns all state and the clock, and pushes finished view models to the UI, which derives

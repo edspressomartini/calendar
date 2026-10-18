@@ -162,6 +162,14 @@ behaviour rather than to silence.
 attributes the grant to the app bundle, not to the helper; the helper needs only
 to be signed by the same Team ID and to live inside the bundle.
 
+`extendInfo` reaches a packaged build and nothing else, so the stock Electron
+that `npm run dev` runs on has no usage string and macOS will not prompt for it
+— the request fails on contact, as `promptUnavailable`. `scripts/patch-dev-electron.sh`
+adds a development-build wording to `node_modules/electron/dist/Electron.app` and
+re-signs it ad-hoc, since editing the Info.plist invalidates the signature it
+launches under. That grant is held against `com.github.Electron`, separately
+from the installed app's.
+
 Authorisation maps onto existing statuses rather than new UI:
 
 | State                               | Result                                                                      |

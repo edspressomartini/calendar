@@ -15,4 +15,12 @@ bin="$(swift build --package-path "$package" -c release --arch arm64 --show-bin-
 
 mkdir -p "$output"
 cp "$bin/UpNextEventKit" "$output/up-next-eventkit"
+
+# Re-signed because it was copied. `swift build` leaves a linker-signed ad-hoc
+# binary, which is only valid where the linker put it: the copy here has the
+# same bytes and is killed on launch as `Taskgated Invalid Signature`, so
+# `npm run dev` could never start the helper at all. The packaged build signs
+# this binary again with the Developer ID through `mac.binaries`, which
+# replaces this signature rather than depending on it.
+codesign --force --sign - "$output/up-next-eventkit"
 echo "built $output/up-next-eventkit"
