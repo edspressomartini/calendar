@@ -1,6 +1,7 @@
 import { chmod } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app, Menu, session } from 'electron'
+import type { AccountId } from '../shared/types/calendar.ts'
 import { AgendaClock } from './agenda/AgendaClock.ts'
 import { AgendaService } from './agenda/AgendaService.ts'
 import { TodoService } from './agenda/TodoService.ts'
@@ -9,6 +10,11 @@ import { AccountService } from './calendar/AccountService.ts'
 import { MeetingJoiner } from './calendar/MeetingJoiner.ts'
 import { ProviderFactory } from './calendar/ProviderFactory.ts'
 import { ProviderRegistry } from './calendar/ProviderRegistry.ts'
+import {
+  defaultHelperSpawn,
+  EventKitHelperProcess,
+} from './calendar/providers/eventkit/EventKitHelperProcess.ts'
+import { resolveHelperPath } from './calendar/providers/eventkit/helperPath.ts'
 import { loadConfig } from './infra/config.ts'
 import { describeError } from './infra/errors.ts'
 import { createLogger, initialiseLogging, type AppLogger } from './infra/logger.ts'
@@ -51,6 +57,7 @@ class Application {
   private clock: AgendaClock | null = null
   private tray: TrayController | null = null
   private scheduler: SyncScheduler | null = null
+  private helper: EventKitHelperProcess | null = null
   private widget: WidgetWindow | null = null
   private alertWindow: MeetingAlertWindow | null = null
   private quickAdd: QuickAddWindow | null = null
@@ -93,10 +100,22 @@ class Application {
     await vault.initialise()
 
     const registry = new ProviderRegistry(this.logger.child('registry'))
+    // Spawning is lazy, so a Google-only user never starts the helper.
+    const helper = new EventKitHelperProcess(
+      resolveHelperPath({
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        appPath: app.getAppPath(),
+      }),
+      defaultHelperSpawn(this.logger.child('eventkit-spawn')),
+      this.logger.child('eventkit-helper'),
+    )
+    this.helper = helper
     const factory = new ProviderFactory(
       this.config,
       vault,
       new SystemBrowser(),
+      helper,
       this.logger.child('factory'),
     )
 
@@ -213,7 +232,7 @@ class Application {
           widget.moveToDisplay(display, 'topRight')
         },
         reconnect: (accountId) => {
-          void accounts.reconnect(accountId)
+          void this.reconnectFromTray(accounts, settingsWindow, accountId)
         },
         quit: () => {
           app.quit()
@@ -232,6 +251,7 @@ class Application {
       agenda,
       todos,
       clock,
+      helper,
       systemEvents,
       widget,
       quickAdd,
@@ -285,6 +305,7 @@ class Application {
   stop(): void {
     this.clock?.stop()
     this.scheduler?.stop()
+    this.helper?.stop()
     this.shortcuts?.stop()
     this.tray?.destroy()
     this.alertWindow?.close()
@@ -295,6 +316,7 @@ class Application {
     agenda: AgendaService
     todos: TodoService
     clock: AgendaClock
+    helper: EventKitHelperProcess
     systemEvents: SystemEvents
     widget: WidgetWindow
     quickAdd: QuickAddWindow
@@ -330,10 +352,35 @@ class Application {
       parts.scheduler.syncAllNow(reason)
     })
 
+    // An edit the user just made in Calendar.app should appear without
+    // waiting for the next refresh (§7).
+    parts.helper.changed.subscribe(() => {
+      parts.scheduler.syncProviderNow('eventkit', 'calendar store changed')
+    })
+
     parts.systemEvents.displaysChanged.subscribe(() => {
       parts.widget.restoreToChosenDisplay()
       parts.tray.refreshMenu()
     })
+  }
+
+  /**
+   * The tray has nowhere to explain why calendar access produced nothing, so
+   * it hands the user to the accounts pane, which does.
+   */
+  private async reconnectFromTray(
+    accounts: AccountService,
+    settingsWindow: SettingsWindow,
+    accountId: AccountId,
+  ): Promise<void> {
+    try {
+      const result = await accounts.reconnect(accountId)
+      if (result.problem) {
+        await settingsWindow.open('accounts')
+      }
+    } catch (error) {
+      this.logger.warn('tray reconnect failed', { error: describeError(error) })
+    }
   }
 
   /** Owner-only: settings and encrypted tokens live here (§8.2). */

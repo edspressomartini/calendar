@@ -2,6 +2,63 @@
 
 export const ACCOUNT_COLOURS = ['sky', 'violet', 'amber', 'emerald', 'rose'] as const
 
+/** Every provider the app knows. `ProviderKind` and the IPC schemas both come
+ * from this list, so neither can quietly fall behind the other (§8.5). */
+export const PROVIDER_KINDS = ['google', 'eventkit', 'mock'] as const
+
+/**
+ * Calendar access the user declined, a policy blocked, or macOS granted
+ * write-only. All three are terminal until a System Settings toggle changes,
+ * so retrying only spins (§7). Shared because both the sync path and the
+ * connect response classify against this one list.
+ */
+export const CALENDAR_ACCESS_REFUSALS = ['denied', 'restricted', 'writeOnly'] as const
+
+/**
+ * macOS could not be asked at all: the request threw, or returned false while
+ * leaving the status undetermined, which is what happens to an app bundle
+ * without `NSCalendarsFullAccessUsageDescription` — macOS will not show a
+ * calendar prompt for one.
+ *
+ * Deliberately *not* a refusal. Nothing was refused, so the System Settings
+ * button the refusals carry would point at a pane where nothing is wrong and
+ * nothing can be fixed (§7).
+ */
+export const CALENDAR_PROMPT_UNAVAILABLE = 'promptUnavailable'
+
+/**
+ * Everything macOS itself would not hand over: the refusals, plus the build
+ * that could not ask. Kept as its own list because the System Settings button
+ * is gated on the refusals inside it.
+ */
+export const CALENDAR_ACCESS_PROBLEMS = [
+  ...CALENDAR_ACCESS_REFUSALS,
+  CALENDAR_PROMPT_UNAVAILABLE,
+] as const
+
+/**
+ * Connect attempts that produced nothing for a reason macOS never had an
+ * opinion about (§7). Four, not six: a reply nobody could parse, a request
+ * the helper called malformed and a source it has never heard of are one
+ * thing to the user — the two halves of the app disagree — and have one fix.
+ *
+ * Named for what the user is told, not for the helper's error kinds, which
+ * are an internal vocabulary and must not reach a screen.
+ */
+export const CALENDAR_CONNECT_FAILURES = [
+  'helperUnavailable',
+  'timedOut',
+  'helperMismatch',
+  'storeUnreadable',
+] as const
+
+/**
+ * Every reason a connect attempt added no accounts. One list and one response
+ * field, because only one of them can be the reason and the pane needs
+ * exactly one thing to say.
+ */
+export const CONNECT_PROBLEMS = [...CALENDAR_ACCESS_PROBLEMS, ...CALENDAR_CONNECT_FAILURES] as const
+
 /** An event is "imminent" this many minutes before it starts (§6). */
 export const IMMINENT_THRESHOLD_MINUTES = 15
 

@@ -31,7 +31,7 @@ export class GoogleAuthClient implements AccountAuthenticator {
     private readonly logger: AppLogger,
   ) {}
 
-  async authenticate(): Promise<AuthenticationResult> {
+  async authenticate(): Promise<AuthenticationResult[]> {
     const state = randomBytes(32).toString('base64url')
     const server = await LoopbackServer.start(state, this.logger)
 
@@ -57,7 +57,7 @@ export class GoogleAuthClient implements AccountAuthenticator {
         server.redirectUri,
       )
 
-      return await this.completeSignIn(client, tokens)
+      return [await this.completeSignIn(client, tokens)]
     } finally {
       await server.close()
     }

@@ -5,6 +5,9 @@ import type { AppConfig } from '../infra/config.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
 import type { AccountAuthenticator, CalendarProvider } from './CalendarProvider.ts'
+import { EventKitAuthorizer } from './providers/eventkit/EventKitAuthorizer.ts'
+import type { EventKitRequester } from './providers/eventkit/EventKitHelperProcess.ts'
+import { EventKitProvider, eventKitSourceId } from './providers/eventkit/EventKitProvider.ts'
 import { GoogleAuthClient } from './providers/google/GoogleAuthClient.ts'
 import { GoogleCalendarProvider } from './providers/google/GoogleCalendarProvider.ts'
 import { MockCalendarProvider } from './providers/mock/MockCalendarProvider.ts'
@@ -19,18 +22,22 @@ export class ProviderFactory {
     private readonly config: AppConfig,
     private readonly vault: TokenVault,
     private readonly browser: SystemBrowser,
+    private readonly helper: EventKitRequester,
     private readonly logger: AppLogger,
   ) {}
 
   /** True when the app was built with an OAuth client (§8.3). */
   canConnect(kind: ProviderKind): boolean {
-    if (kind === 'mock') {
+    if (kind === 'mock' || kind === 'eventkit') {
       return true
     }
     return this.config.google !== null
   }
 
   createAuthenticator(kind: ProviderKind): AccountAuthenticator {
+    if (kind === 'eventkit') {
+      return new EventKitAuthorizer(this.helper, this.logger.child('eventkit-auth'))
+    }
     if (kind !== 'google') {
       throw new Error(`no authenticator for provider ${kind}`)
     }
@@ -45,6 +52,15 @@ export class ProviderFactory {
   async create(account: AccountConfig): Promise<CalendarProvider | null> {
     if (account.provider === 'mock') {
       return new MockCalendarProvider(account.id)
+    }
+
+    if (account.provider === 'eventkit') {
+      return new EventKitProvider(
+        account.id,
+        eventKitSourceId(account.id),
+        this.helper,
+        this.logger.child('eventkit'),
+      )
     }
 
     const google = this.config.google

@@ -167,7 +167,7 @@ jobs:
           sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
 
           cat > /tmp/notes.md <<EOF
-          Apple silicon, macOS Ventura or newer.
+          Apple silicon, macOS Sonoma or newer.
 
           \`\`\`sh
           brew tap edspressomartini/tap

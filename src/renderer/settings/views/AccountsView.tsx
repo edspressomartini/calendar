@@ -3,6 +3,7 @@ import type { AccountView } from '../../../shared/types/account.ts'
 import { Badge } from '../../common/components/ui/Badge.tsx'
 import { Spinner } from '../../common/components/ui/Spinner.tsx'
 import type { AccountsState } from '../../common/hooks/useAccounts.ts'
+import { CONNECT_PROBLEM_MESSAGE, offersPrivacySettings } from '../connectProblemCopy.ts'
 
 interface AccountsViewProps {
   readonly state: AccountsState
@@ -23,7 +24,15 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
         <button
           type="button"
           disabled={state.busy}
-          onClick={() => void state.connect()}
+          onClick={() => void state.connect('eventkit')}
+          className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
+        >
+          Use Apple Calendar
+        </button>
+        <button
+          type="button"
+          disabled={state.busy}
+          onClick={() => void state.connect('google')}
           className="rounded border border-border px-3 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
         >
           Connect Google account
@@ -33,10 +42,20 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
 
       {state.error && <p className="text-xs text-urgent">{state.error}</p>}
 
+      {state.connectProblem && (
+        <div className="flex items-center gap-3 rounded-md border border-urgent/40 px-3 py-2">
+          <p className="flex-1 text-xs text-urgent">
+            {CONNECT_PROBLEM_MESSAGE[state.connectProblem]}
+          </p>
+          {offersPrivacySettings(state.connectProblem) && <PrivacySettingsButton state={state} />}
+        </div>
+      )}
+
       {state.accounts.length === 0 ? (
         <p className="text-sm text-text-muted">
-          No accounts yet. Connecting opens your browser to sign in with Google — the app never sees
-          your password.
+          No accounts yet. Apple Calendar reads whatever accounts this Mac already syncs — iCloud,
+          Exchange, anything in Calendar.app — and never leaves the machine. Connecting Google
+          instead opens your browser to sign in; the app never sees your password.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -57,16 +76,19 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
                 {STATUS_LABEL[account.status]}
               </Badge>
 
-              {account.status === 'needsReauth' && (
-                <button
-                  type="button"
-                  disabled={state.busy}
-                  onClick={() => void state.reconnect(account.id)}
-                  className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
-                >
-                  Reconnect
-                </button>
-              )}
+              {account.status === 'needsReauth' &&
+                (account.provider === 'eventkit' ? (
+                  <PrivacySettingsButton state={state} />
+                ) : (
+                  <button
+                    type="button"
+                    disabled={state.busy}
+                    onClick={() => void state.reconnect(account.id)}
+                    className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
+                  >
+                    Reconnect
+                  </button>
+                ))}
 
               <button
                 type="button"
@@ -82,8 +104,28 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
       )}
 
       <p className="text-xs text-text-muted">
-        Disconnecting revokes the token with Google, then deletes it from this Mac.
+        Disconnecting a Google account revokes the token, then deletes it from this Mac. Apple
+        Calendar accounts have no token to revoke; macOS keeps the permission until you remove it in
+        System Settings.
       </p>
     </section>
+  )
+}
+
+/**
+ * The same affordance in both places it is needed: beside an account macOS
+ * stopped answering for, and beside a sign-in it refused outright. The click
+ * goes through the hook, which owns the failure (the channel is rate-limited,
+ * so a second click inside the window is refused).
+ */
+function PrivacySettingsButton({ state }: AccountsViewProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => void state.openCalendarPrivacy()}
+      className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-accent/10"
+    >
+      Open Calendar privacy settings
+    </button>
   )
 }

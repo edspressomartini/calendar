@@ -7,7 +7,10 @@ import {
 } from '../../src/shared/ipc/channels.ts'
 import {
   REQUEST_SCHEMAS,
+  accountViewSchema,
   addTodoSchema,
+  connectAccountSchema,
+  connectAccountsResultSchema,
   fitHeightSchema,
   joinEventSchema,
   moveToDisplaySchema,
@@ -17,8 +20,12 @@ import {
   updateSettingsSchema,
 } from '../../src/shared/ipc/contract.ts'
 import {
+  CALENDAR_ACCESS_PROBLEMS,
+  CALENDAR_ACCESS_REFUSALS,
+  CONNECT_PROBLEMS,
   MAX_TODO_TITLE_LENGTH,
   MAX_WIDGET_FIT_HEIGHT,
+  PROVIDER_KINDS,
   TODO_COMPLETED_RETENTION_DAYS,
 } from '../../src/shared/constants.ts'
 
@@ -42,6 +49,80 @@ describe('IPC contract', () => {
     for (const channel of Object.values(CHANNELS)) {
       expect(CHANNEL_CALLERS[channel].length).toBeGreaterThan(0)
     }
+  })
+
+  it('accepts every provider the app knows, outbound and in', () => {
+    for (const provider of PROVIDER_KINDS) {
+      const view = {
+        id: 'a',
+        provider,
+        label: 'Work',
+        colour: 'sky',
+        status: 'ready',
+        calendarIds: [],
+        lastSyncedAt: null,
+        canListCalendars: false,
+      }
+      expect(accountViewSchema.safeParse(view).success).toBe(true)
+    }
+    expect(connectAccountSchema.safeParse({ provider: 'eventkit' }).success).toBe(true)
+    expect(connectAccountSchema.safeParse({ provider: 'google' }).success).toBe(true)
+    // The dev-only mock account is bootstrap's, not something the UI can ask for.
+    expect(connectAccountSchema.safeParse({ provider: 'mock' }).success).toBe(false)
+  })
+
+  /**
+   * The router turns every thrown handler error into one opaque message, so a
+   * refused permission can only be told apart from a failed sign-in if it
+   * comes back as data the contract validates (§8.4, §8.5).
+   */
+  it('carries every reason a connect attempt added nothing back in the response', () => {
+    for (const problem of CONNECT_PROBLEMS) {
+      expect(connectAccountsResultSchema.safeParse({ accounts: [], problem }).success).toBe(true)
+    }
+    expect(connectAccountsResultSchema.safeParse({ accounts: [], problem: null }).success).toBe(
+      true,
+    )
+    // The wire names are the contract's own, not the helper's error kinds.
+    expect(
+      connectAccountsResultSchema.safeParse({ accounts: [], problem: 'helper_unavailable' })
+        .success,
+    ).toBe(false)
+    expect(connectAccountsResultSchema.safeParse({ accounts: [] }).success).toBe(false)
+  })
+
+  /**
+   * A prompt that could not be shown is why nothing was added just as much as
+   * a refusal is, and the pane has to be able to say so. It travels on the
+   * same field, because only one of them can be the reason.
+   */
+  it('carries a prompt that could not be shown on the same field', () => {
+    expect(CALENDAR_ACCESS_PROBLEMS).toContain('promptUnavailable')
+    expect(
+      connectAccountsResultSchema.safeParse({ accounts: [], problem: 'promptUnavailable' }).success,
+    ).toBe(true)
+  })
+
+  /** Every access problem is still one of the reasons, on the one field. */
+  it('keeps the access problems inside the wider list', () => {
+    for (const problem of CALENDAR_ACCESS_PROBLEMS) {
+      expect(CONNECT_PROBLEMS).toContain(problem)
+    }
+  })
+
+  /** Only the refusals get the System Settings button, so the sets differ. */
+  it('keeps a prompt that could not be shown out of the refusals', () => {
+    expect(CALENDAR_ACCESS_REFUSALS).not.toContain('promptUnavailable')
+  })
+
+  /** The URL is a constant in main, so there is nothing for a caller to send. */
+  it('lets only the settings window ask for the Calendar privacy pane, with no payload', () => {
+    const schema = REQUEST_SCHEMAS[CHANNELS.accountsOpenCalendarPrivacy]
+
+    expect(CHANNEL_CALLERS[CHANNELS.accountsOpenCalendarPrivacy]).toEqual(['settings'])
+    expect(schema.safeParse(undefined).success).toBe(true)
+    expect(schema.safeParse({ url: 'https://evil.example' }).success).toBe(false)
+    expect(schema.safeParse('x-apple.systempreferences:evil').success).toBe(false)
   })
 
   it('rejects unexpected properties', () => {

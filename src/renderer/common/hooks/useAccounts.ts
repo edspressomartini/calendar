@@ -1,16 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AccountView } from '../../../shared/types/account.ts'
-import { accountListSchema } from '../../../shared/ipc/contract.ts'
+import type { AccountView, ConnectProblem } from '../../../shared/types/account.ts'
+import type { ProviderKind } from '../../../shared/types/calendar.ts'
+import { accountListSchema, connectAccountsResultSchema } from '../../../shared/ipc/contract.ts'
 import { fetchAccounts, settingsApi } from '../lib/ipcClient.ts'
 
 export interface AccountsState {
   readonly accounts: readonly AccountView[]
   readonly busy: boolean
   readonly error: string | null
-  connect(): Promise<void>
+  /**
+   * Set when a sign-in added nothing and the response said why: macOS refused
+   * or was never asked, or the helper could not be reached, answered too
+   * late, disagreed with this build, or could not read the store. No account
+   * exists in any of those cases, so the pane carries the explanation, and
+   * the fix too when there is one (§7).
+   */
+  readonly connectProblem: ConnectProblem | null
+  connect(provider: ProviderKind): Promise<void>
   reconnect(accountId: string): Promise<void>
   disconnect(accountId: string): Promise<void>
   setCalendars(accountId: string, calendarIds: string[]): Promise<void>
+  openCalendarPrivacy(): Promise<void>
   reload(): Promise<void>
 }
 
@@ -18,6 +28,7 @@ export function useAccounts(): AccountsState {
   const [accounts, setAccounts] = useState<readonly AccountView[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connectProblem, setConnectProblem] = useState<ConnectProblem | null>(null)
 
   const reload = useCallback(async () => {
     const next = await fetchAccounts()
@@ -47,6 +58,7 @@ export function useAccounts(): AccountsState {
   const run = useCallback(async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
     setError(null)
+    setConnectProblem(null)
     try {
       const result = await action()
       const parsed = accountListSchema.safeParse(result)
@@ -60,15 +72,46 @@ export function useAccounts(): AccountsState {
     }
   }, [])
 
-  const connect = useCallback(async () => {
-    await run(() => settingsApi().connectAccount(), 'Could not connect that account.')
-  }, [run])
+  /**
+   * Sign-in is the one action that can come back unanswered rather than
+   * failed, and the two need different words: macOS refusing, or never being
+   * asked, is not something that went wrong in the app.
+   */
+  const runConnect = useCallback(async (action: () => Promise<unknown>, message: string) => {
+    setBusy(true)
+    setError(null)
+    setConnectProblem(null)
+    try {
+      const result = await action()
+      const parsed = connectAccountsResultSchema.safeParse(result)
+      if (!parsed.success) {
+        setError(message)
+        return
+      }
+      setAccounts(parsed.data.accounts)
+      setConnectProblem(parsed.data.problem)
+    } catch {
+      setError(message)
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
+  const connect = useCallback(
+    async (provider: ProviderKind) => {
+      await runConnect(
+        () => settingsApi().connectAccount(provider),
+        'Could not connect that account.',
+      )
+    },
+    [runConnect],
+  )
 
   const reconnect = useCallback(
     async (accountId: string) => {
-      await run(() => settingsApi().reconnectAccount(accountId), 'Could not reconnect.')
+      await runConnect(() => settingsApi().reconnectAccount(accountId), 'Could not reconnect.')
     },
-    [run],
+    [runConnect],
   )
 
   const disconnect = useCallback(
@@ -88,5 +131,30 @@ export function useAccounts(): AccountsState {
     [run],
   )
 
-  return { accounts, busy, error, connect, reconnect, disconnect, setCalendars, reload }
+  /**
+   * Main rate-limits this channel, so a second click inside the window is
+   * refused and the promise rejects. Handled here like every other action
+   * rather than left to become an unhandled rejection.
+   */
+  const openCalendarPrivacy = useCallback(async () => {
+    try {
+      await settingsApi().openCalendarPrivacy()
+      setError(null)
+    } catch {
+      setError('Could not open System Settings. Try again in a moment.')
+    }
+  }, [])
+
+  return {
+    accounts,
+    busy,
+    error,
+    connectProblem,
+    connect,
+    reconnect,
+    disconnect,
+    setCalendars,
+    openCalendarPrivacy,
+    reload,
+  }
 }

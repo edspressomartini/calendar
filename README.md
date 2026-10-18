@@ -45,7 +45,8 @@ rather build it themselves, see [distribution routes](docs/distribution-routes.m
 Updating is `brew upgrade`. There is deliberately no auto-updater: Homebrew verifies a
 pinned hash for each release, so there is no update server to trust.
 
-Requirements: **Apple silicon, macOS Ventura or newer**, and a Google account.
+Requirements: **Apple silicon, macOS Sonoma or newer**, and either a Google account or
+calendars already set up in Calendar.app.
 
 Releases are signed with an Apple Developer ID and notarised by Apple, so macOS opens
 them normally. The [security overview](https://upnextapp.co.uk/security.html) covers what
@@ -155,6 +156,22 @@ Found a vulnerability? Please report it privately rather than opening an issue.
 
 Node 24 is required and enforced; `npm run dev` fails fast on anything else.
 
+A dev run is not the installed app as far as macOS is concerned: connecting Apple Calendar
+under `npm run dev` prompts for calendar access as **Electron**, and that grant is held
+against `com.github.Electron` rather than Up Next. The installed app asks for its own, so
+allowing one says nothing about the other, and revoking either leaves the other alone.
+Both appear in System Settings → Privacy & Security → Calendars, listed separately.
+
+That prompt only happens because `npm run dev` patches the stock Electron it runs on
+first. macOS will not show a calendar prompt for an app bundle without
+`NSCalendarsFullAccessUsageDescription`, and the string the app ships with reaches the
+packaged build only, through `electron-builder.yml`. `scripts/patch-dev-electron.sh` adds
+a development-build wording to `node_modules/electron/dist/Electron.app` and re-signs it
+ad-hoc, because editing the Info.plist invalidates the signature macOS launches it under.
+It runs on the way into every dev run, does nothing when the string is already there, and
+skips with a sentence rather than failing anywhere it cannot apply. `npm install` replaces
+`node_modules`, which undoes it; the next `npm run dev` puts it back.
+
 The app is Electron 44, React 19, TypeScript 6 and Tailwind 4. The privileged process
 owns all state and the clock, and pushes finished view models to the UI, which derives
 nothing. Adding a message channel means a schema, a sender check and a row in the table
@@ -175,5 +192,10 @@ ordinary Google flow with no "unverified app" warning and no 100-user cap.
 
 ## Licence
 
-[MIT](LICENSE). Vulnerability reports go to the address in [`SECURITY.md`](SECURITY.md)
-rather than the issue tracker.
+Source-available, not open source: read it, audit it, build it and run it on your own
+machines, but redistribution and resale are reserved. The terms are in [`LICENSE`](LICENSE),
+and they apply to every release after `v0.6.1`. Up to and including `v0.6.1` the app was
+MIT, and that grant stands for those tags however long they stay downloadable.
+
+Vulnerability reports go to the address in [`SECURITY.md`](SECURITY.md) rather than the
+issue tracker.

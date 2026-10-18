@@ -8,6 +8,9 @@ export interface SettingsState {
   readonly error: string | null
   /** The settings main actually applied, or null if the change failed. */
   update(patch: UpdateSettingsRequest): Promise<AppSettings | null>
+  syncNow(): Promise<void>
+  /** Shows a sample alert, so notification setup can be checked. */
+  testAlert(): Promise<void>
 }
 
 export function useSettings(): SettingsState {
@@ -45,5 +48,30 @@ export function useSettings(): SettingsState {
     }
   }, [])
 
-  return { settings, error, update }
+  /**
+   * Both channels are rate-limited in main, so a second click inside the
+   * window is refused and the promise rejects. Caught here, as `update` is,
+   * rather than left to become an unhandled rejection.
+   */
+  const request = useCallback(async (action: () => Promise<void>, message: string) => {
+    try {
+      await action()
+      setError(null)
+    } catch {
+      setError(message)
+    }
+  }, [])
+
+  const syncNow = useCallback(async () => {
+    await request(() => settingsApi().syncNow(), 'Could not start a sync. Try again in a moment.')
+  }, [request])
+
+  const testAlert = useCallback(async () => {
+    await request(
+      () => settingsApi().testAlert(),
+      'Could not show a test alert. Try again in a moment.',
+    )
+  }, [request])
+
+  return { settings, error, update, syncNow, testAlert }
 }

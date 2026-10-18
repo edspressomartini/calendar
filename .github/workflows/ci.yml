@@ -53,5 +53,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # Run directly rather than through `npm run test:swift`, whose job is to
+      # skip gracefully off macOS. On this runner a missing toolchain is a
+      # broken job, not a skip.
+      - name: Test the EventKit helper
+        run: swift test --package-path resources/eventkit-helper
+
       - name: Build
         run: npm run build

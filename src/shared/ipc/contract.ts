@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   ACCOUNT_COLOURS,
+  CONNECT_PROBLEMS,
   MAX_EVENT_TITLE_LENGTH,
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SHORTCUT_LENGTH,
@@ -11,6 +12,7 @@ import {
   MAX_WIDGET_TEXT_SCALE,
   MIN_SYNC_INTERVAL_MINUTES,
   MIN_WIDGET_TEXT_SCALE,
+  PROVIDER_KINDS,
   TODO_COMPLETED_RETENTION_DAYS,
 } from '../constants.ts'
 import { CHANNELS } from './channels.ts'
@@ -39,7 +41,13 @@ const timeZoneName = z
   .refine(isValidTimeZone, { message: 'unknown time zone' })
 
 export const accountIdPayloadSchema = z.strictObject({ accountId: identifier })
-export const connectAccountSchema = z.strictObject({ provider: z.literal('google') })
+/** Derived from the same list as `ProviderKind`, so the two cannot drift. */
+const providerKind = z.enum(PROVIDER_KINDS)
+
+/** Mock accounts are created by dev bootstrap, never asked for by the UI (§9). */
+export const connectAccountSchema = z.strictObject({
+  provider: z.enum(['google', 'eventkit']),
+})
 
 export const updateAccountSchema = z.strictObject({
   accountId: identifier,
@@ -153,6 +161,7 @@ export const REQUEST_SCHEMAS = {
   [CHANNELS.accountsReconnect]: accountIdPayloadSchema,
   [CHANNELS.accountsDisconnect]: accountIdPayloadSchema,
   [CHANNELS.accountsUpdate]: updateAccountSchema,
+  [CHANNELS.accountsOpenCalendarPrivacy]: noPayload,
   [CHANNELS.calendarsList]: accountIdPayloadSchema,
   [CHANNELS.calendarsSetSelected]: setSelectedCalendarsSchema,
   [CHANNELS.displaysList]: noPayload,
@@ -227,7 +236,7 @@ export const agendaSnapshotSchema = z.strictObject({
 
 export const accountViewSchema = z.strictObject({
   id: identifier,
-  provider: z.enum(['google', 'mock']),
+  provider: providerKind,
   label,
   colour,
   status: z.enum(['ready', 'syncing', 'offline', 'needsReauth']),
@@ -263,7 +272,7 @@ export const widgetPlacementSchema = z.strictObject({
 
 export const accountConfigSchema = z.strictObject({
   id: identifier,
-  provider: z.enum(['google', 'mock']),
+  provider: providerKind,
   label,
   colour,
   calendarIds: z.array(identifier),
@@ -325,6 +334,18 @@ export const todoSnapshotSchema = z.strictObject({
 })
 
 export const accountListSchema = z.array(accountViewSchema)
+
+/**
+ * A connect attempt that produced nothing is part of a successful response,
+ * not a rejection: the router gives the renderer one opaque message for every
+ * thrown error, so the reason has to arrive as data to be distinguishable
+ * (§8.4). Typed against the same list the pane writes its copy from, so a new
+ * reason cannot reach the wire without words to go with it.
+ */
+export const connectAccountsResultSchema = z.strictObject({
+  accounts: accountListSchema,
+  problem: z.enum(CONNECT_PROBLEMS).nullable(),
+})
 export const calendarListSchema = z.array(calendarSummarySchema)
 export const displayListSchema = z.array(displayOptionSchema)
 

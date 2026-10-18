@@ -13,8 +13,8 @@ import type {
   UpdateSettingsRequest,
 } from '../shared/ipc/contract.ts'
 import type { AgendaSnapshot } from '../shared/types/agenda.ts'
-import type { AccountView } from '../shared/types/account.ts'
-import type { CalendarId, CalendarSummary } from '../shared/types/calendar.ts'
+import type { AccountView, ConnectAccountsResult } from '../shared/types/account.ts'
+import type { CalendarId, CalendarSummary, ProviderKind } from '../shared/types/calendar.ts'
 import type { AppSettings, DisplayOption, SettingsTab } from '../shared/types/settings.ts'
 import type { TodoSnapshot } from '../shared/types/todo.ts'
 
@@ -159,19 +159,22 @@ function createSettingsBridge(): SettingsBridge {
   return {
     listAccounts: () => ipcRenderer.invoke(CHANNELS.accountsList) as Promise<AccountView[]>,
 
-    connectAccount: () =>
-      ipcRenderer.invoke(CHANNELS.accountsConnect, { provider: 'google' }) as Promise<
-        AccountView[]
-      >,
+    connectAccount: (provider: ProviderKind) =>
+      ipcRenderer.invoke(CHANNELS.accountsConnect, { provider }) as Promise<ConnectAccountsResult>,
 
     reconnectAccount: (accountId: string) =>
-      ipcRenderer.invoke(CHANNELS.accountsReconnect, { accountId }) as Promise<AccountView[]>,
+      ipcRenderer.invoke(CHANNELS.accountsReconnect, {
+        accountId,
+      }) as Promise<ConnectAccountsResult>,
 
     disconnectAccount: (accountId: string) =>
       ipcRenderer.invoke(CHANNELS.accountsDisconnect, { accountId }) as Promise<AccountView[]>,
 
     updateAccount: (request: { accountId: string; label?: string; colour?: string }) =>
       ipcRenderer.invoke(CHANNELS.accountsUpdate, request) as Promise<AccountView[]>,
+
+    openCalendarPrivacy: () =>
+      ipcRenderer.invoke(CHANNELS.accountsOpenCalendarPrivacy) as Promise<void>,
 
     listCalendars: (accountId: string) =>
       ipcRenderer.invoke(CHANNELS.calendarsList, { accountId }) as Promise<CalendarSummary[]>,

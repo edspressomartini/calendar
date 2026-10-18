@@ -2,7 +2,12 @@ import { endOfLocalDay, startOfLocalDay } from '../../shared/time.ts'
 import type { AccountId, TimeRange } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
 import type { ProviderRegistry } from '../calendar/ProviderRegistry.ts'
-import { describeError, isReauthRequired, isTransient } from '../infra/errors.ts'
+import {
+  describeError,
+  isCalendarAccessRefusal,
+  isReauthRequired,
+  isTransient,
+} from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 
@@ -78,6 +83,14 @@ export class SyncCoordinator {
 
   /** Caught here to choose a retry policy, not to swallow (§5, §8.7). */
   private classify(accountId: AccountId, error: unknown): SyncOutcome {
+    // Refused, restricted by policy, or granted write-only: all three need a
+    // System Settings change, so retrying would only spin (§7).
+    if (isCalendarAccessRefusal(error)) {
+      this.agenda.setStatus(accountId, 'needsReauth')
+      this.logger.warn('calendar access refused', { kind: error.kind })
+      return 'reauth'
+    }
+
     if (isReauthRequired(error)) {
       this.agenda.setStatus(accountId, 'needsReauth')
       this.logger.warn('account needs re-authentication', { reason: error.reason })

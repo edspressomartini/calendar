@@ -35,8 +35,11 @@ export interface AuthenticationResult {
 /**
  * Separate from the provider because a provider is bound to a stored
  * credential, which does not exist until the first sign-in succeeds.
+ *
+ * A list, not one: a single EventKit grant yields one account per calendar
+ * source. Google returns a list of one.
  */
 export interface AccountAuthenticator {
   readonly kind: ProviderKind
-  authenticate(): Promise<AuthenticationResult>
+  authenticate(): Promise<AuthenticationResult[]>
 }

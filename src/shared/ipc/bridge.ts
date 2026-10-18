@@ -1,6 +1,6 @@
 import type { AgendaSnapshot } from '../types/agenda.ts'
-import type { AccountView } from '../types/account.ts'
-import type { CalendarId, CalendarSummary } from '../types/calendar.ts'
+import type { AccountView, ConnectAccountsResult } from '../types/account.ts'
+import type { CalendarId, CalendarSummary, ProviderKind } from '../types/calendar.ts'
 import type { AppSettings, DisplayOption, SettingsTab } from '../types/settings.ts'
 import type { TodoSnapshot } from '../types/todo.ts'
 import type {
@@ -53,14 +53,20 @@ export interface QuickAddBridge {
 
 export interface SettingsBridge {
   listAccounts(): Promise<AccountView[]>
-  connectAccount(): Promise<AccountView[]>
-  reconnectAccount(accountId: string): Promise<AccountView[]>
+  /** Resolves with a refusal rather than rejecting when macOS said no (§7). */
+  connectAccount(provider: ProviderKind): Promise<ConnectAccountsResult>
+  reconnectAccount(accountId: string): Promise<ConnectAccountsResult>
   disconnectAccount(accountId: string): Promise<AccountView[]>
   updateAccount(request: {
     accountId: string
     label?: string
     colour?: string
   }): Promise<AccountView[]>
+  /**
+   * Opens the Calendars pane of Privacy & Security. It takes no argument: the
+   * URL is a constant in main, so the renderer cannot choose what opens (§8.6).
+   */
+  openCalendarPrivacy(): Promise<void>
   listCalendars(accountId: string): Promise<CalendarSummary[]>
   setSelectedCalendars(accountId: string, calendarIds: CalendarId[]): Promise<AccountView[]>
   listDisplays(): Promise<DisplayOption[]>

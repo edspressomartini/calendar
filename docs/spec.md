@@ -50,7 +50,7 @@ Versions checked against the npm registry on 25 Sep 2026. The spec pins major ve
 
 Four things drive every decision below:
 
-1. **Providers are swappable.** Google today; EventKit or Microsoft 365 are possible later. The app never knows which one it's talking to.
+1. **Providers are swappable.** Google and EventKit today; Microsoft 365 is possible later. The app never knows which one it's talking to.
 2. **Multiple calendar sources on screen at once.** Work and personal side by side, or merged into one stream. This is a config change, not a refactor.
 3. **The renderer is untrusted.** It never sees a token, never gets a URL it could open, never touches a Node API. Everything privileged lives in main.
 4. **Peripheral, never intrusive.** The widget never steals focus from the app you're typing in, never blocks input, and has a one-click privacy mode for screen shares.
@@ -125,7 +125,7 @@ Each account gets its own token entry, its own sync cycle, its own colour. The a
 
 **Consequence:** the second Google account (Phase 3) is a registry entry, not new code.
 
-**Another vendor is not "one new folder".** v2 claimed Apple Calendar would touch nothing else. It would. EventKit needs native code (a bundled Swift helper or a Node addon), an Info.plist usage string, the hardened-runtime calendars entitlement, a macOS permission prompt and a signed build. iCloud over CalDAV needs an app-specific password typed into our UI and a new network host. The interface absorbs the data shape, not any of that. Apple and Microsoft 365 are "later, optional" (§9).
+**Another vendor is not "one new folder".** v2 claimed Apple Calendar would touch nothing else. It would. EventKit needs native code (a bundled Swift helper or a Node addon), an Info.plist usage string, the hardened-runtime calendars entitlement, a macOS permission prompt and a signed build. iCloud over CalDAV needs an app-specific password typed into our UI and a new network host. The interface absorbs the data shape, not any of that. Apple cost exactly that much when it shipped in Phase 6 (§9); Microsoft 365 is still "later, optional".
 
 ---
 
@@ -640,9 +640,10 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `widget:fitHeight`                           | renderer → main | `{ height }`                                   |
 | Widget            | `settings:open`                              | renderer → main | none / `{ tab }`                               |
 | Settings          | `accounts:list`                              | renderer → main | none                                           |
-| Settings          | `accounts:connect`                           | renderer → main | `{ provider: "google" }`                       |
+| Settings          | `accounts:connect`                           | renderer → main | `{ provider: 'google' \| 'eventkit' }`         |
 | Settings          | `accounts:reconnect`, `accounts:disconnect`  | renderer → main | `{ accountId }`                                |
 | Settings          | `accounts:update`                            | renderer → main | `{ accountId, label?, colour? }`               |
+| Settings          | `accounts:openCalendarPrivacy`               | renderer → main | none                                           |
 | Settings          | `calendars:list`, `calendars:setSelected`    | renderer → main | `{ accountId }` / `{ accountId, calendarIds }` |
 | Settings          | `displays:list`, `widget:moveToDisplay`      | renderer → main | none / `{ displayKey, corner }`                |
 | Settings          | `settings:get`, `settings:update`            | renderer → main | none / partial `AppSettings`                   |
@@ -654,9 +655,25 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `todos:toggle`, `todos:roll`, `todos:remove` | renderer → main | `{ todoId }`                                   |
 | Widget            | `todos:rollAllOverdue`                       | renderer → main | none                                           |
 
+**A connect attempt that produced nothing comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, problem }`, where `problem` is one of the eight names below or null, validated by the same contract as the account list. The renderer uses it to explain inline why nothing was added when no account exists to carry a `needsReauth` status (§7).
+
+| `problem`           | What happened                                                                                        | What the pane offers           |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `denied`            | The user refused the macOS prompt, or the status already read denied.                                | System Settings → Calendars    |
+| `restricted`        | A policy or Screen Time blocks calendar access on this Mac.                                          | System Settings → Calendars    |
+| `writeOnly`         | macOS granted write-only access, which cannot read events.                                           | System Settings → Calendars    |
+| `promptUnavailable` | macOS would not show the prompt — an app bundle with no `NSCalendarsFullAccessUsageDescription`.     | Reinstall. No privacy button.  |
+| `helperUnavailable` | The helper could not be spawned, or died: a bad signature, a missing binary, a broken pipe.          | Restart, then reinstall.       |
+| `timedOut`          | No reply inside the request budget, or an unanswered permission prompt inside the 5-minute one.      | Answer the prompt, try again.  |
+| `helperMismatch`    | A reply that failed the schema, a request the helper called malformed, or a source it does not know. | Restart, then reinstall.       |
+| `storeUnreadable`   | Access was granted and `EKEventStore` still could not be read.                                       | Open Calendar, then try again. |
+
+Three things keep this honest. The System Settings button is shown for the three refusals only — every other cause would send the user to a pane where nothing is wrong. The mapping from `EventKitError['kind']` to `problem` is a `Record` over the error's own union, so a new kind does not compile until someone has decided what the user is told; `protocol`, `bad_request` and `unknown_source` share `helperMismatch` because they differ to us and not to the user. And a raw error never crosses the boundary: the renderer gets the typed cause, while the message — which can carry a path, and from Google an email address — stays in the main-process log (§8.7). Google's failures are not `EventKitError`s, map to no `problem`, and keep reaching the renderer as the generic sign-in error.
+
 ### 8.6 External links
 
-- `shell.openExternal` is called from exactly two places: `SystemBrowser` (the Google consent URL, built in main) and the join handler. Nothing else opens URLs.
+- `shell.openExternal` is called from exactly three places: `SystemBrowser` (the Google consent URL, built in main), the join handler, and the `accounts:openCalendarPrivacy` handler. Nothing else opens URLs.
+- **Calendar privacy:** a refused EventKit permission shows a button that opens the Calendars pane of Privacy & Security — beside the account when access was revoked after the fact, and beside the sign-in error when the first-time prompt was declined and there is no account. The channel carries no payload and the `x-apple.systempreferences:` URL is a compile-time constant in the handler, so the renderer cannot choose what gets opened — it can only ask for that one pane.
 - **Join:** the renderer sends an event ID. Main looks the event up in the current snapshot, takes the link `conferenceLinks.ts` resolved, and opens it only if it's `https:` on an allowlisted host: `meet.google.com`, `zoom.us` and its subdomains, `teams.microsoft.com`, `teams.live.com`. No other scheme (`file:`, `smb:`, `javascript:`, custom app schemes) and no other host. Each new host is a reviewed change to that allowlist.
 - **Link resolution** prefers Google's structured fields (`hangoutLink`, `conferenceData.entryPoints` of type `video`) over parsing `location` or `description` text. Parsed links go through the same allowlist.
 - Notification clicks go through the same path.
@@ -669,6 +686,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 - **Only our own error messages are logged.** `describeError` returns the full message for an `AppError`, because we wrote those messages, and the class name alone for anything else. Key-based redaction cannot help once free text has been flattened into one string, so the defence has to be at the point the string is made.
 - **The account id is an email address,** so it never appears in an error message. Typed errors carry it as a property for callers that need it; `TokenVault` stores a SHA-256 fingerprint of it.
 - **Never log event content:** no titles, descriptions, attendees, locations or meeting links. Log counts, durations and status codes.
+- **The calendar helper's stderr is captured and logged at `warn`.** The helper never writes there itself — stdout is the protocol channel, and the only thing printed outside it is `--probe`, which goes to stdout and exits — so everything that arrives is the runtime: a dyld failure, a Swift trap, a crash preamble. It is untrusted input on a trust boundary, so it is bounded twice: 512 characters per line, 20 lines per child, with one line saying the cap was reached, and a partial line is dropped past four times the line cap rather than held. An unclean exit is logged with the signal that killed it or the code it returned, which is the whole diagnosis for a helper SIGKILLed on spawn for an invalid signature.
 - **Size-based rotation:** two files of 5 MB each, in `~/Library/Logs/<App>/`. This replaces v2's weekly rotation and 30-day purge; a bounded size bounds retention on its own.
 - **Crash reporter off.** `crashReporter.start()` is never called; nothing leaves the machine.
 
@@ -687,7 +705,9 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | `enableCookieEncryption`                | on      | Defence in depth; the app relies on no cookies                      |
 
 - **Signed, hardened and notarised.** From `v0.2.0` releases carry a **Developer ID Application** certificate (Team ID `LRHKHKMD3J`), the hardened runtime, and an Apple notarisation ticket stapled into the bundle, so Gatekeeper accepts the app on first launch without a network round trip. `docs/apple-signing-plan.md` records how the credentials are held and rotated. Before `v0.2.0` there was no Apple Developer account and builds were signed **ad-hoc**, which worked but obliged every user to clear Gatekeeper by hand on install and after each upgrade.
-- **Entitlements: `allow-jit`, and nothing else.** V8 requires it. `disable-library-validation` was here until `v0.2.0` because an ad-hoc signature has no Team ID, so library validation could not match the app's own Electron framework and the app would not start. A Developer ID gives every nested binary the same Team ID, so library validation is now enforced rather than relaxed. Still deliberately absent: `allow-dyld-environment-variables`, which would open a real code-injection path, and `allow-unsigned-executable-memory`. `build/entitlements.adhoc.plist` keeps the old pair for local builds on a machine with no certificate; it is never used by a release. Add an entitlement only if a signed build genuinely fails without it, and record why here.
+- **Entitlements: `allow-jit` and `personal-information.calendars`.** V8 requires the first. The second is what lets EventKit read the macOS calendar store; it is read-only use, the app never writes an event, and the entitlement only makes the request possible — TCC still gates it behind the user's own Allow against the `NSCalendarsFullAccessUsageDescription` string in Info.plist. `disable-library-validation` was here until `v0.2.0` because an ad-hoc signature has no Team ID, so library validation could not match the app's own Electron framework and the app would not start. A Developer ID gives every nested binary the same Team ID, so library validation is now enforced rather than relaxed. Still deliberately absent: `allow-dyld-environment-variables`, which would open a real code-injection path, and `allow-unsigned-executable-memory`. `build/entitlements.adhoc.plist` keeps the old pair for local builds on a machine with no certificate; it is never used by a release, and every other grant has to be mirrored into it or a local build behaves unlike a signed one. Add an entitlement only if a signed build genuinely fails without it, and record why here.
+- **The EventKit helper is a signed nested executable.** `build/helper/up-next-eventkit` ships through `extraResources` to `Contents/Resources/up-next-eventkit`, outside the standard `Frameworks`/`MacOS` layout that electron-builder signs on its own, so it is named in `mac.binaries` to be signed explicitly. Unsigned, it would carry no Team ID and library validation would refuse to load it. It is a build artefact, not a committed file: `npm run build` runs `build:helper` before `electron-builder`, which is why the release workflow's `npm run build` step has to stay ahead of its `Package` step.
+- **The macOS floor is `14.0`.** Set as `LSMinimumSystemVersion` in `extendInfo` (§9, Phase 6). Electron itself would run on 13, but EventKit's `requestFullAccessToEvents` would not.
 - **The signature also protects the tokens:** it's how the Keychain decides that the app asking for the `safeStorage` key is really ours. An ad-hoc signature bound the Keychain item to one exact build, which is why every rebuild re-prompted for access. A Developer ID signature is stable across releases, so upgrading no longer re-prompts.
 - **No auto-updater.** Homebrew is the update channel: the cask pins a SHA-256 for every release. That is a second, independent integrity check alongside notarisation, and it is the reason the cask is edited by hand per release rather than pointing at a `latest` URL.
 - **Release verification is not optional.** `notarizeIfProvided` in `app-builder-lib` logs a warning and returns normally when credentials are missing, so a mistyped secret yields a signed, un-notarised DMG that passes every `codesign` check. `release.yml` therefore asserts `xcrun stapler validate` and `spctl --assess --type execute` on the packaged bundle.
@@ -752,9 +772,15 @@ engine-strict=true
 
 **Phase 5 — Public Homebrew.** Google OAuth verification (homepage, privacy policy, demo video, scope justification) to lift the 100-user cap and remove the "unverified app" warning: passed 6 October 2026. A README with install instructions. Submit to the official `homebrew/cask` only once the app is popular enough to meet its notability rules.
 
+**Phase 6 — Apple Calendar through EventKit.** A second provider beside Google, covering iCloud and anything else already set up in Calendar.app, with no credentials in our app and no OAuth at all.
+
+- A bundled Swift helper (`resources/eventkit-helper`, compiled to `build/helper/up-next-eventkit` by `npm run build:helper`), spoken to over newline-delimited JSON on stdio. EventKit is not reachable from Node, and a native addon would be ours to compile and sign for every Electron ABI.
+- `NSCalendarsFullAccessUsageDescription` in Info.plist, the `com.apple.security.personal-information.calendars` entitlement, a macOS permission prompt and a signed build (§8.8).
+- Minimum macOS rises from Ventura to **Sonoma (14.0)**: `requestFullAccessToEvents` is Sonoma and later, and supporting Ventura as well would mean a second, deprecated authorisation path in the helper.
+- One account per calendar source, so iCloud and a local "On My Mac" calendar are separate rows in Accounts with their own colours, the same as two Google accounts.
+
 **Later, optional.**
 
-- **Apple Calendar through EventKit:** a bundled Swift helper (Xcode is already installed), `NSCalendarsFullAccessUsageDescription` in Info.plist, the `com.apple.security.personal-information.calendars` entitlement, a macOS permission prompt and a signed build. It would cover iCloud and anything else in macOS Calendar, with no credentials in our app.
 - **Microsoft 365:** a second OAuth provider on Microsoft's identity platform, with its own consent screen and admin-approval story. It reuses `auth/` unchanged.
 
 ---
@@ -786,7 +812,7 @@ Everything the build needs and where it comes from.
 
 - macOS on Apple silicon (arm64)
 - Homebrew
-- Xcode: `codesign`, `xcrun notarytool`, `xcrun stapler` and `swift` — enough for signing, notarisation and a future EventKit helper
+- Xcode: `codesign`, `xcrun notarytool`, `xcrun stapler` and `swift` — enough for signing, notarisation and building the EventKit helper
 - git
 
 ### Replace
@@ -851,7 +877,7 @@ Since Homebrew 6, packages from an untrusted third-party tap are ignored, and on
 
 Enrolled 4 October 2026, Team ID `LRHKHKMD3J`. Needed because giving the app to anyone else requires a Developer ID certificate and notarisation: since 1 Sep 2026 Homebrew disables casks that fail Gatekeeper, and `--no-quarantine` is deprecated. Local builds for yourself need neither.
 
-The release job's protected environment holds a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`. Full procedure, including renewal, in `docs/apple-signing-plan.md`. The future EventKit integration needs a signed build too.
+The release job's protected environment holds a **Developer ID Application** certificate and an **App Store Connect API key** for `notarytool`, as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`. Full procedure, including renewal, in `docs/apple-signing-plan.md`. The EventKit helper is signed by the same job, as a nested executable (§8.8).
 
 Two things that will eventually need attention: the certificate expires five years from issue, and because this is an individual rather than an organisation enrolment, the certificate's common name is a personal legal name and is readable in every shipped build.
 
@@ -916,4 +942,4 @@ Recorded as the code was written, so this document stays true to the repository.
   Console verified a URL-prefix property on it twice, but brand verification asks for
   ownership of the domain, which DNS cannot demonstrate on a shared host. This cost a
   week and is the reason the project owns a domain at all.
-- **Entitlements** are `allow-jit` only. If a signed build fails, add the minimum needed and record the reason here (§8.8).
+- **Entitlements** are `allow-jit` and, since Phase 6, `personal-information.calendars` for EventKit. If a signed build fails, add the minimum needed and record the reason here (§8.8).

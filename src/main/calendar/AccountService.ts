@@ -1,12 +1,22 @@
-import type { AccountColour, AccountConfig, AccountView } from '../../shared/types/account.ts'
-import type { AccountId, CalendarId, CalendarSummary } from '../../shared/types/calendar.ts'
+import type {
+  AccountColour,
+  AccountConfig,
+  AccountView,
+  ConnectAccountsResult,
+} from '../../shared/types/account.ts'
+import type {
+  AccountId,
+  CalendarId,
+  CalendarSummary,
+  ProviderKind,
+} from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
-import { describeError } from '../infra/errors.ts'
+import { connectProblemFor, describeError } from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
 import type { SyncScheduler } from '../sync/SyncScheduler.ts'
-import type { CalendarProvider } from './CalendarProvider.ts'
+import type { AuthenticationResult, CalendarProvider } from './CalendarProvider.ts'
 import type { ProviderFactory } from './ProviderFactory.ts'
 import type { ProviderRegistry } from './ProviderRegistry.ts'
 
@@ -106,23 +116,109 @@ export class AccountService {
     })
   }
 
-  canConnect(): boolean {
-    return this.factory.canConnect('google')
+  canConnect(kind: ProviderKind): boolean {
+    return this.factory.canConnect(kind)
   }
 
-  async connect(): Promise<AccountView[]> {
-    const authenticator = this.factory.createAuthenticator('google')
-    const result = await authenticator.authenticate()
+  /**
+   * One grant can produce several accounts: Google signs in one at a time,
+   * while EventKit yields one account per calendar source (§3).
+   */
+  async connect(kind: ProviderKind): Promise<ConnectAccountsResult> {
+    const authenticator = this.factory.createAuthenticator(kind)
+
+    let results: readonly AuthenticationResult[]
+    try {
+      results = await authenticator.authenticate()
+    } catch (error) {
+      // Caught to answer the user, not to swallow: nothing was granted, so
+      // there is no account to hang a needsReauth status on and the reason
+      // travels back in the response for the Accounts pane to state (§7).
+      // Anything else — every Google failure included — is a real failure and
+      // carries on to the IPC boundary.
+      const problem = connectProblemFor(error)
+      if (problem === null) {
+        throw error
+      }
+      // The typed cause goes to the renderer; the detail stays here. Only our
+      // own messages are logged, so describeError is safe (§8.7).
+      this.logger.warn('calendar connect added no accounts', {
+        provider: kind,
+        problem,
+        error: describeError(error),
+      })
+      return { accounts: this.list(), problem }
+    }
+
+    // Sign-in can span a browser round trip or a permission prompt, so it is
+    // traced: a stall shows up as a spinner that never stops.
+    this.logger.info('sign-in returned', { provider: kind, accounts: results.length })
+
+    // This is the boundary between a grant covering several sources and a
+    // single UI response, so a failing source is caught and the rest are still
+    // registered: losing all of iCloud because one local calendar could not be
+    // written is not a trade the user would make.
+    const failures: unknown[] = []
+    let registered = 0
+
+    for (const result of results) {
+      try {
+        await this.register(kind, result)
+        registered += 1
+      } catch (error) {
+        failures.push(error)
+        // No account id: for Google they are email addresses, and no label
+        // either — it is the source's own name (§8.7).
+        this.logger.warn('could not register account', {
+          provider: kind,
+          error: describeError(error),
+        })
+      }
+    }
+
+    // Before any rethrow: whatever did register needs scheduling, or it would
+    // sit unsynced until the next restart.
+    this.scheduler.reconcile()
+
+    // Nothing landed, so there is nothing to show: the first failure travels on
+    // to the IPC log and the renderer's generic sign-in error. Returning the
+    // list here would look like success.
+    if (registered === 0 && failures.length > 0) {
+      throw failures[0]
+    }
+
+    return { accounts: this.list(), problem: null }
+  }
+
+  /** Re-running consent for an existing account; a fresh grant replaces the dead one. */
+  async reconnect(accountId: AccountId): Promise<ConnectAccountsResult> {
+    const existing = this.settings.findAccount(accountId)
+    const kind = existing?.provider ?? 'google'
+    this.registry.forget(accountId)
+    return await this.connect(kind)
+  }
+
+  private async register(kind: ProviderKind, result: AuthenticationResult): Promise<void> {
     const accountId = result.identity.providerAccountId
-    // Sign-in spans a browser round trip, so each step is traced: a stall
-    // anywhere in here shows up as a spinner that never stops.
-    this.logger.info('sign-in returned; registering account')
+    const existing = this.settings.findAccount(accountId)
 
     this.settings.addAccount({
       id: accountId,
-      provider: 'google',
+      provider: kind,
       label: result.identity.label,
-      calendarIds: result.defaultCalendarIds,
+      // Defaults are for an account the user has not chosen for yet. One
+      // grant covers every source, so writing them over a saved selection
+      // would reset all of a user's Apple accounts to one calendar each on
+      // every press of a button that is always enabled — and pressing it is
+      // the only way to pick up a source newly added in Calendar.app.
+      //
+      // Guarded here rather than in SettingsStore.addAccount, whose overwrite
+      // semantics are pre-existing and shared with addMockAccount. This is
+      // the one place that knows the ids are defaults, and it is on the path
+      // every provider's connect takes, so Google is covered too.
+      //
+      // `??`, not `||`: an empty selection is a choice the user made.
+      calendarIds: existing?.calendarIds ?? result.defaultCalendarIds,
     })
 
     const account = this.settings.findAccount(accountId)
@@ -135,18 +231,8 @@ export class AccountService {
     this.logger.info('provider ready', { registered: this.registry.has(accountId) })
 
     this.agenda.setStatus(accountId, 'ready')
-    this.scheduler.reconcile()
     // Deliberately not awaited: the first sync must not delay the UI response.
     void this.scheduler.syncNow(accountId)
-
-    this.logger.info('connect complete')
-    return this.list()
-  }
-
-  /** Re-running consent for an existing account; a fresh grant replaces the dead one. */
-  async reconnect(accountId: AccountId): Promise<AccountView[]> {
-    this.registry.forget(accountId)
-    return await this.connect()
   }
 
   async disconnect(accountId: AccountId): Promise<AccountView[]> {

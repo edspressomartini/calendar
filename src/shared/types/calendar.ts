@@ -1,6 +1,8 @@
 /** The normalised calendar domain. No provider's vocabulary leaks in here (§3). */
 
-export type ProviderKind = 'google' | 'mock'
+import type { PROVIDER_KINDS } from '../constants.ts'
+
+export type ProviderKind = (typeof PROVIDER_KINDS)[number]
 
 export type AccountId = string
 export type CalendarId = string
