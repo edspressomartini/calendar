@@ -166,13 +166,29 @@ Authorisation maps onto existing statuses rather than new UI:
 
 | State                               | Result                                                                      |
 | ----------------------------------- | --------------------------------------------------------------------------- |
-| `notDetermined`                     | Prompt on connect.                                                          |
+| `notDetermined`                     | Prompt on connect, then report what the prompt settled on.                  |
 | `denied`, `restricted`, `writeOnly` | `needsReauth`, with a button opening System Settings → Privacy → Calendars. |
+| `promptUnavailable`                 | Said plainly in the Accounts pane, with no System Settings button.          |
 
-None of those three are fixable inside the app, so all three say the same thing
-and offer the same escape, in the pattern the widget already uses for putting the
-fix next to the problem. The deep link is
+None of those three refusals are fixable inside the app, so all three say the
+same thing and offer the same escape, in the pattern the widget already uses for
+putting the fix next to the problem. The deep link is
 `x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars`.
+
+`promptUnavailable` is the fourth state, and it is not a refusal. The request
+can fail without the user ever seeing it — `requestFullAccessToEvents()` throws,
+or returns false, for an app bundle with no
+`NSCalendarsFullAccessUsageDescription`, because macOS will not show a calendar
+prompt for one. The helper tells that apart from a Deny by re-reading
+`EKEventStore.authorizationStatus(for: .event)` after the request: a real Deny
+moves the status to `.denied`, a prompt that never appeared leaves it
+`.notDetermined`. It crosses the wire as its own status in
+`eventKitAuthorizationSchema`, reaches the renderer on the same connect-response
+field as a refusal, and is kept out of `CALENDAR_ACCESS_REFUSALS` on purpose:
+it is terminal, but no privacy toggle changes it, so offering that pane would
+point the user at somewhere nothing is wrong. The pane says the copy of the app
+cannot ask and to reinstall it. `notDetermined` itself is not a wire status —
+by the time the helper answers it has either read a settled status or asked.
 
 Other failures:
 
@@ -187,8 +203,10 @@ Other failures:
   says the Mac has no calendar accounts, pointing at `Calendar.app`. Not an error.
 
 `EventKitError` sits alongside `AuthFlowError` in `infra/errors.ts`, with kinds
-`denied`, `restricted`, `helper_unavailable`, `timeout` and `protocol`. Translated
-at the boundary, never swallowed.
+`denied`, `restricted`, `writeOnly`, `promptUnavailable`, `helper_unavailable`,
+`timeout` and `protocol`. Translated at the boundary, never swallowed — and in
+particular not with `try?`, which turned a request that could not be made into
+a denial the user had never made.
 
 ## Build and signing
 

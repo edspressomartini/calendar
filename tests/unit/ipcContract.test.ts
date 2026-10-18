@@ -20,6 +20,7 @@ import {
   updateSettingsSchema,
 } from '../../src/shared/ipc/contract.ts'
 import {
+  CALENDAR_ACCESS_PROBLEMS,
   CALENDAR_ACCESS_REFUSALS,
   MAX_TODO_TITLE_LENGTH,
   MAX_WIDGET_FIT_HEIGHT,
@@ -75,18 +76,38 @@ describe('IPC contract', () => {
    * comes back as data the contract validates (§8.4, §8.5).
    */
   it('carries a refused calendar permission back in the connect response', () => {
-    for (const refusal of CALENDAR_ACCESS_REFUSALS) {
-      expect(connectAccountsResultSchema.safeParse({ accounts: [], refusal }).success).toBe(true)
+    for (const problem of CALENDAR_ACCESS_PROBLEMS) {
+      expect(
+        connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: problem }).success,
+      ).toBe(true)
     }
-    expect(connectAccountsResultSchema.safeParse({ accounts: [], refusal: null }).success).toBe(
-      true,
-    )
+    expect(
+      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: null }).success,
+    ).toBe(true)
     // Retryable EventKit kinds are failures, not refusals, and never travel.
     expect(
-      connectAccountsResultSchema.safeParse({ accounts: [], refusal: 'helper_unavailable' })
+      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: 'helper_unavailable' })
         .success,
     ).toBe(false)
     expect(connectAccountsResultSchema.safeParse({ accounts: [] }).success).toBe(false)
+  })
+
+  /**
+   * A prompt that could not be shown is why nothing was added just as much as
+   * a refusal is, and the pane has to be able to say so. It travels on the
+   * same field, because only one of them can be the reason.
+   */
+  it('carries a prompt that could not be shown on the same field', () => {
+    expect(CALENDAR_ACCESS_PROBLEMS).toContain('promptUnavailable')
+    expect(
+      connectAccountsResultSchema.safeParse({ accounts: [], accessProblem: 'promptUnavailable' })
+        .success,
+    ).toBe(true)
+  })
+
+  /** Only the refusals get the System Settings button, so the sets differ. */
+  it('keeps a prompt that could not be shown out of the refusals', () => {
+    expect(CALENDAR_ACCESS_REFUSALS).not.toContain('promptUnavailable')
   })
 
   /** The URL is a constant in main, so there is nothing for a caller to send. */

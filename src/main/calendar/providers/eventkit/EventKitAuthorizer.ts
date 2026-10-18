@@ -34,11 +34,11 @@ export class EventKitAuthorizer implements AccountAuthenticator {
     )
 
     if (authorization.status !== 'granted') {
-      // denied, restricted and writeOnly are all terminal until the user
-      // changes a System Settings toggle, so they are reported as themselves.
-      throw new EventKitError(
-        authorization.status === 'notDetermined' ? 'denied' : authorization.status,
-      )
+      // Every status is reported as itself. denied, restricted and writeOnly
+      // are terminal until a System Settings toggle changes; promptUnavailable
+      // means macOS was never asked, and flattening it into denied told the
+      // user they had refused a prompt they had never been shown.
+      throw new EventKitError(authorization.status)
     }
 
     const sources = await this.helper.request('sources', {}, eventKitSourceListSchema)

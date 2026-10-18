@@ -59,8 +59,24 @@ export const eventKitEventSchema = z.strictObject({
   selfDeclined: z.boolean(),
 })
 
+/**
+ * The helper's answer to having asked, which is not the same list as the
+ * statuses `EKEventStore` holds.
+ *
+ * `notDetermined` is not among them. By the time the helper replies it has
+ * either read a settled status or made the request, so "not determined yet"
+ * has become one of the four settled names or `promptUnavailable`. It used to
+ * be here, and its only use on arrival was being folded into `denied`.
+ *
+ * `promptUnavailable` is a request that could not be made: it threw, or came
+ * back false while leaving the status at `notDetermined`. macOS will not show
+ * a calendar prompt for an app bundle without
+ * `NSCalendarsFullAccessUsageDescription`, which is the ordinary cause. Kept
+ * apart from `denied` because nobody refused anything, and telling the user
+ * they did — then sending them to System Settings — is false twice over.
+ */
 export const eventKitAuthorizationSchema = z.strictObject({
-  status: z.enum(['granted', 'denied', 'restricted', 'writeOnly', 'notDetermined']),
+  status: z.enum(['granted', 'denied', 'restricted', 'writeOnly', 'promptUnavailable']),
 })
 
 const errorKindSchema = z.enum([

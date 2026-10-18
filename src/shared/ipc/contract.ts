@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
   ACCOUNT_COLOURS,
-  CALENDAR_ACCESS_REFUSALS,
+  CALENDAR_ACCESS_PROBLEMS,
   MAX_EVENT_TITLE_LENGTH,
   MAX_NOTIFICATION_LEAD_MINUTES,
   MAX_SHORTCUT_LENGTH,
@@ -336,13 +336,14 @@ export const todoSnapshotSchema = z.strictObject({
 export const accountListSchema = z.array(accountViewSchema)
 
 /**
- * A refused permission is part of a successful response, not a rejection: the
- * router gives the renderer one opaque message for every thrown error, so a
- * refusal has to arrive as data to be distinguishable (§8.4).
+ * A permission macOS would not hand over is part of a successful response, not
+ * a rejection: the router gives the renderer one opaque message for every
+ * thrown error, so the reason has to arrive as data to be distinguishable
+ * (§8.4).
  */
 export const connectAccountsResultSchema = z.strictObject({
   accounts: accountListSchema,
-  refusal: z.enum(CALENDAR_ACCESS_REFUSALS).nullable(),
+  accessProblem: z.enum(CALENDAR_ACCESS_PROBLEMS).nullable(),
 })
 export const calendarListSchema = z.array(calendarSummarySchema)
 export const displayListSchema = z.array(displayOptionSchema)

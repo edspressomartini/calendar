@@ -365,8 +365,8 @@ class Application {
   }
 
   /**
-   * The tray has nowhere to show a refused calendar prompt, so it hands the
-   * user to the accounts pane, which does.
+   * The tray has nowhere to explain why calendar access produced nothing, so
+   * it hands the user to the accounts pane, which does.
    */
   private async reconnectFromTray(
     accounts: AccountService,
@@ -375,7 +375,7 @@ class Application {
   ): Promise<void> {
     try {
       const result = await accounts.reconnect(accountId)
-      if (result.refusal) {
+      if (result.accessProblem) {
         await settingsWindow.open('accounts')
       }
     } catch (error) {

@@ -3,10 +3,13 @@ import {
   AuthFlowError,
   describeError,
   EventKitError,
+  isCalendarAccessProblem,
+  isCalendarAccessRefusal,
   isEventKitError,
   ReauthRequiredError,
   TransientProviderError,
 } from '../../src/main/infra/errors.ts'
+import { CALENDAR_ACCESS_REFUSALS } from '../../src/shared/constants.ts'
 
 const ACCOUNT_ID = 'alice@example.com'
 
@@ -67,4 +70,32 @@ describe('EventKitError', () => {
     expect(isEventKitError(new EventKitError('timeout'))).toBe(true)
     expect(isEventKitError(new Error('timeout'))).toBe(false)
   })
+})
+
+describe('calendar access classification', () => {
+  it.each(CALENDAR_ACCESS_REFUSALS)('counts %s as a refusal', (kind) => {
+    expect(isCalendarAccessRefusal(new EventKitError(kind))).toBe(true)
+    expect(isCalendarAccessProblem(new EventKitError(kind))).toBe(true)
+  })
+
+  /**
+   * The decision this test exists to pin. A prompt that could not be shown
+   * stops a connect attempt dead, so it is a problem; but no System Settings
+   * toggle changes it, so offering the privacy pane would be the same false
+   * explanation in a new costume.
+   */
+  it('counts a prompt that could not be shown as a problem but not a refusal', () => {
+    const error = new EventKitError('promptUnavailable')
+
+    expect(isCalendarAccessProblem(error)).toBe(true)
+    expect(isCalendarAccessRefusal(error)).toBe(false)
+  })
+
+  it.each(['helper_unavailable', 'timeout', 'protocol'] as const)(
+    'counts %s as neither, because it is worth another go',
+    (kind) => {
+      expect(isCalendarAccessProblem(new EventKitError(kind))).toBe(false)
+      expect(isCalendarAccessRefusal(new EventKitError(kind))).toBe(false)
+    },
+  )
 })

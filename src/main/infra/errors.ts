@@ -5,8 +5,9 @@
  */
 
 import type { EventKitErrorKind } from '../calendar/providers/eventkit/EventKitProtocol.ts'
-import { CALENDAR_ACCESS_REFUSALS } from '../../shared/constants.ts'
-import type { CalendarAccessRefusal } from '../../shared/types/account.ts'
+import type { CALENDAR_PROMPT_UNAVAILABLE } from '../../shared/constants.ts'
+import { CALENDAR_ACCESS_PROBLEMS, CALENDAR_ACCESS_REFUSALS } from '../../shared/constants.ts'
+import type { CalendarAccessProblem, CalendarAccessRefusal } from '../../shared/types/account.ts'
 
 export abstract class AppError extends Error {
   protected constructor(message: string) {
@@ -54,11 +55,22 @@ export class AuthFlowError extends AppError {
 
 /**
  * The macOS calendar store could not be read. `denied`, `restricted` and
- * `writeOnly` are terminal until the user changes a System Settings toggle;
- * the rest are worth retrying.
+ * `writeOnly` are terminal until the user changes a System Settings toggle,
+ * and `promptUnavailable` is terminal until the app is reinstalled; the rest
+ * are worth retrying.
+ *
+ * `promptUnavailable` comes from an `authorize` reply rather than a helper
+ * error frame, which is why it is listed here and not in `errorKindSchema`.
  */
 export class EventKitError extends AppError {
-  constructor(readonly kind: EventKitErrorKind | 'helper_unavailable' | 'timeout' | 'protocol') {
+  constructor(
+    readonly kind:
+      | EventKitErrorKind
+      | typeof CALENDAR_PROMPT_UNAVAILABLE
+      | 'helper_unavailable'
+      | 'timeout'
+      | 'protocol',
+  ) {
     super(`calendar access failed (${kind})`)
   }
 }
@@ -97,16 +109,35 @@ const REFUSED_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError[
   CALENDAR_ACCESS_REFUSALS,
 )
 
+const PROBLEM_KINDS: ReadonlySet<EventKitError['kind']> = new Set<EventKitError['kind']>(
+  CALENDAR_ACCESS_PROBLEMS,
+)
+
 /**
  * Refused, restricted by policy, or granted write-only. Both the sync path
  * and the sign-in path ask this question, and must answer it the same way:
  * retrying any of the three would only spin until a System Settings toggle
  * changes (§7).
+ *
+ * `promptUnavailable` is not one of them, on purpose. It is just as terminal,
+ * but no toggle exists to change it, so the System Settings button this
+ * question gates would be an instruction the user cannot carry out.
  */
 export function isCalendarAccessRefusal(
   error: unknown,
 ): error is EventKitError & { readonly kind: CalendarAccessRefusal } {
   return isEventKitError(error) && REFUSED_KINDS.has(error.kind)
+}
+
+/**
+ * The wider question the sign-in path asks: did macOS hand over nothing for a
+ * reason the Accounts pane can state? A refusal, or a build that could not put
+ * the prompt on screen at all.
+ */
+export function isCalendarAccessProblem(
+  error: unknown,
+): error is EventKitError & { readonly kind: CalendarAccessProblem } {
+  return isEventKitError(error) && PROBLEM_KINDS.has(error.kind)
 }
 
 /**

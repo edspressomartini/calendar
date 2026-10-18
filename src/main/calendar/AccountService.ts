@@ -11,7 +11,7 @@ import type {
   ProviderKind,
 } from '../../shared/types/calendar.ts'
 import type { AgendaService } from '../agenda/AgendaService.ts'
-import { describeError, isCalendarAccessRefusal } from '../infra/errors.ts'
+import { describeError, isCalendarAccessProblem } from '../infra/errors.ts'
 import type { AppLogger } from '../infra/logger.ts'
 import type { SettingsStore } from '../storage/SettingsStore.ts'
 import type { TokenVault } from '../storage/TokenVault.ts'
@@ -131,15 +131,18 @@ export class AccountService {
     try {
       results = await authenticator.authenticate()
     } catch (error) {
-      // Caught to answer the user, not to swallow: a refusal has no account
-      // to hang a needsReauth status on, so it travels back in the response
-      // and the Accounts pane offers System Settings inline (§7). Anything
-      // else is a real failure and carries on to the IPC boundary.
-      if (!isCalendarAccessRefusal(error)) {
+      // Caught to answer the user, not to swallow: nothing was granted, so
+      // there is no account to hang a needsReauth status on and the reason
+      // travels back in the response for the Accounts pane to state (§7).
+      // Anything else is a real failure and carries on to the IPC boundary.
+      if (!isCalendarAccessProblem(error)) {
         throw error
       }
-      this.logger.warn('calendar access refused at sign-in', { provider: kind, kind: error.kind })
-      return { accounts: this.list(), refusal: error.kind }
+      this.logger.warn('calendar access not granted at sign-in', {
+        provider: kind,
+        kind: error.kind,
+      })
+      return { accounts: this.list(), accessProblem: error.kind }
     }
 
     // Sign-in can span a browser round trip or a permission prompt, so it is
@@ -179,7 +182,7 @@ export class AccountService {
       throw failures[0]
     }
 
-    return { accounts: this.list(), refusal: null }
+    return { accounts: this.list(), accessProblem: null }
   }
 
   /** Re-running consent for an existing account; a fresh grant replaces the dead one. */

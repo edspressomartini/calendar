@@ -281,6 +281,19 @@ describe('EventKitAuthorizer', () => {
     await expect(authorizer.authenticate()).rejects.toMatchObject({ kind: 'writeOnly' })
   })
 
+  /**
+   * The defect this exists for: the helper could not ask at all — a build with
+   * no calendar usage string in its Info.plist cannot show the prompt — and
+   * that used to arrive as `denied`. It is its own kind all the way up, or the
+   * user is told they refused something they were never offered.
+   */
+  it('keeps a prompt that could not be shown apart from a refusal', async () => {
+    const { helper } = helperReturning({ status: 'promptUnavailable' })
+    const authorizer = new EventKitAuthorizer(helper, silentLogger())
+
+    await expect(authorizer.authenticate()).rejects.toMatchObject({ kind: 'promptUnavailable' })
+  })
+
   it('returns no accounts when the Mac has no calendar sources', async () => {
     const { helper } = helperReturning({ status: 'granted' }, [])
     const authorizer = new EventKitAuthorizer(helper, silentLogger())

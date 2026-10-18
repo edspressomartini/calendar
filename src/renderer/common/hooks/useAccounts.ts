@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AccountView, CalendarAccessRefusal } from '../../../shared/types/account.ts'
+import type { AccountView, CalendarAccessProblem } from '../../../shared/types/account.ts'
 import type { ProviderKind } from '../../../shared/types/calendar.ts'
 import { accountListSchema, connectAccountsResultSchema } from '../../../shared/ipc/contract.ts'
 import { fetchAccounts, settingsApi } from '../lib/ipcClient.ts'
@@ -9,10 +9,11 @@ export interface AccountsState {
   readonly busy: boolean
   readonly error: string | null
   /**
-   * Set when macOS refused calendar access during sign-in. No account exists
-   * in that case, so the pane carries the explanation and the fix itself (§7).
+   * Set when macOS handed over no calendar access during sign-in — refused, or
+   * never asked at all. No account exists in that case, so the pane carries
+   * the explanation, and the fix too when there is one (§7).
    */
-  readonly calendarAccessRefusal: CalendarAccessRefusal | null
+  readonly calendarAccessProblem: CalendarAccessProblem | null
   connect(provider: ProviderKind): Promise<void>
   reconnect(accountId: string): Promise<void>
   disconnect(accountId: string): Promise<void>
@@ -25,7 +26,7 @@ export function useAccounts(): AccountsState {
   const [accounts, setAccounts] = useState<readonly AccountView[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [calendarAccessRefusal, setCalendarAccessRefusal] = useState<CalendarAccessRefusal | null>(
+  const [calendarAccessProblem, setCalendarAccessProblem] = useState<CalendarAccessProblem | null>(
     null,
   )
 
@@ -57,7 +58,7 @@ export function useAccounts(): AccountsState {
   const run = useCallback(async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
     setError(null)
-    setCalendarAccessRefusal(null)
+    setCalendarAccessProblem(null)
     try {
       const result = await action()
       const parsed = accountListSchema.safeParse(result)
@@ -72,14 +73,14 @@ export function useAccounts(): AccountsState {
   }, [])
 
   /**
-   * Sign-in is the one action that can come back refused rather than failed,
-   * and the two need different words: a refusal is the user's own answer to
-   * the macOS prompt, not something that went wrong.
+   * Sign-in is the one action that can come back unanswered rather than
+   * failed, and the two need different words: macOS refusing, or never being
+   * asked, is not something that went wrong in the app.
    */
   const runConnect = useCallback(async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
     setError(null)
-    setCalendarAccessRefusal(null)
+    setCalendarAccessProblem(null)
     try {
       const result = await action()
       const parsed = connectAccountsResultSchema.safeParse(result)
@@ -88,7 +89,7 @@ export function useAccounts(): AccountsState {
         return
       }
       setAccounts(parsed.data.accounts)
-      setCalendarAccessRefusal(parsed.data.refusal)
+      setCalendarAccessProblem(parsed.data.accessProblem)
     } catch {
       setError(message)
     } finally {
@@ -148,7 +149,7 @@ export function useAccounts(): AccountsState {
     accounts,
     busy,
     error,
-    calendarAccessRefusal,
+    calendarAccessProblem,
     connect,
     reconnect,
     disconnect,

@@ -175,7 +175,7 @@ describe('AccountService.connect', () => {
     const result = await service.connect('eventkit')
 
     expect(result.accounts.map((view) => view.id)).toEqual(['eventkit:icloud', 'eventkit:local'])
-    expect(result.refusal).toBeNull()
+    expect(result.accessProblem).toBeNull()
     expect(settings.getAccounts().map((account) => account.id)).toEqual([
       'eventkit:icloud',
       'eventkit:local',
@@ -202,7 +202,10 @@ describe('AccountService.connect', () => {
   it('resolves when authentication returned no results at all', async () => {
     const { service } = buildService({ authenticate: vi.fn().mockResolvedValue([]) })
 
-    await expect(service.connect('eventkit')).resolves.toEqual({ accounts: [], refusal: null })
+    await expect(service.connect('eventkit')).resolves.toEqual({
+      accounts: [],
+      accessProblem: null,
+    })
   })
 
   /**
@@ -221,11 +224,28 @@ describe('AccountService.connect', () => {
 
       const result = await service.connect('eventkit')
 
-      expect(result).toEqual({ accounts: [], refusal: kind })
+      expect(result).toEqual({ accounts: [], accessProblem: kind })
       expect(settings.getAccounts()).toEqual([])
       expect(reconcile).not.toHaveBeenCalled()
     },
   )
+
+  /**
+   * A prompt that could not be shown at all. Nothing was granted and nothing
+   * was refused, so it travels on the same field as a refusal — the pane has
+   * to be able to say why nothing was added — and the pane's own copy is what
+   * keeps the two apart.
+   */
+  it('reports a prompt that could not be shown as a problem, not a failure', async () => {
+    const { service } = buildService({
+      authenticate: vi.fn().mockRejectedValue(new EventKitError('promptUnavailable')),
+    })
+
+    await expect(service.connect('eventkit')).resolves.toEqual({
+      accounts: [],
+      accessProblem: 'promptUnavailable',
+    })
+  })
 
   /** Only the terminal kinds are a refusal; the rest are worth another go. */
   it('still rejects when the helper itself could not be reached', async () => {
@@ -243,7 +263,7 @@ describe('AccountService.connect', () => {
 
     await expect(service.reconnect('eventkit:icloud')).resolves.toEqual({
       accounts: [],
-      refusal: 'denied',
+      accessProblem: 'denied',
     })
   })
 

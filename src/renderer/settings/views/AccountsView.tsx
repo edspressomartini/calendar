@@ -1,5 +1,10 @@
 import type { JSX } from 'react'
-import type { AccountView, CalendarAccessRefusal } from '../../../shared/types/account.ts'
+import { CALENDAR_PROMPT_UNAVAILABLE } from '../../../shared/constants.ts'
+import type {
+  AccountView,
+  CalendarAccessProblem,
+  CalendarAccessRefusal,
+} from '../../../shared/types/account.ts'
 import { Badge } from '../../common/components/ui/Badge.tsx'
 import { Spinner } from '../../common/components/ui/Spinner.tsx'
 import type { AccountsState } from '../../common/hooks/useAccounts.ts'
@@ -16,13 +21,27 @@ const STATUS_LABEL: Record<AccountView['status'], string> = {
 }
 
 /**
- * Said in the user's terms, since all three leave them in the same place:
- * nothing was connected, and only System Settings can change that (§7).
+ * Said in the user's terms. The first three leave them in the same place —
+ * nothing was connected, and only System Settings can change that (§7) — and
+ * the fourth is the one case where System Settings would be the wrong advice,
+ * because this copy of the app can never ask for the permission at all.
  */
-const REFUSAL_MESSAGE: Record<CalendarAccessRefusal, string> = {
+const ACCESS_PROBLEM_MESSAGE: Record<CalendarAccessProblem, string> = {
   denied: 'macOS declined calendar access, so no accounts were added.',
   restricted: 'Calendar access is blocked on this Mac by a policy or Screen Time.',
   writeOnly: 'macOS granted write-only calendar access, which cannot read your events.',
+  promptUnavailable:
+    'This copy of Up Next cannot ask macOS for calendar access, so nothing was added. Reinstall Up Next and try again.',
+}
+
+/**
+ * The privacy pane fixes a refusal and nothing else. Offering it for a prompt
+ * that was never shown would send the user somewhere nothing is wrong and
+ * nothing can be changed, which is the same false explanation in a new
+ * costume.
+ */
+function isRefusal(problem: CalendarAccessProblem): problem is CalendarAccessRefusal {
+  return problem !== CALENDAR_PROMPT_UNAVAILABLE
 }
 
 export function AccountsView({ state }: AccountsViewProps): JSX.Element {
@@ -51,12 +70,12 @@ export function AccountsView({ state }: AccountsViewProps): JSX.Element {
 
       {state.error && <p className="text-xs text-urgent">{state.error}</p>}
 
-      {state.calendarAccessRefusal && (
+      {state.calendarAccessProblem && (
         <div className="flex items-center gap-3 rounded-md border border-urgent/40 px-3 py-2">
           <p className="flex-1 text-xs text-urgent">
-            {REFUSAL_MESSAGE[state.calendarAccessRefusal]}
+            {ACCESS_PROBLEM_MESSAGE[state.calendarAccessProblem]}
           </p>
-          <PrivacySettingsButton state={state} />
+          {isRefusal(state.calendarAccessProblem) && <PrivacySettingsButton state={state} />}
         </div>
       )}
 

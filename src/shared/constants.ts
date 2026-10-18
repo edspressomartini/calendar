@@ -14,6 +14,28 @@ export const PROVIDER_KINDS = ['google', 'eventkit', 'mock'] as const
  */
 export const CALENDAR_ACCESS_REFUSALS = ['denied', 'restricted', 'writeOnly'] as const
 
+/**
+ * macOS could not be asked at all: the request threw, or returned false while
+ * leaving the status undetermined, which is what happens to an app bundle
+ * without `NSCalendarsFullAccessUsageDescription` — macOS will not show a
+ * calendar prompt for one.
+ *
+ * Deliberately *not* a refusal. Nothing was refused, so the System Settings
+ * button the refusals carry would point at a pane where nothing is wrong and
+ * nothing can be fixed (§7).
+ */
+export const CALENDAR_PROMPT_UNAVAILABLE = 'promptUnavailable'
+
+/**
+ * Every reason a connect attempt added no accounts: the refusals, plus the
+ * build that could not ask. One list because only one of them can be the
+ * reason, and the pane needs exactly one thing to say.
+ */
+export const CALENDAR_ACCESS_PROBLEMS = [
+  ...CALENDAR_ACCESS_REFUSALS,
+  CALENDAR_PROMPT_UNAVAILABLE,
+] as const
+
 /** An event is "imminent" this many minutes before it starts (§6). */
 export const IMMINENT_THRESHOLD_MINUTES = 15
 

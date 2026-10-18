@@ -655,7 +655,7 @@ The whole IPC surface. Adding a channel means a row here, a Zod schema and a sen
 | Widget            | `todos:toggle`, `todos:roll`, `todos:remove` | renderer → main | `{ todoId }`                                   |
 | Widget            | `todos:rollAllOverdue`                       | renderer → main | none                                           |
 
-**Refused calendar access comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, refusal }`, where `refusal` is `denied`, `restricted`, `writeOnly` or null, validated by the same contract as the account list. The renderer uses it to show the System Settings button inline when the first-time prompt was declined and no account exists to carry a `needsReauth` status (§7).
+**Calendar access that produced nothing comes back as data, not as a rejection.** A failing handler reaches the renderer as one deliberately vague error, so nothing in a thrown error can be told apart from anything else. `accounts:connect` and `accounts:reconnect` therefore answer with `{ accounts, accessProblem }`, where `accessProblem` is `denied`, `restricted`, `writeOnly`, `promptUnavailable` or null, validated by the same contract as the account list. The renderer uses it to explain inline why nothing was added when no account exists to carry a `needsReauth` status (§7), and shows the System Settings button for the three refusals only — `promptUnavailable` means macOS was never asked, so no privacy toggle would change it.
 
 ### 8.6 External links
 

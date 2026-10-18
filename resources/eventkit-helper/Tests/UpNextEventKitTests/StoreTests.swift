@@ -24,6 +24,66 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(statusName(.canceled), "cancelled")
     }
 
+    // MARK: - authorization
+
+    func testASettledStatusIsReportedAsItself() {
+        XCTAssertEqual(authorizationName(of: .fullAccess), "granted")
+        XCTAssertEqual(authorizationName(of: .denied), "denied")
+        XCTAssertEqual(authorizationName(of: .restricted), "restricted")
+        XCTAssertEqual(authorizationName(of: .writeOnly), "writeOnly")
+    }
+
+    /// Nothing has been settled yet, so there is nothing to report: the caller
+    /// has to ask before it has an answer.
+    func testNotDeterminedHasNoSettledName() {
+        XCTAssertNil(authorizationName(of: .notDetermined))
+    }
+
+    func testAGrantedRequestIsGranted() {
+        XCTAssertEqual(
+            authorizationOutcome(granted: true, statusAfterRequest: .fullAccess),
+            "granted"
+        )
+    }
+
+    /// The whole point of this one. A request that could not be made — it threw,
+    /// or came back false without moving the status off `.notDetermined` — is
+    /// not the user saying no. Reporting it as `denied` sent them to a System
+    /// Settings pane where nothing was wrong and nothing could be fixed.
+    func testAPromptThatNeverAppearedIsNotADenial() {
+        let outcome = authorizationOutcome(granted: false, statusAfterRequest: .notDetermined)
+
+        XCTAssertEqual(outcome, "promptUnavailable")
+        XCTAssertNotEqual(outcome, "denied")
+    }
+
+    /// And the other half: a real Deny does move the status, so it is still
+    /// reported as the denial it is.
+    func testARefusedPromptIsADenial() {
+        XCTAssertEqual(authorizationOutcome(granted: false, statusAfterRequest: .denied), "denied")
+    }
+
+    func testAStatusSettledDuringTheRequestIsReportedAsItself() {
+        XCTAssertEqual(
+            authorizationOutcome(granted: false, statusAfterRequest: .restricted),
+            "restricted"
+        )
+        XCTAssertEqual(
+            authorizationOutcome(granted: false, statusAfterRequest: .writeOnly),
+            "writeOnly"
+        )
+    }
+
+    /// `eventKitAuthorizationSchema`'s status enum, member for member. A name
+    /// this side invents and the other side has never heard of fails the parse
+    /// of the whole reply, and the sign-in with it.
+    func testAuthorizationNamesMatchTheSchema() {
+        XCTAssertEqual(
+            authorizationStatusNames,
+            ["granted", "denied", "restricted", "writeOnly", "promptUnavailable"]
+        )
+    }
+
     // MARK: - isDeclinedBySelf
 
     func testNotDeclinedWhenThereAreNoAttendees() {

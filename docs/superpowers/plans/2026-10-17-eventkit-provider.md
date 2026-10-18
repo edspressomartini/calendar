@@ -182,7 +182,7 @@ export const eventKitEventSchema = z.strictObject({
 })
 
 export const eventKitAuthorizationSchema = z.strictObject({
-  status: z.enum(['granted', 'denied', 'restricted', 'writeOnly', 'notDetermined']),
+  status: z.enum(['granted', 'denied', 'restricted', 'writeOnly', 'promptUnavailable']),
 })
 
 const errorKindSchema = z.enum([
@@ -1246,20 +1246,20 @@ func parseDate(_ value: String?) throws -> Date {
 }
 
 func authorize() async -> String {
-    let status = EKEventStore.authorizationStatus(for: .event)
-    switch status {
-    case .fullAccess:
-        return "granted"
-    case .denied:
-        return "denied"
-    case .restricted:
-        return "restricted"
-    case .writeOnly:
-        return "writeOnly"
-    default:
-        let granted = (try? await store.store.requestFullAccessToEvents()) ?? false
-        return granted ? "granted" : "denied"
+    let settled = authorizationName(of: EKEventStore.authorizationStatus(for: .event))
+    if let settled {
+        return settled
     }
+
+    let granted: Bool
+    do {
+        granted = try await store.store.requestFullAccessToEvents()
+    } catch {
+        granted = false
+    }
+
+    let statusAfterRequest = EKEventStore.authorizationStatus(for: .event)
+    return authorizationOutcome(granted: granted, statusAfterRequest: statusAfterRequest)
 }
 
 func handle(_ request: Request) async {
@@ -1677,11 +1677,10 @@ export class EventKitAuthorizer implements AccountAuthenticator {
     const authorization = await this.helper.request('authorize', {}, eventKitAuthorizationSchema)
 
     if (authorization.status !== 'granted') {
-      // denied, restricted and writeOnly are all terminal until the user
-      // changes a System Settings toggle, so they are reported as themselves.
-      throw new EventKitError(
-        authorization.status === 'notDetermined' ? 'denied' : authorization.status,
-      )
+      // Every status is reported as itself. denied, restricted and writeOnly
+      // are terminal until a System Settings toggle changes; promptUnavailable
+      // means macOS was never asked at all.
+      throw new EventKitError(authorization.status)
     }
 
     const sources = await this.helper.request('sources', {}, eventKitSourceListSchema)
@@ -2196,13 +2195,18 @@ git commit -m "feat(eventkit): resync when the macOS calendar store changes"
 
 - Consumes: `EventKitError` and `isEventKitError` (Task 2).
 - Produces: `CALENDAR_ACCESS_REFUSALS` in `src/shared/constants.ts` and `isCalendarAccessRefusal` in `src/main/infra/errors.ts`, shared by the sync path and the sign-in path.
-- Produces: `AccountService.connect`/`reconnect` returning `ConnectAccountsResult` (`{ accounts, refusal }`) instead of `AccountView[]`, across the bridge.
+- Produces: `AccountService.connect`/`reconnect` returning `ConnectAccountsResult` (`{ accounts, accessProblem }`) instead of `AccountView[]`, across the bridge. Amended by Task 12: the field was `refusal` here, and widened once a fourth state appeared that is not a refusal.
 - Produces: a new no-payload channel `CHANNELS.accountsOpenCalendarPrivacy`, and `openCalendarPrivacy(): Promise<void>` on the settings bridge.
 
 Without this, a user who clicks Deny gets an account stuck on `offline` that
 retries forever and never says what to do. `denied`, `restricted` and
 `writeOnly` are terminal until a System Settings toggle changes, which is
 exactly what `needsReauth` means.
+
+**There is a fourth state, and it is not a refusal.** See Task 12: a request
+that macOS will not put on screen at all reports `promptUnavailable`, travels
+on the same response field, and is deliberately kept out of
+`CALENDAR_ACCESS_REFUSALS` because no System Settings toggle changes it.
 
 **Two journeys reach the same refusal, and both have to be served.** An
 account that was granted and later revoked refuses through `fetchEvents`,
@@ -2624,3 +2628,48 @@ Expected: installs on Sonoma or later, refuses with a clear message on Ventura.
 ```bash
 git commit -am "chore: require macOS Sonoma for the EventKit build"
 ```
+
+---
+
+### Task 12: A prompt that could not be shown is not a denial
+
+Found by running the feature: `npm run dev`, "Use Apple Calendar", and the
+pane said macOS had declined — with no prompt ever having appeared.
+`./build/helper/up-next-eventkit --probe` printed `authorization: 0`,
+`notDetermined`, so nothing had been refused.
+
+**Files:**
+
+- Modify: `resources/eventkit-helper/Sources/UpNextEventKit/{main,Store}.swift`
+- Modify: `src/main/calendar/providers/eventkit/{EventKitProtocol,EventKitAuthorizer}.ts`
+- Modify: `src/shared/constants.ts`, `src/shared/types/account.ts`, `src/shared/ipc/contract.ts`
+- Modify: `src/main/infra/errors.ts`, `src/main/calendar/AccountService.ts`, `src/main/bootstrap.ts`
+- Modify: `src/renderer/common/hooks/useAccounts.ts`, `src/renderer/settings/views/AccountsView.tsx`
+- Test: `resources/eventkit-helper/Tests/UpNextEventKitTests/StoreTests.swift`, `tests/unit/{eventKitProtocol,eventKitProvider,errors,accountService,ipcContract}.test.ts`
+
+**Interfaces:**
+
+- Produces: `promptUnavailable` in `eventKitAuthorizationSchema`'s status enum, replacing `notDetermined`, which was never an answer to having asked and existed only to be folded into `denied` on arrival.
+- Produces: `CALENDAR_PROMPT_UNAVAILABLE` and `CALENDAR_ACCESS_PROBLEMS` in `src/shared/constants.ts`, `CalendarAccessProblem` in `src/shared/types/account.ts`, and `isCalendarAccessProblem` in `src/main/infra/errors.ts`.
+- Produces: `ConnectAccountsResult.accessProblem`, renamed from `refusal`, carrying either.
+
+**The model, with the fourth state in it:**
+
+| State                               | How it is reached                                                         | Result                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `granted`                           | The status was already `.fullAccess`, or the request returned true.       | One account per calendar source.                                            |
+| `denied`, `restricted`, `writeOnly` | The status reads so, before the request or after it.                      | `needsReauth`, with a button opening System Settings → Privacy → Calendars. |
+| `promptUnavailable`                 | The request threw, or returned false leaving the status `.notDetermined`. | Said plainly in the pane, with **no** System Settings button.               |
+
+`promptUnavailable` is terminal like the refusals, and is deliberately not one
+of them: the privacy pane fixes a refusal and nothing else, so offering it here
+would send the user somewhere nothing is wrong and nothing can be changed. The
+ordinary cause is an app bundle with no `NSCalendarsFullAccessUsageDescription`
+— macOS will not show a calendar prompt for one — which is why Task 13 gives
+the dev Electron host that key.
+
+Telling them apart means re-reading `EKEventStore.authorizationStatus(for:)`
+after the request: a real Deny moves the status to `.denied`, a prompt that
+never appeared leaves it `.notDetermined`. `try?` is gone from
+`requestFullAccessToEvents()`; the error is caught to translate at the
+boundary, and the status read is the translation.

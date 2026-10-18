@@ -48,21 +48,32 @@ func parseDate(_ value: String?) throws -> Date {
     return date
 }
 
+/// Asking has three outcomes, not two: granted, refused, and never asked.
+///
+/// `requestFullAccessToEvents()` throws when macOS will not put the prompt on
+/// screen at all — an app bundle with no `NSCalendarsFullAccessUsageDescription`
+/// is the ordinary cause — and it can return false for the same reason. In
+/// both cases the user was never shown anything, so the status is still
+/// `.notDetermined`, and that is what `authorizationOutcome` reads to tell the
+/// two apart.
 func authorize() async -> String {
-    let status = EKEventStore.authorizationStatus(for: .event)
-    switch status {
-    case .fullAccess:
-        return "granted"
-    case .denied:
-        return "denied"
-    case .restricted:
-        return "restricted"
-    case .writeOnly:
-        return "writeOnly"
-    default:
-        let granted = (try? await store.store.requestFullAccessToEvents()) ?? false
-        return granted ? "granted" : "denied"
+    let settled = authorizationName(of: EKEventStore.authorizationStatus(for: .event))
+    if let settled {
+        return settled
     }
+
+    let granted: Bool
+    do {
+        granted = try await store.store.requestFullAccessToEvents()
+    } catch {
+        // Caught to translate at this boundary, not discarded: the status read
+        // below is the translation, and it is the only thing that can say
+        // whether a human ever saw the prompt.
+        granted = false
+    }
+
+    let statusAfterRequest = EKEventStore.authorizationStatus(for: .event)
+    return authorizationOutcome(granted: granted, statusAfterRequest: statusAfterRequest)
 }
 
 func handle(_ request: Request) async {

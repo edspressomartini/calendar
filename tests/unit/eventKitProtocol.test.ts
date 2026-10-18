@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  eventKitAuthorizationSchema,
   eventKitCalendarSchema,
   eventKitEventSchema,
   eventKitMessageSchema,
@@ -44,6 +45,35 @@ describe('eventKitCalendarSchema', () => {
   it('accepts a calendar title longer than the display cap', () => {
     const calendar = { id: 'cal-1', title: 'x'.repeat(201), isDefault: false }
     expect(eventKitCalendarSchema.safeParse(calendar).success).toBe(true)
+  })
+})
+
+describe('eventKitAuthorizationSchema', () => {
+  /**
+   * The helper answers `authorize` with the status it holds *after* asking,
+   * which is how a prompt that never appeared is told apart from a Deny. The
+   * two must not share a name.
+   */
+  it('carries a prompt that could not be shown as its own status', () => {
+    const parsed = eventKitAuthorizationSchema.parse({ status: 'promptUnavailable' })
+    expect(parsed.status).toBe('promptUnavailable')
+  })
+
+  it('accepts every settled status', () => {
+    for (const status of ['granted', 'denied', 'restricted', 'writeOnly']) {
+      expect(eventKitAuthorizationSchema.safeParse({ status }).success).toBe(true)
+    }
+  })
+
+  /**
+   * `notDetermined` is a status the store holds, never an answer to having
+   * asked: by the time the helper replies it has either read a settled status
+   * or made the request, so the undetermined case has become
+   * `promptUnavailable`. Leaving it on the wire left a name whose only use was
+   * being folded into `denied` on arrival.
+   */
+  it('does not accept notDetermined, which is no longer an answer', () => {
+    expect(eventKitAuthorizationSchema.safeParse({ status: 'notDetermined' }).success).toBe(false)
   })
 })
 

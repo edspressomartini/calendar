@@ -73,6 +73,62 @@ let maxEventCount = 2_000
 /// in the settings list: one of their calendar accounts.
 let untitledSourceLabel = "Untitled account"
 
+/*
+ * The answers an `authorize` reply may carry. These are the members of
+ * `eventKitAuthorizationSchema`'s status enum and nothing else: a name
+ * invented here that the other side has never heard of fails the parse of the
+ * whole reply, and the sign-in with it.
+ */
+let authorizationGranted = "granted"
+let authorizationDenied = "denied"
+let authorizationRestricted = "restricted"
+let authorizationWriteOnly = "writeOnly"
+
+/// macOS could not be asked at all. The request threw, or came back false
+/// while leaving the status at `.notDetermined` — which is what an app bundle
+/// without `NSCalendarsFullAccessUsageDescription` does, because macOS will
+/// not show a calendar prompt for one.
+///
+/// Its own name because it is not a denial. Nobody was asked anything, no
+/// System Settings toggle changes it, and reporting it as `denied` told the
+/// user they had refused something they were never offered.
+let authorizationPromptUnavailable = "promptUnavailable"
+
+/// Asserted against the schema's enum by `StoreTests`.
+let authorizationStatusNames: Set<String> = [
+    authorizationGranted,
+    authorizationDenied,
+    authorizationRestricted,
+    authorizationWriteOnly,
+    authorizationPromptUnavailable,
+]
+
+/// The name for a status the store has already settled on, or nil when it has
+/// settled on nothing yet and has to be asked.
+func authorizationName(of status: EKAuthorizationStatus) -> String? {
+    switch status {
+    case .fullAccess: return authorizationGranted
+    case .denied: return authorizationDenied
+    case .restricted: return authorizationRestricted
+    case .writeOnly: return authorizationWriteOnly
+    default: return nil
+    }
+}
+
+/// What to report once the request has been made.
+///
+/// The status read *after* the request is what tells a refusal from a prompt
+/// that never appeared: a real Deny moves the status to `.denied`, while a
+/// request macOS would not put on screen leaves it at `.notDetermined`. A
+/// request that threw arrives here as `granted: false` for the same reason —
+/// the error says the request failed, the status says what the user chose.
+func authorizationOutcome(granted: Bool, statusAfterRequest: EKAuthorizationStatus) -> String {
+    guard !granted else {
+        return authorizationGranted
+    }
+    return authorizationName(of: statusAfterRequest) ?? authorizationPromptUnavailable
+}
+
 func isoString(from date: Date, timeZone: TimeZone) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
