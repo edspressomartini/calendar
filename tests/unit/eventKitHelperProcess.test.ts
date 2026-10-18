@@ -7,6 +7,8 @@ import { z } from 'zod'
 import {
   defaultHelperSpawn,
   EventKitHelperProcess,
+  MAX_STDERR_LINES,
+  MAX_STDERR_LINE_LENGTH,
 } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import type { HelperChild } from '../../src/main/calendar/providers/eventkit/EventKitHelperProcess.ts'
 import { recordingLogger, silentLogger, type LogEntry } from '../mocks/logger.ts'
@@ -60,6 +62,18 @@ function flushProcessEvents(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 200)
   })
+}
+
+/** Every stderr line an operator would have seen, in the order they arrived. */
+function stderrLines(entries: readonly LogEntry[]): string[] {
+  const lines: string[] = []
+  for (const entry of entries) {
+    const line = entry.context?.line
+    if (typeof line === 'string') {
+      lines.push(line)
+    }
+  }
+  return lines
 }
 
 function written(child: HelperChild): Promise<string> {
@@ -426,6 +440,99 @@ describe('defaultHelperSpawn', () => {
     helper.stop()
   })
 
+  /**
+   * The bug that stayed invisible: a helper SIGKILLed on spawn for an invalid
+   * code signature left nothing behind at all, because stderr was 'ignore'.
+   * The helper writes nothing there itself — stdout is the protocol channel —
+   * so anything that arrives is the runtime complaining, and is worth a warn.
+   */
+  it('logs what the helper wrote to stderr', async () => {
+    const binary = await helperFixture('#!/bin/sh\necho "dyld: Library not loaded" >&2\nsleep 5\n')
+    const entries: LogEntry[] = []
+    const spawn = defaultHelperSpawn(recordingLogger(entries))
+    const child = spawn(binary)
+
+    await vi.waitFor(() => {
+      expect(entries).toContainEqual(
+        expect.objectContaining({
+          level: 'warn',
+          context: { line: 'dyld: Library not loaded' },
+        }),
+      )
+    })
+    child.kill()
+  })
+
+  /** stderr is untrusted input on a trust boundary, so one line is bounded. */
+  it('truncates an over-long stderr line instead of logging all of it', async () => {
+    const binary = await helperFixture(
+      '#!/bin/sh\nawk \'BEGIN { for (i = 0; i < 5000; i++) printf "x" ; print "" }\' >&2\nsleep 5\n',
+    )
+    const entries: LogEntry[] = []
+    const spawn = defaultHelperSpawn(recordingLogger(entries))
+    const child = spawn(binary)
+
+    await vi.waitFor(() => {
+      expect(stderrLines(entries).length).toBeGreaterThan(0)
+    })
+    for (const line of stderrLines(entries)) {
+      expect(line.length).toBeLessThanOrEqual(MAX_STDERR_LINE_LENGTH)
+    }
+    child.kill()
+  })
+
+  /** And bounded in total: a helper spewing output must not grow the main process. */
+  it('stops logging stderr at the cap, and says so once', async () => {
+    const binary = await helperFixture(
+      '#!/bin/sh\nawk \'BEGIN { for (i = 0; i < 400; i++) print "noise" }\' >&2\nsleep 5\n',
+    )
+    const entries: LogEntry[] = []
+    const spawn = defaultHelperSpawn(recordingLogger(entries))
+    const child = spawn(binary)
+
+    const suppressed = (): LogEntry[] =>
+      entries.filter((entry) => entry.message === 'calendar helper stderr capped')
+
+    await vi.waitFor(() => {
+      expect(suppressed()).toHaveLength(1)
+    })
+    expect(stderrLines(entries).length).toBe(MAX_STDERR_LINES)
+    child.kill()
+  })
+
+  /**
+   * "calendar helper exited" said nothing about why, and was logged for
+   * causes where nothing had exited. A signal is the whole diagnosis for an
+   * invalid signature: the kernel sends SIGKILL and nothing else happens.
+   */
+  it('names the signal that killed the helper', async () => {
+    const binary = await helperFixture('#!/bin/sh\nkill -9 $$\n')
+    const entries: LogEntry[] = []
+    const spawn = defaultHelperSpawn(recordingLogger(entries))
+    const child = spawn(binary)
+
+    await vi.waitFor(() => {
+      expect(entries).toContainEqual(
+        expect.objectContaining({ level: 'warn', context: { signal: 'SIGKILL' } }),
+      )
+    })
+    child.kill()
+  })
+
+  it('names the exit code when the helper failed without a signal', async () => {
+    const binary = await helperFixture('#!/bin/sh\nexit 3\n')
+    const entries: LogEntry[] = []
+    const spawn = defaultHelperSpawn(recordingLogger(entries))
+    const child = spawn(binary)
+
+    await vi.waitFor(() => {
+      expect(entries).toContainEqual(
+        expect.objectContaining({ level: 'warn', context: { code: 3 } }),
+      )
+    })
+    child.kill()
+  })
+
   it('logs a broken pipe with its code', async () => {
     const binary = await helperFixture(CLOSES_STDIN_AFTER_ONE_REQUEST)
     const entries: LogEntry[] = []
@@ -444,6 +551,37 @@ describe('defaultHelperSpawn', () => {
     expect(entries).toContainEqual(
       expect.objectContaining({ level: 'warn', context: { source: 'stdin', code: 'EPIPE' } }),
     )
+    helper.stop()
+  })
+
+  /**
+   * A child dropped for a pipe error used to be left running: unreachable,
+   * still holding an EKEventStore, and no longer the one helper per app the
+   * class promises. The fixture replaces its shell with `sleep`, so the kill
+   * reaches the process itself and shows up as the signal it died of.
+   */
+  it('kills a child it dropped for a broken pipe', async () => {
+    const binary = await helperFixture(
+      '#!/bin/sh\nread line\nexec 0<&-\necho \'{"id":1,"ok":true,"result":[]}\'\nexec sleep 60\n',
+    )
+    const entries: LogEntry[] = []
+    const helper = new EventKitHelperProcess(
+      binary,
+      defaultHelperSpawn(recordingLogger(entries)),
+      silentLogger(),
+      NO_TIMEOUT_IN_PRACTICE,
+    )
+
+    await expect(helper.request('sources', {}, z.array(z.string()))).resolves.toEqual([])
+    await expect(helper.request('sources', {}, z.array(z.string()))).rejects.toMatchObject({
+      kind: 'helper_unavailable',
+    })
+
+    await vi.waitFor(() => {
+      expect(entries).toContainEqual(
+        expect.objectContaining({ level: 'warn', context: { signal: 'SIGTERM' } }),
+      )
+    })
     helper.stop()
   })
 })

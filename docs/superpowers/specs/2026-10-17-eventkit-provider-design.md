@@ -240,6 +240,12 @@ generic sentence.
 Other failures:
 
 - Helper exits: its accounts go `offline`, restart backs off from 1s to a 30s cap.
+  The exit is logged with the signal it died of or the code it returned, and its
+  stderr with it — bounded to 512 characters a line and 20 lines a child, because
+  stderr crosses the same trust boundary stdout does. A child dropped for a pipe
+  error is killed, not merely forgotten: unreachable and still running is not
+  one helper per app. The class's own "helper is no longer available" is kept
+  separate, because it is reached for a spawn that never produced a process too.
 - Request timeout: 10s, rejected as `EventKitError('timeout')`. `authorize` is the
   exception and takes its own 5-minute bound: the helper blocks inside
   `requestFullAccessToEvents()` until the user answers the macOS prompt, so a flat

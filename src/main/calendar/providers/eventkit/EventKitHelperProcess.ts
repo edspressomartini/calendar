@@ -135,7 +135,12 @@ export class EventKitHelperProcess implements EventKitRequester {
         this.restartDelayMs === 0 ? RESTART_FLOOR_MS : this.restartDelayMs * 2,
         RESTART_CAP_MS,
       )
-      this.logger.warn('calendar helper exited', { restartDelayMs: this.restartDelayMs })
+      // Not "exited": this runs for a spawn that never produced a process
+      // and for a pipe that broke under a living one, as well as a real
+      // exit. Why it went is logged where the reason exists, by the adapter.
+      this.logger.warn('calendar helper is no longer available', {
+        restartDelayMs: this.restartDelayMs,
+      })
       this.failAll('helper_unavailable')
     })
 
@@ -201,6 +206,85 @@ export class EventKitHelperProcess implements EventKitRequester {
   }
 }
 
+/*
+ * stderr is untrusted input on a trust boundary, exactly as stdout is, and a
+ * helper that spews must not grow the main process without limit. Two bounds:
+ * one line, and how many lines a single child gets to contribute.
+ *
+ * The helper writes nothing to stderr itself — stdout is the protocol channel
+ * and the only thing printed outside it is `--probe`, which goes to stdout
+ * and exits — so everything that arrives here is the runtime: a dyld failure,
+ * a Swift trap, a crash reporter preamble. Logged at warn for that reason,
+ * and bounded because none of those choose their length.
+ */
+
+/** Long enough for a dyld line or a trap message; short of a whole backtrace. */
+export const MAX_STDERR_LINE_LENGTH = 512
+
+/** Enough to carry a cause, far short of letting a crash dump into the log. */
+export const MAX_STDERR_LINES = 20
+
+/**
+ * The ceiling on a line that has not ended yet. Output with no newline in it
+ * at all would otherwise be held whole, which is the unbounded growth the
+ * per-line cap is there to stop.
+ */
+const MAX_STDERR_BUFFER = 4 * MAX_STDERR_LINE_LENGTH
+
+interface StderrSink {
+  /** Takes a chunk and logs whatever whole lines it completed. */
+  readonly take: (chunk: Buffer | string) => void
+  /** Logs a last line with no newline after it, which a crash often leaves. */
+  readonly flush: () => void
+}
+
+function stderrSink(logger: AppLogger): StderrSink {
+  let buffer = ''
+  let logged = 0
+  let capped = false
+
+  const report = (raw: string): void => {
+    const line = raw.trim()
+    if (line.length === 0) {
+      return
+    }
+    if (logged >= MAX_STDERR_LINES) {
+      // Once, not once per line: the point of a cap is to stop writing.
+      if (!capped) {
+        capped = true
+        logger.warn('calendar helper stderr capped', { lines: logged })
+      }
+      return
+    }
+    logged += 1
+    logger.warn('calendar helper wrote to stderr', {
+      line: line.slice(0, MAX_STDERR_LINE_LENGTH),
+    })
+  }
+
+  return {
+    take: (chunk) => {
+      buffer += String(chunk)
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        report(line)
+      }
+      if (buffer.length > MAX_STDERR_BUFFER) {
+        // A run with no newline anywhere in it. Report the bounded head and
+        // drop the rest, rather than hold a line that may never end.
+        report(buffer)
+        buffer = ''
+      }
+    },
+    flush: () => {
+      const rest = buffer
+      buffer = ''
+      report(rest)
+    },
+  }
+}
+
 /** `errno` codes are diagnostics, not user data: ENOENT, EACCES, EPIPE. */
 function errorCode(error: unknown): string | null {
   if (error instanceof Error && 'code' in error && typeof error.code === 'string') {
@@ -212,21 +296,30 @@ function errorCode(error: unknown): string | null {
 /**
  * The real adapter, bound to a logger.
  *
- * Everything it hardens is one hazard: an `'error'` event with no listener is
+ * The hazard it hardens is one: an `'error'` event with no listener is
  * rethrown as an uncaught exception, which in the main process is fatal. The
- * process emits one when a spawn fails (ENOENT, EACCES) and never exits;
- * either pipe emits one when the helper dies with a write in flight (EPIPE),
- * which is the window between the OS closing the pipe and `'exit'` being
- * delivered. All of them mean the same thing to the class — the helper is
- * gone — so all of them travel the exit path, once.
+ * process emits one when a spawn fails (ENOENT, EACCES) and never exits; any
+ * of the three pipes emits one when the helper dies with a write in flight
+ * (EPIPE), which is the window between the OS closing the pipe and `'exit'`
+ * being delivered. All of them mean the same thing to the class — the helper
+ * is gone — so all of them travel the exit path, once.
+ *
+ * It is also where the diagnosis lives, because this is where the facts are:
+ * the signal or code the child went with, and whatever it wrote to stderr on
+ * the way.
  */
 export function defaultHelperSpawn(logger: AppLogger): HelperSpawn {
   return (binaryPath) => {
-    const child = spawnChild(binaryPath, [], { stdio: ['pipe', 'pipe', 'ignore'] })
-    const { stdin, stdout } = child
-    if (!stdout || !stdin) {
+    const child = spawnChild(binaryPath, [], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const { stdin, stdout, stderr } = child
+    if (!stdout || !stdin || !stderr) {
       throw new EventKitError('helper_unavailable')
     }
+
+    const stderrLog = stderrSink(logger)
+    stderr.on('data', (chunk: Buffer | string) => {
+      stderrLog.take(chunk)
+    })
 
     const listeners: (() => void)[] = []
     let gone = false
@@ -235,6 +328,16 @@ export function defaultHelperSpawn(logger: AppLogger): HelperSpawn {
         return
       }
       gone = true
+      // Killed, not merely dropped: a child whose pipe broke is unreachable
+      // but still running, still holding an EKEventStore, and no longer the
+      // one helper per app this class promises. Skipped when there is
+      // nothing to signal — a spawn that failed, or a child already gone —
+      // so the kill cannot raise an ESRCH of its own.
+      const running =
+        child.pid !== undefined && child.exitCode === null && child.signalCode === null
+      if (running) {
+        child.kill()
+      }
       for (const listener of [...listeners]) {
         listener()
       }
@@ -249,13 +352,29 @@ export function defaultHelperSpawn(logger: AppLogger): HelperSpawn {
     for (const [source, pipe] of [
       ['stdin', stdin],
       ['stdout', stdout],
+      ['stderr', stderr],
     ] as const) {
       pipe.on('error', (error: unknown) => {
         logger.warn('calendar helper pipe failed', { source, code: errorCode(error) })
         reportGone()
       })
     }
-    child.on('exit', reportGone)
+
+    // Said here rather than in the class, which reaches its own gone-path for
+    // causes where nothing exited and has no code or signal to report. A
+    // signal is the whole diagnosis for an invalid code signature: the kernel
+    // sends SIGKILL on spawn and nothing else happens.
+    child.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+      stderrLog.flush()
+      if (signal !== null) {
+        logger.warn('calendar helper was killed', { signal })
+      } else if (code !== 0) {
+        logger.warn('calendar helper exited with a failure code', { code })
+      } else {
+        logger.info('calendar helper exited cleanly')
+      }
+      reportGone()
+    })
 
     return {
       stdout,
